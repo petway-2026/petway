@@ -1,0 +1,11 @@
+spring:
+  application:
+    name: petway-backend
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/petway?serverTimezone=Asia/Seoul&characterEncoding=UTF-8}
+    username: ${DB_USERNAME:petway}
+    password: ${DB_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+server:
+  port: ${SERVER_PORT:8080}
