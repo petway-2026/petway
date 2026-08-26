@@ -1,5 +1,6 @@
 package com.petway.global.exception;
 
+import com.petway.external.tour.exception.TourApiException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
@@ -14,6 +15,31 @@ import java.util.Map;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+
+    /**
+     * 한국관광공사 API 연동 실패
+     */
+    @ExceptionHandler(TourApiException.class)
+    public ResponseEntity<?> handleTourApiException(
+            TourApiException e
+    ) {
+
+        HttpStatus status = switch (e.getErrorType()) {
+            case TIMEOUT -> HttpStatus.GATEWAY_TIMEOUT;
+            case CONFIGURATION -> HttpStatus.INTERNAL_SERVER_ERROR;
+            default -> HttpStatus.BAD_GATEWAY;
+        };
+
+        return ResponseEntity
+                .status(status)
+                .body(
+                        Map.of(
+                                "message",
+                                e.getMessage()
+                        )
+                );
+    }
 
 
     /**
