@@ -30,34 +30,72 @@ public class UserAuth {
     @Column(name = "user_auth_id")
     private Long id;
 
+
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
+    @JoinColumn(
+            name = "user_id",
+            nullable = false
+    )
     private User user;
 
+
     @Enumerated(EnumType.STRING)
-    @Column(name = "auth_type", nullable = false, length = 20)
+    @Column(
+            name = "auth_type",
+            nullable = false,
+            length = 20
+    )
     private AuthType authType;
 
-    @Column(length = 20)
+
+    @Column(
+            name = "provider",
+            length = 20
+    )
     private String provider;
 
-    @Column(name = "provider_user_id", length = 100)
+
+    @Column(
+            name = "provider_user_id",
+            length = 100
+    )
     private String providerUserId;
 
-    @Column(name = "password_hash", length = 255)
+
+    @Column(
+            name = "password_hash",
+            length = 255
+    )
     private String passwordHash;
 
-    @Column(name = "created_at", nullable = false)
+
+    @Column(
+            name = "created_at",
+            nullable = false,
+            updatable = false
+    )
     private LocalDateTime createdAt;
 
-    public UserAuth(
+
+    /**
+     * LOCAL 회원 생성
+     */
+    public static UserAuth createLocal(
             User user,
-            AuthType authType,
             String passwordHash
     ) {
-        this.user = user;
-        this.authType = authType;
-        this.passwordHash = passwordHash;
-        this.createdAt = LocalDateTime.now();
+
+        UserAuth auth = new UserAuth();
+
+        auth.user = user;
+        auth.authType = AuthType.LOCAL;
+        auth.passwordHash = passwordHash;
+
+        auth.provider = null;
+        auth.providerUserId = null;
+
+        auth.createdAt = LocalDateTime.now();
+
+        return auth;
     }
 }

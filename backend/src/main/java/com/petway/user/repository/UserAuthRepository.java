@@ -14,4 +14,5 @@ public interface UserAuthRepository
             User user,
             AuthType authType
     );
+
 }

@@ -27,27 +27,58 @@ public class User {
     @Column(name = "user_id")
     private Long id;
 
-    @Column(nullable = false, length = 150)
+    @Column(
+            name = "email",
+            nullable = false,
+            length = 150
+    )
     private String email;
 
-    @Column(nullable = false, length = 50)
+    @Column(
+            name = "nickname",
+            nullable = false,
+            length = 50
+    )
     private String nickname;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "user_status", nullable = false, length = 20)
+    @Column(
+            name = "user_status",
+            nullable = false,
+            length = 20
+    )
     private UserStatus userStatus;
 
-    @Column(name = "created_at", nullable = false)
+    @Column(
+            name = "created_at",
+            nullable = false,
+            updatable = false
+    )
     private LocalDateTime createdAt;
 
-    @Column(name = "updated_at", nullable = false)
+    @Column(
+            name = "updated_at",
+            nullable = false
+    )
     private LocalDateTime updatedAt;
 
-    public User(String email, String nickname) {
+
+    public User(
+            String email,
+            String nickname
+    ) {
+
         this.email = email;
         this.nickname = nickname;
         this.userStatus = UserStatus.ACTIVE;
+
         this.createdAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
+    }
+
+
+    @PreUpdate
+    public void preUpdate() {
         this.updatedAt = LocalDateTime.now();
     }
 }
