@@ -69,11 +69,21 @@ public class CustomUserDetailsService
 
         /*
          * Spring Security UserDetails 생성
+         *
+         * roles("USER")
+         * roles("ADMIN")
+         *
+         * 형태로 Spring Security에 권한 등록
+         *
+         * 실제 내부 Authority:
+         *
+         * ROLE_USER
+         * ROLE_ADMIN
          */
         return org.springframework.security.core.userdetails.User
                 .withUsername(user.getEmail())
                 .password(userAuth.getPasswordHash())
-                .roles("USER")
+                .roles(user.getUserRole().name())
                 .build();
     }
 }
