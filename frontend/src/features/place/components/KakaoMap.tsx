@@ -40,6 +40,18 @@ export default function KakaoMap({
     const markerRefs =
         useRef<any[]>([]);
 
+    const openInfoWindowRef =
+        useRef<any>(null);
+
+    const openMarkerRef =
+        useRef<any>(null);
+
+    const [
+        mapReady,
+        setMapReady,
+    ] =
+        useState(false);
+
 
     const [
         error,
@@ -95,6 +107,8 @@ export default function KakaoMap({
 
                     mapRef.current =
                         map;
+
+                    setMapReady(true);
 
 
                     setError(null);
@@ -156,6 +170,7 @@ export default function KakaoMap({
         );
 
     }, [
+        mapReady,
         center.latitude,
         center.longitude,
     ]);
@@ -167,7 +182,7 @@ export default function KakaoMap({
         }
 
         mapRef.current.setLevel(level);
-    }, [level]);
+    }, [mapReady, level]);
 
 
     /*
@@ -195,6 +210,10 @@ export default function KakaoMap({
                 marker.setMap(null);
             }
         );
+
+        openInfoWindowRef.current?.close();
+        openInfoWindowRef.current = null;
+        openMarkerRef.current = null;
 
 
         markerRefs.current = [];
@@ -245,11 +264,25 @@ export default function KakaoMap({
                         marker,
                         "click",
                         () => {
+                            if (
+                                openMarkerRef.current === marker
+                            ) {
+                                infoWindow.close();
+                                openInfoWindowRef.current = null;
+                                openMarkerRef.current = null;
+
+                                return;
+                            }
+
+                            openInfoWindowRef.current?.close();
 
                             infoWindow.open(
                                 mapRef.current,
                                 marker
                             );
+
+                            openInfoWindowRef.current = infoWindow;
+                            openMarkerRef.current = marker;
 
                         }
                     );
@@ -267,6 +300,10 @@ export default function KakaoMap({
 
         return () => {
 
+            openInfoWindowRef.current?.close();
+            openInfoWindowRef.current = null;
+            openMarkerRef.current = null;
+
             newMarkers.forEach(
                 (marker) => {
                     marker.setMap(null);
@@ -275,7 +312,7 @@ export default function KakaoMap({
 
         };
 
-    }, [markers]);
+    }, [mapReady, markers]);
 
 
     return (
