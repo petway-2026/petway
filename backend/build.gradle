@@ -33,6 +33,9 @@ dependencies {
     // OAuth2 - Kakao 로그인 연결할 예정이면 추가
     implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
 
+    // OpenAPI / Swagger UI
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.9.0'
+
     // MySQL
     runtimeOnly 'com.mysql:mysql-connector-j'
 
