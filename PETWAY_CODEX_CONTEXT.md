@@ -1,68 +1,131 @@
-PetWay Codex 개발 참조 문서
+0. 문서의 역할과 우선순위
 
-이 문서는 PetWay 개발 전 Codex가 반드시 읽어야 하는 프로젝트 최상위 컨텍스트이자 구현 Source of Truth다.
-기능 구현, 리팩터링, 테스트, 외부 API 연동, DB 변경 시 이 문서를 우선 기준으로 사용한다.
-최신 기획 문서의 제품 범위와 팀이 확정한 MVP 구현 우선순위를 함께 반영한다.
+이 문서는 PetWay 개발 전 Codex가 반드시 읽어야 하는 프로젝트 최상위 구현 컨텍스트다.
 
-0. Codex 작업 원칙
+기능 구현, 리팩터링, 테스트, 외부 API 연동, DB 변경, 배포 준비 시 이 문서를 우선 기준으로 사용한다.
 
-최우선 목표
+정보가 충돌할 경우 아래 순서를 따른다.
+
+사용자의 최신 명시적 팀 결정
+
+공모전 공식 공고 / FAQ
+
+실제 외부 API 공식 명세와 실응답
+
+최신 PetWay 기획 / IA
+
+이 PETWAY_CODEX_CONTEXT.md
+
+Repository 기존 코드
+
+Codex 자체 추론
+
+실제 API와 문서가 다르면 공식 명세와 실응답을 우선한다.
+
+Codex는 문서를 근거로 이미 구현된 기능을 다시 만들지 않는다.
+반드시 현재 Repository 상태를 먼저 조사한다.
+
+1. Codex 작업 원칙
+
+1-1. 최우선 목표
 
 PetWay는 2026 관광데이터 활용 공모전 웹·앱 구현 부문 출품을 목적으로 한다.
 
-이 프로젝트의 목표는 복잡한 기술을 많이 사용하는 것이 아니라 다음을 만족하는 안정적으로 구동되는 완제품을 빠르게 만드는 것이다.
+이 프로젝트의 목표는 복잡한 기술을 많이 사용하는 것이 아니다.
+
+다음 조건을 만족하는 안정적으로 구동되는 완제품을 빠르게 만드는 것이 목표다.
 
 지정과제 6번을 명확하게 해결한다.
 
 한국관광공사 OpenAPI가 핵심 서비스 로직에 실제로 사용된다.
 
-반려동물 동반 규정을 구조화하고 사용자 반려견 기준으로 실제 이용 가능 여부를 판정한다.
+반려동물 동반 규정을 구조화한다.
+
+사용자 반려견 기준 실제 이용 가능 여부를 판정한다.
+
+공식 원문과 PetWay 해석 결과를 구분한다.
+
+불확실한 규정은 임의로 가능/불가로 단정하지 않는다.
 
 AI는 검증된 실제 관광 장소만 추천한다.
-
-실제 현장과 공식 정보가 다를 경우 사용자 제보와 관리자 검토로 보완 가능한 구조를 갖는다.
 
 일상 외출과 여행이 하나의 서비스 흐름으로 연결된다.
 
 핵심 사용자 흐름이 처음부터 끝까지 끊기지 않고 동작한다.
 
-불필요한 기술과 기능을 추가하지 않는다.
+불필요한 프레임워크와 인프라를 추가하지 않는다.
 
-개발 방식
+기능 수보다 구현 완결성, 데이터 활용 직접성, 배포 안정성을 우선한다.
+
+1-2. 개발 방식
 
 이 프로젝트는 AI/Codex 중심으로 개발한다.
 
-사용자는 직접 손코딩하지 않는 것을 전제로 한다.
+사용자는 직접 손코딩을 최소화한다.
 
-Codex는 작업 시 다음을 반드시 수행한다.
+Codex는 아래 순서를 따른다.
 
-작업 전에 현재 branch와 Repository 구조, 관련 파일을 먼저 확인한다.
+Inspect
+↓
+Plan
+↓
+Implement
+↓
+Test
+↓
+Verify
+↓
+Report
 
-PETWAY_CODEX_CONTEXT.md를 먼저 읽는다.
+반드시 수행:
+
+작업 전에 현재 branch와 working tree를 확인한다.
+
+PETWAY_CODEX_CONTEXT.md를 먼저 전체 읽는다.
+
+remote branch와 중복 구현 여부를 확인한다.
 
 현재 구현을 최대한 유지하고 필요한 범위만 수정한다.
 
 한 번에 여러 독립 기능을 구현하지 않는다.
 
-구현 전 완료 조건과 테스트 조건을 확인한다.
+구현 전 완료 조건과 테스트 조건을 정리한다.
 
-구현 후 직접 build/test를 실행한다.
-
-실패 시 로그를 읽고 원인을 수정한다.
+구현 후 build/test를 직접 실행한다.
 
 테스트가 통과하지 않은 상태를 완료라고 보고하지 않는다.
 
-임의로 요구사항을 확대하지 않는다.
-
-새로운 프레임워크나 인프라를 함부로 추가하지 않는다.
+기존 사용자의 local 변경을 임의로 reset/revert하지 않는다.
 
 실제 외부 API 스펙이 확인되지 않은 경우 추측 구현하지 않는다.
 
-1. 공모전 컨텍스트
+신규 dependency는 필요성이 명확하지 않으면 추가하지 않는다.
 
-선택 지정과제
+사용자의 명시적 지시 없이 다음을 하지 않는다.
 
-과제번호 6번
+main 직접 개발
+
+main 직접 push
+
+branch merge
+
+rebase
+
+cherry-pick
+
+reset
+
+unrelated refactor
+
+대규모 package 변경
+
+신규 framework 도입
+
+2. 공모전 컨텍스트
+
+2-1. 선택 지정과제
+
+과제번호 6번:
 
 모호한 반려동물 출입 조건 및 규정 인지 오류로 현장 입장 거부 및 헛걸음 유발 문제
 
@@ -70,7 +133,7 @@ PETWAY_CODEX_CONTEXT.md를 먼저 읽는다.
 
 이 기능이 반려인이 방문 전에 자신의 반려견이 실제로 이용 가능한 장소인지 더 정확하게 판단하도록 돕는가?
 
-1차 심사 기준
+2-2. 1차 심사 기준
 
 서비스 구현성: 30
 
@@ -80,87 +143,85 @@ PETWAY_CODEX_CONTEXT.md를 먼저 읽는다.
 
 서비스 발전성: 20
 
-기능 수보다 완결성, 구동 안정성, 데이터 활용의 직접성을 우선한다.
+기능 수보다 다음을 우선한다.
 
-한국관광공사 OpenAPI
+핵심 E2E 완결성
+
+실제 배포 안정성
+
+공공데이터 활용의 직접성
+
+사용자가 문제 해결을 즉시 이해할 수 있는 UX
+
+발전 기능의 현실성
+
+2-3. 공모전 API / 브랜딩 원칙
 
 한국관광공사 OpenAPI 활용은 필수다.
 
-단순 화면 장식용 호출이 아니라 다음 핵심 흐름에서 실제로 사용한다.
+파일 데이터만으로 구현하지 않는다.
 
-지역별 장소 검색
+가능하면 실제 OpenAPI 실시간 호출 구조를 우선한다.
 
-카테고리별 검색
+관광공사 전체 데이터를 로컬 Master DB로 대량 복제하지 않는다.
 
-장소 상세 조회
+실제 사용 API와 인증키를 최종 제출 기준에 맞춰 관리한다.
 
-반려동물 동반정보 조회
+API Key / Secret을 Git에 저장하지 않는다.
 
-일상 외출 후보 검색
+공사 공식 CI/BI 로고를 임의로 사용하지 않는다.
 
-빠른 외출 코스 후보 검색
+PetWay를 한국관광공사/KTO의 공식 서비스처럼 브랜딩하지 않는다.
 
-여행 코스 후보 검색
+관광공사 데이터가 노출되는 화면에는 공식 지침에 맞는 출처를 표기한다.
 
-AI 추천 후보 검색
+출처 예:
 
-출발 전 최신 정보 재검증
+출처: ⓒ한국관광공사
 
-2. 서비스 정의
+3. 서비스 정의
 
-서비스명
+3-1. 서비스명
 
 PetWay
 
-슬로건
+3-2. 슬로건
 
 오늘 산책부터 주말 여행까지, 우리 아이와 갈 수 있는 곳을 한 번에.
 
-한 줄 정의
+3-3. 한 줄 정의
 
-한국관광공사 OpenAPI의 반려동물 동반 관광정보를 실시간으로 활용하여 장소별 비정형 동반 조건을 구조화하고, 반려견의 체중·크기·성향과 날씨·거리 등을 종합해 일상 외출부터 여행 코스까지 추천하는 반려생활 맞춤형 서비스.
+한국관광공사의 반려동물 동반여행 OpenAPI를 실시간 활용해 장소별 비정형 동반 조건을 구조화하고, 사용자의 반려견 정보와 비교해 실제 이용 가능 여부와 필요한 준비사항을 설명한 뒤 날씨·거리·일상 외출·여행 코스로 연결하는 반려생활 맞춤형 관광 서비스.
 
-핵심 가치
+3-4. 핵심 가치
 
-PetWay의 핵심은 단순히
+PetWay의 핵심은 단순히:
 
-"반려동물 동반 장소를 보여주는 것"
+반려동물 동반 장소를 보여주는 것
 
 이 아니다.
 
-핵심은
+핵심은:
 
-"내 반려견이 실제로 갈 수 있는지를 판단하고, 그 장소를 실제 외출과 여행으로 연결하는 것"
+내 반려견이 실제로 갈 수 있는지를 판단하고, 왜 가능한지/왜 어려운지 설명한 뒤 실제 외출과 여행으로 연결하는 것
 
 이다.
 
-3. 서비스 핵심 구성
+4. 핵심 사용자 E2E
 
-PetWay는 크게 일상 외출과 여행 두 흐름으로 구성한다.
-
-                         PetWay
-                            │
-            ┌───────────────┴───────────────┐
-            │                               │
-        오늘 뭐하지?                     여행 가기
-            │                               │
-      ┌─────┼──────┐                ┌───────┼───────┐
-      │     │      │                │       │       │
-산책추천 내주변 빠른외출          지역검색 코스생성 AI보완
-│     │      │                │       │       │
-└─────┴──────┴────────┬───────┴───────┴───────┘
-│
-장소 적합성 분석
-│
-한국관광공사 OpenAPI
-
-4. 핵심 서비스 파이프라인
-
-사용자 / 마이펫
+회원가입 / 로그인
 ↓
-한국관광공사 OpenAPI
+반려견 등록
 ↓
-반려동물 동반 원문 정보
+대표 반려견 선택
+↓
+장소 검색
+↓
+KorPetTourService2 실시간 호출
+↓
+장소 상세 + 반려동물 상세
+↓
+필드별 Raw Adapter
 ↓
 PetRule Parser
 ↓
@@ -168,17 +229,19 @@ Compatibility Engine
 ↓
 AVAILABLE / CONDITIONAL / NEED_CONFIRMATION / UNAVAILABLE
 ↓
-PetFit / Weather / Distance
+판정 근거 + 준비물 + 이용 범위
 ↓
-장소 추천 또는 코스 구성
+공식 원문 / 출처 확인
 ↓
-필요 시 OpenAI 코스 어시스턴트
+오늘 추천 또는 코스 추가
+↓
+출발 전 최신 규정 재검증
 
-AI는 이 흐름을 우회해서는 안 된다.
+이 흐름이 끝까지 동작하는 것이 부가기능 수보다 중요하다.
 
 5. 현재 확정 기술 스택
 
-현재 Repository에 구성된 React + Spring Boot 구조를 유지한다.
+현재 Repository의 React + Spring Boot 구조를 유지한다.
 
 Frontend
 
@@ -186,7 +249,9 @@ React
 
 Vite
 
-TypeScript 우선
+TypeScript
+
+React Router
 
 Kakao Map JavaScript SDK
 
@@ -208,11 +273,11 @@ Spring Data JPA
 
 MySQL 8
 
-외부 API Client는 Spring RestClient 우선
+외부 HTTP Client: Spring RestClient 우선
 
 External API
 
-한국관광공사 OpenAPI
+한국관광공사 KorPetTourService2
 
 기상청 API
 
@@ -234,7 +299,7 @@ Elasticsearch
 
 Kubernetes
 
-별도 Vector DB
+Vector DB
 
 불필요한 Redis
 
@@ -242,324 +307,1077 @@ WebFlux 전환
 
 멀티 Agent 구조
 
-자체 ML 모델 학습
+자체 ML 모델
 
 과도한 디자인 패턴
 
-6. 개발 범위 우선순위
+6. 2026-08-27 현재 main 구현 상태
 
-기획 문서에는 전체 서비스 발전 기능까지 포함되어 있지만, 개발은 아래 순서를 따른다.
+현재 main 기준으로 이미 존재하는 기능을 중복 구현하지 않는다.
 
-M1 — 핵심 문제 해결
+구현됨 / 상당부분 구현됨
 
-반드시 먼저 완성한다.
+Auth
 
-회원가입 / 로그인 / 로그아웃
+일반 회원가입
 
-USER / ADMIN Role 기반 인증 구조
+세션 로그인
 
-마이펫 등록 / 조회 / 수정 / 삭제
+로그아웃
 
-대표 반려견 설정
+/api/auth/me
 
-한국관광공사 지역/카테고리 장소 검색
+BCrypt
 
-장소 상세
+USER / ADMIN 구조
 
-반려동물 동반정보 조회
+app_user + user_auth 인증 구조
 
-PetRule Parser
+React AuthContext / ProtectedRoute
+
+다견 Pet CRUD
+
+대표 반려견
+
+Pet Frontend
+
+PetRule / Parser 초안
+
+Parser 테스트 25개
+
+아직 main에 없음
+
+KorPetTourService2 장소 API
+
+Place Search
+
+Place Detail
+
+detailCommon2
+
+detailPetTour2
+
+PetTour Raw Adapter
 
 Compatibility Engine
 
-판정 상태 + 판정 근거 UI
+판정 reasons / requirements
 
-한국관광공사 데이터 출처 표기
+Weather
 
-M2 — 반복 사용 가능한 일상 외출
-
-날씨 API
-
-산책 적합 시간
-
-오늘 뭐하지?
-
-지역 후보 + 브라우저 거리 계산
+Kakao Map
 
 PetFit
 
-빠른 외출 코스
+오늘 뭐하지?
 
-지도 표시
+Course
 
-M3 — 여행
+OpenAI 추천 / Agent
 
-여행 코스 생성
+출발 전 재검증
 
-코스 장소 추가/삭제
+현재 테스트 상태
 
-코스 순서 변경
+PetRuleParserTest: 25개 통과
 
-방문 예정시간 / 체류시간
+전체 Backend 테스트: PetwayApplicationTests.contextLoads() 1개 실패
 
-날씨 기반 코스 검증
+실패 원인: 최근 PetService 추가 후 PetRepository mock 누락
 
-AI 코스 어시스턴트
+Frontend npm run build: 성공
 
-출발 전 최신 정보 재검증
+현재 테스트 실패를 기능 실패로 과장하지 않는다.
+다만 전체 테스트 green 상태는 다음 개발 전에 복구하는 것을 권장한다.
 
-M4 — 발전 기능
+7. 한국관광공사 API 기준 — 매우 중요
 
-시간이 충분할 때만 구현한다.
+7-1. PetWay의 기준 API
 
-장소 비교
+PetWay의 기본 관광 API는 다음으로 통일한다.
 
-즐겨찾기
+한국관광공사_반려동물_동반여행_서비스
+Base URL:
+https://apis.data.go.kr/B551011/KorPetTourService2
 
-방문 기록
+현재 공식 명세 및 실제 호출로 확인된 주요 operation:
 
-사용자 현장 제보
+areaBasedList2
 
-관리자 제보 검토
+locationBasedList2
 
-AI 기반 제보 요약 / 유형 분류 / 공식정보 충돌 탐지
+searchKeyword2
 
-장소 정보 신뢰도
+detailPetTour2
 
-여러 반려견 동시 조건 고려
+detailCommon2
 
-추천 고도화
+detailIntro2
 
-M4 기능 때문에 M1~M3의 안정성을 해치지 않는다.
+detailInfo2
 
-7. 마이펫 / 다견 정책
+detailImage2
 
-사용자 한 명은 여러 반려견을 등록할 수 있다.
+petTourSyncList2
 
-app_user 1 : N pet
+areaCode2
 
-반려견 정보:
+categoryCode2
 
-이름
+ldongCode2
 
-견종
+lclsSystmCode2
 
-생년월일
+7-2. 실제 호출 검증
 
-체중
+실제 승인된 KorPetTourService2 키를 사용해 다음을 확인했다.
 
-크기
+areaBasedList2
+HTTP 200
+resultCode = 0000
+전체 장소 약 9,686건
 
-활동 수준
+detailPetTour2도 실제 호출 성공을 확인했다.
 
-혼잡 장소 적응도
+따라서 장소 검색 + 일반 상세 + 반려동물 상세 흐름은 KorPetTourService2 중심으로 구성한다.
 
-실내/야외 선호
+7-3. 기존 KorService2 코드 처리
 
-대표 반려견 여부
+기존 팀 PR #7 / feature/place-search 일부는 KorService2/areaBasedList2 기준이다.
 
-현재 MVP 구현 결정
+이 구현은 공모전 규정 위반이었던 것이 아니다.
 
-여러 반려견 등록/관리는 지원한다.
+그러나 PetWay의 현재 팀 결정은 KorPetTourService2 중심 통일이다.
 
-대표 반려견을 설정할 수 있다.
+기존 코드를 무조건 삭제하거나 새로 만들지 않는다.
 
-현재 코스 판정은 한 번에 반려견 1마리 기준으로 한다.
+우선 재사용 가능성을 확인한다.
 
-여러 반려견을 동시에 선택해 하나의 코스를 판정하는 기능은 M4 확장이다.
+재사용 후보:
 
-course_pet N 테이블을 초기 단계에 임의로 추가하지 않는다.
+RestClient 구조
 
-보호자 수 기반 판정은 초기 MVP에서 제외한다.
+ConfigurationProperties
 
-size_type
+connect/read timeout
 
-size_type은 유지한다.
+external resultCode 처리
 
-10kg 이하, 5kg 미만 등은 weight_kg로 판정한다.
+exception taxonomy
 
-원문에 소형견만, 대형견 불가 등 크기 제한이 명시된 경우 size_type을 사용한다.
+Gateway / Service / Controller 계층
 
-체중만 보고 PetWay가 임의로 SMALL/MEDIUM/LARGE를 추론하지 않는다.
+pagination / filter DTO
 
+mock 기반 Client/Mapper/Service/Controller 테스트 방식
 
+수정/재검증 대상:
 
-## 7-1. 사용자 / 관리자 권한 정책
+Base URL
 
-PetWay는 일반 사용자와 관리자를 구분한다.
+operation 경로
 
-Role은 아래 두 가지를 사용한다.
+query parameter
 
-USER
+response DTO
 
-ADMIN
+category/content type 계약
 
-기본 원칙:
+detailPetTour2 필드
 
-일반 회원가입 시 USER로만 생성한다.
+현재 main Auth/Pet 구조와 통합
 
-클라이언트 요청으로 ADMIN 권한을 지정할 수 없도록 한다.
+실제 승인 key smoke test
 
-ADMIN 계정은 초기 데이터, 운영자 전용 생성 절차 등 통제된 방법으로만 생성한다.
+별도 필요성이 입증되지 않는 한 신규 기능에 KorService2를 추가하지 않는다.
 
-관리자 기능은 Spring Security에서 Role 기반 권한 검증을 적용한다.
+8. detailPetTour2 실제 응답 기준 — 매우 중요
 
-현재 로그인 구현 단계에서 user_role 구조까지 포함한다.
+8-1. 실제 JSON 구조
 
-관리자 Dashboard와 제보 검토 기능 자체는 M4에서 구현해도 된다.
+실제 응답 예:
 
-user_status 초기 값은 다음만 사용한다.
+{
+"response": {
+"header": {
+"resultCode": "0000",
+"resultMsg": "OK"
+},
+"body": {
+"items": {
+"item": [
+{
+"contentid": "2930927",
+"relaAcdntRiskMtr": "",
+"acmpyTypeCd": "전구역 동반가능",
+"relaPosesFclty": "",
+"relaFrnshPrdlst": "",
+"etcAcmpyInfo": "",
+"relaPurcPrdlst": "",
+"acmpyPsblCpam": "",
+"relaRntlPrdlst": "",
+"acmpyNeedMtr": ""
+}
+]
+},
+"numOfRows": 1,
+"pageNo": 1,
+"totalCount": 1
+}
+}
+}
 
-ACTIVE
+실제 표본 기준:
 
-WITHDRAWN
+items.item은 단건이어도 배열이었다.
 
-Codex는 필요하지 않은 Role 또는 상태값을 임의로 추가하지 않는다.
+값 없음은 null보다 "" 빈 문자열이 주로 사용됐다.
 
-## 7-2. 공모전 심사용 테스트 계정 정책
+빈 문자열은 곧바로 unknown으로 처리하지 않는다.
 
-PetWay가 별도 계정 로그인을 사용하는 경우 배포 환경에 공모전 지정 형식의 테스트 전용 USER 계정을 준비한다.
+빈 문자열은 우선 해당 필드에 정보 없음으로 처리한다.
 
-이메일 계정 예시:
+8-2. 주요 필드
 
-ID: openapi@서비스도메인
+필드
 
-PW: 2026openapi!
+의미
 
-원칙:
+contentid
 
-개인 계정을 심사용 계정으로 제출하지 않는다.
+콘텐츠 ID
 
-테스트 계정은 일반 USER 권한으로 생성한다.
+acmpyTypeCd
 
-테스트 계정으로 로그인부터 핵심 시연 흐름 전체를 사용할 수 있어야 한다.
+동반 유형
 
-최종 제출 전에 실제 배포 URL에서 테스트 계정 로그인을 반드시 검증한다.
+acmpyPsblCpam
 
+동반 가능 동물
 
-8. PetRule Parser
+acmpyNeedMtr
 
-한국관광공사의 비정형 반려동물 동반정보를 PetWay 내부에서 계산 가능한 규칙으로 변환한다.
+동반 시 필요사항
 
-예:
+etcAcmpyInfo
 
-10kg 미만 반려견 가능
-실내 이동장 필수
-야외 목줄 착용 필요
+기타 동반 정보
 
-↓
+relaAcdntRiskMtr
 
-maxWeight = 10
-weightOperator = LT
-indoorAllowed = true
-carrierRequiredIndoor = true
-leashRequiredOutdoor = true
+사고 대비사항
 
-1차 지원 규칙
+relaPosesFclty
 
-Nkg 이하
+구비 시설
 
-Nkg 미만
+relaFrnshPrdlst
 
-소형견 / 중형견 / 대형견
+비치 품목
 
-실내 가능 / 불가
+relaPurcPrdlst
 
-야외 가능 / 불가
+구매 품목
 
-테라스만 가능
+relaRntlPrdlst
 
-이동장 / 캐리어 필수
+렌탈 품목
 
-목줄 필수
+8-3. 실제 데이터 특성
 
-일부 구역만 가능
+필드 이름과 실제 자연어 내용이 항상 완벽하게 일치하지 않는다.
 
-Parser 원칙
+같은 규정이 여러 필드에 중복되거나 예상과 다른 필드에 들어가는 사례가 존재한다.
 
-규칙 기반 정규식/키워드를 우선 사용한다.
+따라서:
 
-추측하지 않는다.
+전체 문자열 단일 Parser
 
-해석되지 않는 조건은 원문을 유지한다.
+보다:
 
-자동 판정 근거가 부족하면 NEED_CONFIRMATION으로 처리한다.
+detailPetTour2
+→ 필드별 Raw Adapter
+→ source field + raw value 보존
+→ PetRule Parser
 
-Parser 실패가 전체 장소 조회 실패로 이어지지 않게 한다.
+구조를 사용한다.
 
-실제 TourAPI 응답을 확인한 뒤 표현 패턴을 추가한다.
+9. 2026-08-27 실제 데이터 분석 결과
 
-다음 규정은 실제 데이터 빈도와 일정 확인 후 확장한다.
+관광지·문화시설·레포츠·숙박·쇼핑·음식점 등을 층화해 약 120건의 실제 detailPetTour2 데이터를 분석했다.
 
-허용 마릿수
+패턴
+
+등장 장소 수
+
+목줄
+
+60
+
+일부구역
+
+59
+
+견종/맹견 조건
+
+50
+
+배변 처리
+
+48
 
 입마개
 
+37
+
+이동장/켄넬/케이지
+
+19
+
+체중
+
+17
+
+야외/외부
+
+12
+
+소형견
+
+11
+
+실내/내부
+
+9
+
+예약/문의
+
+9
+
+유모차
+
+9
+
+매너벨트
+
+8
+
+마릿수 제한
+
+5
+
 예방접종
 
-기저귀 / 매너벨트
+3
 
-견종 제한
+요금
 
-나이 / 중성화
+3
 
-추가요금
+테라스
 
-예약 / 전화문의
+2
 
-Codex는 위 확장 규칙을 임의로 P0에 추가하지 않는다.
+기저귀
 
-9. Compatibility Engine
+0
+
+실제 표현 예:
+
+20㎏ 미만 동반 가능
+9kg 이하
+목줄 착용
+일부구역 동반가능
+전 견종 동반 가능
+맹견의 경우 입마개 착용 필수
+배변봉투 지참 및 배변처리 필수
+이동장(켄넬)사용
+야외 공간만 동반 가능
+야외테라스만
+중소형견
+1인 당 반려견 최대 1마리
+사전 문의 필수
+사전예약 후 이용 가능
+
+체중 조건의 이하, 미만 모두 실제 데이터에서 확인했다.
+
+이 분석은 Parser MVP 우선순위의 근거로 사용한다.
+
+10. PetRule Parser — 최신 설계
+
+10-1. 역할
+
+PetRule Parser는 API JSON을 단순 DTO 매핑하는 기능이 아니다.
+
+API 필드 내부의 자연어/반정형 규정을 PetWay 내부에서 비교 가능한 규칙으로 구조화한다.
+
+detailPetTour2
+↓
+PetTourRawAdapter
+↓
+PetRuleParser
+↓
+PetRule
+
+Parser는 Compatibility 상태를 결정하지 않는다.
+
+10-2. 단일 rawText 구조 금지
+
+기존 초안은:
+
+rawText 하나
+→ Parser
+
+형태였으나 실제 API 확인 결과 전체 시스템 기준으로는 부족하다.
+
+최신 구조:
+
+detailPetTour2 response
+↓
+PetTourRawAdapter
+↓
+source field + raw value 보존
+↓
+PetRuleParser
+↓
+PetRule
+
+작은 문자열 Parser 함수 자체는 재사용할 수 있다.
+
+다만 전체 상세를 하나의 문자열로 합쳐 source context를 잃지 않는다.
+
+10-3. acmpyTypeCd
+
+acmpyTypeCd는 실제 데이터에서 거의 enum 성격으로 관찰됐다.
+
+예:
+
+전구역 동반가능
+일부구역 동반가능
+
+이 필드는 정규식보다 exact mapping을 우선한다.
+
+10-4. MVP Parser 우선순위
+
+실데이터 빈도와 Compatibility 활용도를 함께 고려한다.
+
+전구역 / 일부구역
+
+목줄 / 리드줄
+
+전 견종 허용 / 맹견 / 특정 견종 제한
+
+배변봉투 / 배변처리
+
+입마개
+
+이동장 / 캐리어 / 켄넬 / 케이지
+
+체중 kg / ㎏ + 이하 / 미만
+
+실내 / 야외 / 외부 / 테라스 / 특정 시설 범위
+
+소형견 / 중형견 / 대형견 / 중소형견
+
+유모차 / 매너벨트
+
+실데이터에서 확인했지만 후순위:
+
+마릿수 제한
+
+예방접종
+
+예약 / 사전 문의
+
+추가 요금
+
+10-5. 체중
+
+반드시 지원:
+
+10kg 이하
+10 kg 이하
+20㎏ 미만
+
+kg와 Unicode ㎏를 정규화한다.
+
+이하와 미만은 별도 연산자다.
+
+이하 → LESS_THAN_OR_EQUAL
+미만 → LESS_THAN
+
+10-6. 복수 WeightLimit
+
+실제 데이터에는 같은 장소 안에서도 공간/시설별로 서로 다른 체중 제한이 존재할 수 있다.
+
+따라서 최종 구조를 단일 WeightLimit 하나로 고정하지 않는다.
+
+필요 시:
+
+List<WeightLimit>
+
+또는:
+
+대상 + 공간 + 체중 제한
+
+관계를 표현한다.
+
+실제 fixture 기준으로 최소 구조를 설계한다.
+
+10-7. 크기
+
+체중과 크기는 별개다.
+
+금지:
+
+8kg → SMALL 자동 추론
+
+원문에 실제로 아래가 명시될 때만 크기 조건을 생성한다.
+
+소형견
+
+중형견
+
+대형견
+
+중소형견
+
+중소형견을 소형견 substring 하나로 잘못 파싱하지 않는다.
+
+또한:
+
+대형견 입마개 필수
+
+를 단순 LARGE allowed로 처리하지 않는다.
+
+대상과 requirement 관계를 보존할 수 있어야 한다.
+
+10-8. Requirement
+
+실제 중요 표현:
+
+목줄 착용
+
+입마개 착용
+
+배변봉투 지참
+
+배변처리
+
+이동장 사용
+
+이동장(켄넬)사용
+
+케이지
+
+유모차
+
+매너벨트
+
+acmpyNeedMtr는 자체적으로 “필요사항” 문맥이므로 그 안의:
+
+목줄 착용
+이동장 사용
+
+은 필수/필요 단어가 없어도 requirement로 해석할 수 있다.
+
+다른 source field에서는 같은 표현을 무조건 필수조건으로 단정하지 않는다.
+
+10-9. SpaceScope
+
+유지한다.
+
+실제 데이터에는:
+
+건물 내 이동 시 케이지
+건물 외 이동 시 목줄
+야외 공간만 동반 가능
+일부구역 동반가능
+
+등 범위가 다른 규정이 존재한다.
+
+단, 다음을 추측하지 않는다.
+
+실내 시설 이용은 개별 문의 필요
+
+→ INDOOR_ALLOWED=true로 해석 금지
+
+10-10. unknown 처리
+
+단일 hasUnknownContent boolean만으로 최종 구조를 고정하지 않는다.
+
+권장:
+
+unparsedFragments
+
+각 fragment는 최소 다음을 보존한다.
+
+sourceField
+rawText
+reason(optional)
+
+빈 문자열은 unknown fragment가 아니다.
+
+10-11. Parser 안전 원칙
+
+규칙 기반 정규식/키워드 우선
+
+source field 문맥 활용
+
+추측 금지
+
+Parser 실패가 장소 상세 전체 실패로 전파되지 않음
+
+일부만 해석 가능하면 해석된 규칙은 유지
+
+미해석 부분은 원문/source와 함께 보존
+
+AI를 Parser 필수 실행 경로로 사용하지 않음
+
+Parser가 Compatibility 상태를 만들지 않음
+
+11. 현재 Parser 초안 상태
+
+현재 main에는 다음 초안이 존재한다.
+
+PetRule.java
+
+PetRuleParser.java
+
+PetRuleParserTest.java
+
+기존 초안의 좋은 원칙:
+
+원문 보존
+
+이하 / 미만 구분
+
+체중→크기 추론 금지
+
+Parser / Compatibility 책임 분리
+
+불변 모델
+
+null/blank 안전 처리
+
+실데이터 기준 보완 필요:
+
+단일 rawText 입력
+
+단일 WeightLimit
+
+㎏ 미지원
+
+중소형견 미지원
+
+켄넬 미지원
+
+입마개 미지원
+
+배변처리 미지원
+
+견종/맹견 미지원
+
+전구역 미지원
+
+source field 없음
+
+unparsed fragment 없음
+
+실제 목줄 착용 표현 범위 제한
+
+일부 allowedSizes 추론 위험
+
+Codex는 기존 초안을 전부 폐기하지도, 그대로 완료 처리하지도 않는다.
+
+실제 fixture를 추가한 뒤 ADJUST 중심으로 리팩터링한다.
+
+12. Compatibility Engine
 
 Compatibility는 다음 질문에 답한다.
 
 이 반려견이 이 장소를 실제로 이용할 수 있는가?
 
-상태는 정확히 네 가지를 사용한다.
+상태는 정확히 네 가지다.
 
 AVAILABLE
+
 CONDITIONAL
+
 NEED_CONFIRMATION
+
 UNAVAILABLE
 
 AVAILABLE
 
-명확한 입장 조건을 충족하며 추가 이용 조건이 없음.
+명확한 입장 조건을 충족하고 추가 행동 조건이 없음.
 
 CONDITIONAL
 
-입장 가능하지만 이동장, 목줄, 야외 전용 등 추가 조건이 있음.
-
-NEED_CONFIRMATION
-
-공식 정보 또는 Parser 결과만으로 확정할 수 없음.
-
-UNAVAILABLE
-
-체중 또는 명확한 이용 제한을 위반함.
-
-모든 판정에는 사용자에게 보여줄 수 있는 근거가 있어야 한다.
+입장은 가능하지만 추가 조건이 있음.
 
 예:
 
-CONDITIONAL
+목줄
 
-- 로켓 체중 8kg
-- 장소 제한 10kg 이하 → 충족
-- 실내 이용 시 이동장 필요
+입마개
 
-AI가 Compatibility의 최종 사실 판정을 대신하지 않는다.
+이동장
 
-10. PetFit Score
+일부 구역
 
-Compatibility와 PetFit은 분리한다.
+야외 전용
+
+배변봉투
+
+NEED_CONFIRMATION
+
+공식 정보만으로 확정 불가.
+
+예:
+
+사전 문의
+
+개별 문의
+
+규정 상충
+
+핵심 미해석 규정
+
+실내 여부 불명확
+
+UNAVAILABLE
+
+명확한 조건 위반.
+
+예:
+
+Pet 12kg
+장소 10kg 이하
+→ UNAVAILABLE
+
+모든 판정은 사용자에게 보여줄 reason이 있어야 한다.
+
+AI가 Compatibility 최종 판정을 대신하지 않는다.
+
+13. 방문 준비 체크리스트
+
+Parser/Compatibility 결과에서 실제 방문 전 준비해야 할 항목을 보여준다.
+
+후보:
+
+목줄
+
+입마개
+
+배변봉투
+
+이동장 / 켄넬 / 케이지
+
+유모차
+
+매너벨트
+
+예방접종 증빙
+
+장소마다 실제 필요한 것만 표시한다.
+
+14. 마이펫 / 다견 정책
+
+사용자 1명은 여러 반려견을 등록할 수 있다.
+
+app_user 1 : N pet
+
+M1:
+
+다견 등록
+
+다견 조회/수정/삭제
+
+대표 반려견 1마리 설정
+
+장소 상세에서 판정 기준 반려견 변경
+
+한 번에 한 마리 기준 Compatibility
+
+코스도 한 마리 기준
+
+M4:
+
+두부 + 우주
+
+처럼 여러 마리를 동시에 선택해 마릿수 제한과 조합 조건까지 종합 판정한다.
+
+실제 API에는:
+
+1인 당 반려견 최대 1마리
+
+같은 규정이 존재한다.
+
+초기부터 course_pet N 테이블을 추가하지 않는다.
+
+14-1. size_type 정책
+
+size_type은 유지한다.
+
+이유:
+
+소형견만 가능
+
+대형견 불가
+
+중소형견 가능
+
+같은 실제 규정 판정에 필요하다.
+
+체중으로 size를 자동 추론하지 않는다.
+
+현재 main의 Pet Entity/DTO/Frontend에는 size_type이 없으므로 Compatibility 구현 전 보완이 필요하다.
+
+15. 사용자 / 관리자 권한 정책
+
+Role:
+
+USER
+
+ADMIN
+
+원칙:
+
+일반 회원가입은 USER
+
+클라이언트 요청으로 ADMIN 생성 불가
+
+ADMIN은 통제된 운영 방식으로만 생성
+
+ADMIN API는 Role 검증
+
+사용자 상태는 초기 ACTIVE, WITHDRAWN
+
+관리자 Dashboard는 M4 가능.
+
+16. 현재 Auth / DB 구조 — 매우 중요
+
+현재 main의 실제 인증 구조를 기준으로 한다.
+
+app_user
++
+user_auth
+
+비밀번호는 user_auth.password_hash에 저장한다.
+
+Codex는 팀 결정 없이 다음을 하지 않는다.
+
+user_auth 삭제
+
+password_hash를 app_user로 이동
+
+인증 schema 통합
+
+현재 session 기반 인증을 JWT 등으로 전환
+
+현재 실제 Entity:
+
+User
+
+UserAuth
+
+Pet
+
+향후:
+
+Course
+
+CoursePlace
+
+ApiRequestLog
+
+는 필요 시 추가한다.
+
+17. 공모전 심사용 테스트 계정 정책
+
+별도 로그인을 사용하는 경우 배포 환경에 공모전 지정 형식의 테스트 전용 USER 계정을 준비한다.
+
+예:
+
+ID: openapi@서비스도메인
+PW: 2026openapi!
+
+원칙:
+
+개인 계정 제출 금지
+
+일반 USER 권한
+
+핵심 시연 흐름 전체 사용 가능
+
+최종 제출 전 실제 배포 URL에서 검증
+
+18. 장소 탐색 구조
+
+장소 검색
+
+KorPetTourService2 기준:
+
+areaBasedList2
+
+searchKeyword2
+
+필요 시 locationBasedList2
+
+장소 상세
+
+detailCommon2
+
+detailPetTour2
+
+필요 시 intro/info/image API
+
+기본 사용자 흐름
+
+장소 검색
+↓
+장소 목록
+↓
+장소 상세
+↓
+반려동물 공식 정보
+↓
+내 반려견 Compatibility
+
+React가 관광공사 API를 직접 호출하지 않는다.
+
+React
+↓
+PetWay Spring Boot
+↓
+KorPetTourService2
+
+서버용 관광공사 Key를 Frontend로 노출하지 않는다.
+
+19. Kakao Map 정책 — 최신 확정
+
+지도는 Kakao Map JavaScript SDK를 사용한다.
+
+장소 Source of Truth는 KorPetTourService2다.
+
+Kakao Map은 장소 검색 데이터 source가 아니라 지도 시각화 도구다.
+
+기본 흐름:
+
+KorPetTourService2
+↓
+장소명 / 주소 / 위도 / 경도
+↓
+PetWay Backend
+↓
+React
+↓
+Kakao Map Marker
+
+현재 MVP에서는 다음을 하지 않는다.
+
+관광공사 장소
+↔
+카카오 Local Search 장소
+Entity Matching
+
+카카오 Local Search API가 반드시 필요한 별도 기능이 확인되지 않는 한 사용하지 않는다.
+
+Kakao Map 역할:
+
+관광공사 좌표 기반 Marker
+
+코스 장소 시각화
+
+브라우저 현재 위치 표시
+
+거리 계산 결과 연계
+
+Kakao JavaScript Key는 브라우저 SDK 특성에 따라 Frontend에 사용할 수 있다.
+
+단:
+
+Kakao Developers 허용 도메인 제한
+
+개발/운영 설정 분리
+
+서버용 Secret Key Frontend 노출 금지
+
+20. 날씨 처리
+
+기상청 API를 사용한다.
+
+기본 흐름:
+
+KorPetTourService2
+↓
+장소 위도 / 경도
+↓
+기상청 격자 nx / ny 변환
+↓
+단기예보
+↓
+WeatherSummary
+
+개인 GPS를 서버에 전송해 날씨를 조회하는 방식보다 장소 좌표 기반 조회를 우선한다.
+
+MVP WeatherSummary 후보:
+
+기온
+
+강수확률
+
+강수량
+
+하늘상태
+
+풍속
+
+적설
+
+날씨는 의료적/수의학적 판단이 아니라 외출 참고정보로 사용한다.
+
+예:
+
+야외만 동반 가능한 장소
++
+방문 예정 시간 비
+↓
+주의 안내
+
+21. 위치정보 정책
+
+정확한 GPS는 기본적으로 Browser 내부에서만 사용한다.
+
+HTML5 Geolocation
+↓
+Browser
+↓
+현재 GPS
+↓
+관광지 좌표와 거리 계산
+↓
+거리순 표시
+
+금지:
+
+GPS history DB 저장
+
+기본 기능에서 정확한 GPS Backend 전송
+
+승인 없이 Browser GPS → Backend → TourAPI
+
+권한 거부 시 지역 직접 선택을 제공한다.
+
+22. Compatibility와 PetFit
+
+두 개를 분리한다.
 
 Compatibility = 갈 수 있는가?
-PetFit        = 갈 수 있는 장소 중 얼마나 잘 맞는가?
+PetFit = 갈 수 있는 장소 중 얼마나 잘 맞는가?
 
-초기 PetFit은 설명 가능한 규칙 기반 점수로 구현한다.
-
-우선 요소:
+초기 PetFit 후보:
 
 Compatibility
 
@@ -571,129 +1389,149 @@ Compatibility
 
 실내/야외 선호
 
-기획상 사용자 방문 평가는 향후 PetFit 고도화 요소다.
+방문 데이터가 없는 초기 구현에서 임의의 방문 기반 점수를 만들지 않는다.
 
-방문 데이터가 없는 초기 구현에서 임의의 방문 기반 점수를 생성하지 않는다.
+23. 오늘 뭐하지?
 
-11. 오늘 뭐하지? / 산책 적합 시간
+홈의 반복 사용 핵심 기능이다.
 
-최신 기획에서 일상 반복 사용성을 위한 핵심 기능이다.
-
-오늘 뭐하지?
-
-대표 반려견과 현재/예정 날씨를 기반으로 당일 이용하기 좋은 활동과 장소를 제공한다.
+대표 반려견 + 날씨 + 거리 + Compatibility + PetFit을 이용한다.
 
 예:
 
-로켓과 오늘 뭐하지?
+두부와 오늘 뭐하지?
 
 현재 23℃
 오후부터 비 예보
 
-08:00 ~ 10:00
-산책 추천
-
 오늘 추천
-- 보라매공원
-- 실내 동반 카페
+- 실내 이용 가능 장소
+- 가까운 야외 산책 장소
 
-산책 적합 시간
+24. AI / Agent 정책 — 최신 확정
 
-기상청 예보를 활용해 시간대별 외출 참고정보를 제공한다.
+AI는 사실 source가 아니다.
 
-기준:
+Parser와 Compatibility는 AI를 사용하지 않는다.
 
-기온
+Parser = Java 결정론적 규칙 엔진
+Compatibility = Java 결정론적 판정 엔진
 
-강수
+AI는 다음 역할만 한다.
 
-적설
+사용자 자연어 의도 이해
 
-풍속
+검증된 후보 중 추천
 
-의료적·수의학적 판단이 아니라 기상조건 기반 참고정보로 구현한다.
+추천 이유 설명
 
-12. 위치정보 정책 — 중요
-
-최신 기획 기준으로 사용자의 정확한 GPS는 가능한 한 브라우저 내부에서만 사용한다.
+코스 구성 보조
 
 기본 흐름:
 
-HTML5 Geolocation
+사용자 자연어 요청
 ↓
-사용자 Browser
+KorPetTourService2 실제 후보
 ↓
-현재 GPS
+PetRule
 ↓
-후보 장소 좌표와 거리 계산
+Compatibility
 ↓
-화면 거리순 정렬
-
-원칙:
-
-사용자 GPS 이력을 DB에 저장하지 않는다.
-
-기본 구현에서 정확한 GPS를 PetWay Backend로 전송하지 않는다.
-
-지역 검색 등으로 장소 후보를 확보한 뒤 브라우저에서 거리를 계산하는 방식을 우선한다.
-
-위치 권한 거부 시 지역 직접 선택이 가능해야 한다.
-
-GPS 서버 전송이 필요한 신규 기능을 추가하려면 구현 전에 별도 검토한다.
-
-Codex는 별도 승인 전 다음 구조를 구현하지 않는다.
-
-Browser GPS → Backend → TourAPI 위치검색
-
-13. 한국관광공사 OpenAPI 사용 정책
-
-PetWay에서 관광 장소의 Source of Truth는 한국관광공사 OpenAPI다.
-
-관광공사 전체 데이터를 PetWay DB에 대량 복제하지 않는다.
-
-공모전 공식 안내에 따라 로컬 관광지 Master DB 중심이 아니라 실제 사용자 기능에서 OpenAPI를 실시간 호출하는 구조를 우선한다.
-
-제출 인증키를 기준으로 개발 기간 내 실제 OpenAPI 호출 내역이 확인될 수 있으므로, 화면만 OpenAPI처럼 보이게 하고 실제로는 로컬 DB만 조회하는 구조를 만들지 않는다.
-
-주요 호출 흐름
-
-사용자 검색
+UNAVAILABLE 제거
 ↓
-TourAPI 호출
+날씨 + 거리 + PetFit
 ↓
-검색 결과 사용
-
-장소 상세 클릭
-↓
-TourAPI 상세 호출
-↓
-반려동물 동반정보 파싱
-
-AI 추천 요청
-↓
-TourAPI 후보 검색
-↓
-PetWay 검증
+검증된 후보
 ↓
 OpenAI
-
-코스 재검증
 ↓
-저장된 tour_content_id
+추천 이유 / 코스 설명
+
+AI가 생성/결정하면 안 되는 것:
+
+존재하지 않는 장소
+
+공식 규정
+
+체중 제한
+
+Compatibility
+
+날씨 수치
+
+Agent 서버 정책
+
+별도 Python Agent Server를 만들지 않는다.
+
+별도 Agent 서버를 추가하지 않는다.
+
+현재 권장 구조:
+
+React
 ↓
-TourAPI 최신 상세 재조회
+Spring Boot
+↓
+OpenAI API
 
-tour_content_id
+Spring Boot가 OpenAI API를 호출한다.
 
-PetWay 저장 데이터와 관광공사 데이터를 연결하는 핵심 외부 식별자로 사용한다.
+AI 장애가 다음 기능을 막으면 안 된다.
+
+Place Search
+
+Place Detail
+
+PetRule
+
+Compatibility
+
+M1에는 AI가 없어도 서비스 핵심 문제 해결이 완성되어야 한다.
+
+25. Course / 출발 전 재검증
+
+M3에서 구현한다.
+
+기능:
+
+코스 생성
+
+장소 추가/삭제
+
+순서
+
+방문 시간
+
+체류 시간
+
+장소별 Compatibility
+
+AI 코스 보완
+
+지도
+
+핵심:
+
+[출발 전 다시 확인]
+
+동작:
 
 course_place.tour_content_id
 ↓
-TourAPI 재조회
+KorPetTourService2 최신 detail 재호출
 ↓
-최신 상세정보
+PetRule 재생성
+↓
+Compatibility 재판정
+↓
+규정 변경 / 주의사항 안내
 
-저장 정책
+이 기능은 지정과제의 헛걸음 방지와 직접 연결된다.
+
+26. OpenAPI 저장 정책
+
+장소 Source of Truth:
+
+KorPetTourService2
 
 저장:
 
@@ -701,682 +1539,666 @@ TourAPI 재조회
 
 반려견
 
-여행 코스
+코스
 
-코스에 선택한 장소의 최소 스냅샷
+코스 장소 최소 snapshot
 
-관광공사의 contentId
+tour_content_id
 
-마지막 Compatibility 판정 스냅샷
+마지막 Compatibility snapshot
 
 외부 API 호출 로그
 
 저장하지 않음:
 
-관광공사 전체 장소 마스터
+전체 관광지 Master
 
-기상청 전체 예보
+전체 기상예보
 
-AI 후보 전체 목록
+전체 AI 후보
 
-AI 응답 전체 히스토리
+전체 AI 응답 히스토리
 
 사용자 GPS 이력
 
-14. 데이터 출처 정책
+실제 API 응답 일부를 테스트 fixture로 저장할 수 있다.
 
-한국관광공사 관광데이터가 노출되는 화면에는 기관명 기준 출처를 표시한다.
+fixture 목적:
 
-예:
+DTO contract 테스트
+
+Parser regression 테스트
+
+실제 표현 회귀 테스트
+
+Production source로 fixture를 사용하지 않는다.
+
+27. 데이터 출처 정책
+
+PetWay가 생성한 해석 결과와 공식 원문은 분리한다.
+
+UI 예:
+
+[PetWay 판정]
+두부는 조건을 확인하면 이용할 수 있어요.
+
+✓ 체중 조건 충족
+! 목줄 필요
+! 일부구역 이용
+
+----------------
+
+[공식 원문]
+20㎏ 미만 동반 가능
+목줄 착용
+일부구역 동반가능
 
 출처: ⓒ한국관광공사
 
-또는 공식 안내에 맞는 기관명 표기를 사용한다.
+금지:
 
-TourAPI라는 API 서비스명만 출처처럼 단독 표기하지 않는다.
+PetWay를 한국관광공사 공식 서비스처럼 표현
 
-공사의 공식 CI/BI 로고 이미지는 임의로 사용하지 않고 텍스트 형태로 출처를 표기한다.
+공사 로고 임의 사용
 
-PetWay가 생성한 해석 결과와 공식 원문은 구분한다.
+KTO PetWay 같은 브랜딩
 
-공식 관광정보
-+
-PetWay 판정/해석
+TourAPI만 출처처럼 단독 표기
 
-15. 날씨 처리
+28. 개발 우선순위
 
-기상청 API를 이용한다.
+M1 — 핵심 문제 해결
 
-기본 활용:
+Auth 안정화
 
-기온
+다견 Pet CRUD
 
-강수
+대표 반려견
 
-적설
+Pet size_type 보완
 
-풍속
+KorPetTourService2 장소 검색
 
-시간대별 외출 참고정보
+detailCommon2
 
-코스 날씨 충돌 검증
+detailPetTour2
 
-예:
+실제 response DTO
 
-장소: 야외 이용만 가능
-방문 예정 시간: 비
-↓
-주의/경고
+PetTour Raw Adapter
 
+실데이터 기반 PetRule Parser 리팩터링
 
+Compatibility Engine
 
-기상청 날씨 조회는 개인 GPS를 서버에 전송하는 방식보다 한국관광공사에서 받은 장소 좌표/지역 정보를 기준으로 필요한 예보를 조회하는 방식을 우선한다.
+판정 reason
 
-## 15-1. Kakao Map 정책
+준비물
 
-지도는 Kakao Map JavaScript SDK를 사용한다.
+Place List / Detail Frontend
 
-기본 역할:
+공식 원문 / 출처 UI
 
-한국관광공사 장소 좌표 기반 Marker 표시
+실제 핵심 E2E 통합 테스트
 
-코스 장소 시각화
+M1 완료 기준:
 
-사용자의 브라우저 현재 위치 표시
+로그인
+→ Pet 선택
+→ 장소 검색
+→ 실제 OpenAPI
+→ 상세
+→ Parser
+→ Compatibility
+→ reason / 준비물
+→ 공식 원문
 
-브라우저 내부 거리 계산 결과와 연계
+M2 — 반복 사용
 
-Kakao JavaScript Key는 브라우저 SDK 특성상 Frontend에서 사용될 수 있다.
+기상청
 
-단, Kakao Developers에서 허용 도메인을 제한하고 개발/운영 환경별 설정을 분리한다.
+Browser 거리
 
-한국관광공사/기상청/OpenAI 등 서버용 Secret Key를 Frontend로 노출하지 않는다.
+PetFit
 
+오늘 뭐하지?
 
-16. AI 코스 어시스턴트
+Kakao Map
 
-AI는 사실 판정기가 아니라 추천 및 자연어 인터페이스다.
+M3 — 여행
 
-필수 흐름:
+Course
 
-사용자 자연어 요청
-↓
-관광공사 OpenAPI 후보 조회
-↓
-PetRule Parser
-↓
-Compatibility
-↓
-UNAVAILABLE 제거
-↓
-PetFit + 날씨 + 현재 코스
-↓
-검증된 후보만 OpenAI 전달
-↓
-추천 결과
+시간/순서
 
-AI가 다음을 임의로 만들어내거나 사실로 결정하지 않는다.
+AI 코스
 
-존재하지 않는 장소
-
-공식 동반 조건
-
-체중 제한
-
-Compatibility 결과
-
-날씨 수치
-
-AI 추천은 자동 반영하지 않는다.
-
-AI 추천
-↓
-사용자 확인
-↓
-코스 적용
-
-멀티 Agent 구조를 만들지 않는다.
-
-17. 데이터베이스 — 현재 MVP
-
-초기 핵심 테이블은 5개로 유지한다.
-
-app_user
-pet
-course
-course_place
-api_request_log
-
-확장 기능 때문에 초기부터 10개 테이블을 생성하지 않는다.
-
-app_user
-
-user_id BIGINT PK
-email VARCHAR(150) NOT NULL UNIQUE
-password_hash VARCHAR(255) NOT NULL
-nickname VARCHAR(50) NOT NULL
-user_status VARCHAR(20) NOT NULL
-user_role VARCHAR(20) NOT NULL
-created_at DATETIME NOT NULL
-updated_at DATETIME NOT NULL
-
-초기 값:
-
-user_status = ACTIVE / WITHDRAWN
-
-user_role = USER / ADMIN
-
-일반 회원가입은 반드시 USER로 생성한다.
-
-pet
-
-pet_id BIGINT PK
-user_id BIGINT FK NOT NULL
-pet_name VARCHAR(50) NOT NULL
-breed VARCHAR(100)
-birth_date DATE
-weight_kg DECIMAL(5,2) NOT NULL
-size_type VARCHAR(20) NOT NULL
-activity_level VARCHAR(20)
-crowd_tolerance VARCHAR(20)
-place_preference VARCHAR(20)
-is_primary BOOLEAN NOT NULL
-created_at DATETIME NOT NULL
-updated_at DATETIME NOT NULL
-
-대표 반려견은 사용자별 최대 1마리다.
-
-course
-
-course_id BIGINT PK
-user_id BIGINT FK NOT NULL
-pet_id BIGINT FK NOT NULL
-course_name VARCHAR(100) NOT NULL
-travel_date DATE
-region_name VARCHAR(100)
-course_status VARCHAR(20) NOT NULL
-created_at DATETIME NOT NULL
-updated_at DATETIME NOT NULL
-
-현재 MVP 상태:
-
-DRAFT
-SAVED
-
-MVP는 한 코스당 반려견 1마리를 기준으로 한다.
-
-course_place
-
-course_place_id BIGINT PK
-course_id BIGINT FK NOT NULL
-tour_content_id VARCHAR(50) NOT NULL
-content_type_id VARCHAR(30)
-place_name VARCHAR(200) NOT NULL
-category_type VARCHAR(30) NOT NULL
-latitude DECIMAL(10,7) NOT NULL
-longitude DECIMAL(10,7) NOT NULL
-sequence_no INT NOT NULL
-planned_arrival_time TIME
-expected_stay_minutes INT
-compatibility_status VARCHAR(30)
-compatibility_reason VARCHAR(500)
-compatibility_checked_at DATETIME
-created_at DATETIME NOT NULL
-updated_at DATETIME NOT NULL
-
-권장:
-
-UNIQUE(course_id, sequence_no)
-
-api_request_log
-
-api_request_log_id BIGINT PK
-user_id BIGINT NULL FK
-api_provider VARCHAR(30) NOT NULL
-api_type VARCHAR(50) NOT NULL
-request_purpose VARCHAR(50) NOT NULL
-tour_content_id VARCHAR(50)
-response_status INT
-external_result_code VARCHAR(50)
-response_time_ms BIGINT
-result_count INT
-success BOOLEAN NOT NULL
-error_message VARCHAR(500)
-requested_at DATETIME NOT NULL
-
-external_result_code와 tour_content_id는 목적이 다르므로 둘 다 유지한다.
-
-API Key, Authorization Header, secret은 로그에 남기지 않는다.
-
-공모전 제출을 위해 한국관광공사 OpenAPI 신청자의 인코딩키/디코딩키 정보와 실제 사용한 OpenAPI 목록을 별도로 관리하되, Repository에는 secret을 저장하지 않는다.
-
-18. 기획상 후속 기능
-
-최신 기획에는 아래 기능도 포함된다.
-
-장소 비교
-
-즐겨찾기
-
-빠른 외출 코스 고도화
-
-방문 기록
-
-사용자 현장 제보
-
-관리자 제보 검토
-
-AI 기반 제보 요약 / 유형 분류 / 공식정보 충돌 탐지
-
-장소 정보 신뢰도
-
-여러 반려견 동시 조건 고려
-
-향후 구현이 필요할 경우 다음과 같은 테이블을 추가할 수 있다.
-
-favorite_place
-place_visit
-visit_pet
-place_report
-course_pet
-
-place_report는 M4 구현 시 다음 개념을 기준으로 상세 컬럼을 확정한다.
-
-report_id
-user_id
-tour_content_id
-report_type
-report_content
-ai_summary
-ai_detected_conflict
-review_status
-reviewed_by
-reviewed_at
-created_at
-
-현재 단계에서 place_report 테이블을 미리 생성하지 않는다.
-
-Codex는 현재 작업 요청 없이 위 테이블을 임의로 생성하지 않는다.
-
-공식 관광정보와 사용자 제보 정보는 반드시 구분하여 표시한다.
-
-
-
-## 18-1. 사용자 현장 제보 / 관리자 검토 / AI 분석 정책
-
-이 기능은 지정과제의 핵심 문제인 “공식 정보와 실제 현장의 차이”를 보완하기 위한 발전 기능이다.
-
-예시:
-
-공식 관광정보
-
-10kg 이하 동반 가능
-
-사용자 현장 제보
-
-8kg 반려견인데 현장에서는 5kg 이하만 가능하다고 안내받아 입장을 거절당함
-
-처리 흐름:
-
-사용자 제보
-↓
-place_report 저장
-↓
-AI 분석
-- 제보 요약
-- 유형 분류
-- 공식정보와 충돌 여부 탐지
-- 관리자 확인 포인트 정리
-  ↓
-  관리자 Dashboard
-  ↓
-  APPROVE / REJECT / NEED_VERIFICATION
-
-AI는 관리자 보조 도구로만 사용한다.
-
-AI가 할 수 있는 일:
-
-비정형 제보 요약
-
-제보 유형 분류
-
-유사/중복 제보 후보 표시
-
-한국관광공사 공식정보와 제보 내용의 차이 요약
-
-관리자 확인 필요사항 생성
-
-AI가 하면 안 되는 일:
-
-한국관광공사 공식정보 자동 수정
-
-PetRule 자동 수정
-
-Compatibility 규칙 자동 변경
-
-사용자 1인의 제보를 곧바로 사실로 확정
-
-관리자 승인 없이 사용자 제보를 공식정보처럼 노출
-
-서비스 화면에서는 다음 두 레이어를 반드시 구분한다.
-
-[공식 관광정보]
-+
-[사용자 현장 제보]
-
-예:
-
-[공식 관광정보]
-10kg 이하 동반 가능
-
-[최근 현장 제보]
-체중 제한이 다르다는 이용 경험이 제보되었습니다.
-방문 전 시설 확인을 권장합니다.
-
-장소 정보 신뢰도는 향후 설명 가능한 규칙 기반 HIGH / MEDIUM / LOW로 구현할 수 있다.
-AI가 임의로 신뢰도 점수를 만들어내지 않는다.
-
-
-19. 팀 개발 순서
-
-STEP 1
-
-공통 Domain / DB 5개 확정
-
-STEP 2 — 병렬 가능
-
-A. Auth + USER/ADMIN Role + Pet
-B. TourAPI Client + 실제 응답 검증
-C. PetRule + Compatibility
-
-STEP 3
-
-실제 TourAPI → PetRule → Compatibility 통합
-
-STEP 4
-
-장소 검색 / 상세 React UI
-
-STEP 5
-
-날씨 + 산책 적합 시간
-
-STEP 6
-
-브라우저 위치 기반 거리 계산 + PetFit + 오늘 뭐하지?
-
-STEP 7
-
-Kakao Map + Course
-
-STEP 8
-
-AI 코스 어시스턴트
-
-STEP 9
+날씨 검증
 
 출발 전 재검증
 
-STEP 10
+M4 — 발전 기능
 
-API 로그 / 통합 테스트 / 배포 안정화
+사용자 현장 제보
 
-STEP 11
+관리자 검토
 
-시간이 남으면 M4 기능
+AI 제보 요약/분류/공식정보 충돌 탐지
 
-M4 우선순위는 사용자 현장 제보 → 관리자 검토 → AI 제보 분석 → 정보 신뢰도 → 나머지 편의 기능 순으로 검토한다.
+정보 신뢰도
 
-20. 필수 테스트
+다견 동시 판정
 
-Parser
+즐겨찾기
 
-10kg 이하
-10kg 미만
-소형견만 가능
-대형견 불가
-실내 이동장 필수
-야외 목줄 착용
-테라스만 동반 가능
+방문기록
 
-Compatibility
+비교
 
-7kg + 10kg 이하
-→ AVAILABLE
+추천 고도화
 
-12kg + 10kg 이하
-→ UNAVAILABLE
+M4 때문에 M1~M3를 불안정하게 만들지 않는다.
 
-7kg + 실내 이동장 필수
-→ CONDITIONAL
+29. 현재 팀 작업 분배 권장
 
-동반 가능이라고만 되어 있고 상세 조건 부족
-→ NEED_CONFIRMATION
+기능을 Layer가 아니라 Vertical Slice로 나눈다.
 
-LARGE + 소형견만 가능
-→ UNAVAILABLE
+Pet Slice
 
-보안/소유권
+Pet Domain
+→ Repository
+→ Service
+→ API
+→ Pet UI
 
-다른 사용자의 pet 조회/수정 금지
+현재 상당부분 구현됨.
 
-다른 사용자의 course 접근 금지
+Place Slice
 
-일반 USER의 ADMIN API 접근 금지
+KorPetTourService2
+→ Search
+→ Common Detail
+→ Pet Detail
+→ Place API
 
-일반 회원가입으로 ADMIN 생성 금지
+Pet Intelligence Slice
 
-비밀번호 원문 저장 금지
+Raw Adapter
+→ PetRule
+→ Parser
+→ Compatibility
+→ Reason
 
-AI
+Core UX Slice
 
-UNAVAILABLE 후보는 OpenAI 입력에 포함되지 않아야 한다.
+Home
+→ Place List
+→ Place Detail
+→ Compatibility UI
+→ Official Raw UI
 
-사용자 제보 AI 분석 결과가 공식정보/PetRule/Compatibility를 자동 수정하지 않아야 한다.
+M1 이후:
 
-외부 API
+Context: Weather / Distance / PetFit
 
-다음 상황을 테스트한다.
+Journey: Course / AI / Revalidation
 
+30. Contract First
+
+AI/Codex 구현 전에 contract를 먼저 고정한다.
+
+권장:
+
+docs/contracts/
+├ pet-api.md
+├ place-api.md
+├ pet-rule.md
+└ compatibility.md
+
+각 contract에는 최소 다음을 포함한다.
+
+입력
+
+출력
+
+상태
+
+에러
+
+완료 조건
+
+테스트 기준
+
+31. AI Native 개발 흐름
+
+Contract
+↓
+Codex 구현
+↓
+Codex 테스트
+↓
+Read-only Codex Review
+↓
+사람이 CRITICAL / MAJOR 확인
+↓
+PR
+↓
+main merge
+↓
+자동 배포
+
+Review Agent는 파일 수정 없이 다음을 검사한다.
+
+Contract 위반
+
+다른 feature 침범
+
+실제 API와 다른 추측
+
+보안 문제
+
+테스트 누락
+
+과설계
+
+merge blocker
+
+등급:
+
+CRITICAL
+
+MAJOR
+
+MINOR
+
+32. 현재 PR / Branch 주의사항
+
+PR #7 / feature/place-search
+
+현재 main에 병합하지 않은 상태를 기준으로 한다.
+
+기존 구현:
+
+KorService2
+areaBasedList2
+GET /api/places
+RestClient
 timeout
+Gateway
+Service
+Controller
+mock/fixture tests
+
+최신 기준:
+
+구조 재사용 가능
+
+KorPetTourService2로 API 계약 재검증 필요
+
+실제 response DTO 재검증 필요
+
+실제 승인 key smoke test 필요
+
+현재 main Auth/Pet 구조와 충돌 여부 확인 필요
+
+구 KorService2 상태 그대로 merge하지 않는다.
+
+33. 배포 전략
+
+목표:
+
+최소 운영 복잡도 + 빠른 자동배포 + 심사 URL 안정성
+
+현재 권장 구조:
+
+GitHub main
+↓
+Cloud 자동배포
+↓
+React + Spring Boot
+↓
+MySQL
+↓
+제출 URL
+
+세션 기반 인증을 사용하므로 운영에서는 가능한 한 single-origin 구조를 선호한다.
+
+예:
+
+Spring Boot가 React production build 서빙
+/api/**
+동일 Origin
+
+장점:
+
+운영 CORS 단순화
+
+JSESSIONID cookie 처리 단순화
+
+제출 URL 하나
+
+프론트/백 버전 mismatch 감소
+
+배포 플랫폼은 팀 최종 결정 전 특정 서비스에 종속시키지 않는다.
+
+Railway, AWS, GCP 등 빠르고 안정적인 자동배포 수단을 사용할 수 있다.
+
+공모전 안내의 AWS/GCP 프리티어 권장은 특정 클라우드 사용 강제가 아니다.
+
+배포 Secret:
+
+DB_URL
+DB_USERNAME
+DB_PASSWORD
+TOUR_API_KEY
+WEATHER_API_KEY
+OPENAI_API_KEY
+
+운영 secret을 Git에 저장하지 않는다.
+
+34. Config / Secret 정책
+
+실제 tracked application.yml은 현재 의도적으로 없다.
+
+Codex는 이를 실수로 판단해 자동 복구하지 않는다.
+
+현재 local 개발에서는 ignore된 local config / 환경설정을 사용할 수 있다.
+
+주의:
+
+일반 .env는 Spring Boot가 자동으로 읽는다고 가정하지 않는다.
+
+필요 시 Run Configuration / OS env / Spring local profile로 전달한다.
+
+신규 clone 시 필요한 datasource/profile/schema 절차를 문서화한다.
+
+Codex가 .env를 실제 API 테스트에 사용할 때:
+
+값 출력 금지
+
+길이 출력 금지
+
+일부 문자열 출력 금지
+
+요청 URL에 key 포함 출력 금지
+
+.env 수정 금지
+
+Git add 금지
+
+Frontend:
+
+VITE_API_URL
+
+을 사용한다.
+
+기능별 API 파일에서 localhost 포트를 개별 하드코딩하지 않는 방향으로 통일한다.
+
+35. 필수 테스트
+
+TourAPI
+
+실제 승인 Key smoke test
+
+areaBasedList2
+
+detailCommon2
+
+detailPetTour2
 
 HTTP 4xx
 
 HTTP 5xx
 
-HTTP 200 + 외부 resultCode 실패
+timeout
+
+HTTP 200 + external resultCode 실패
 
 빈 결과
 
-예상하지 못한 JSON 필드/누락
+items.item array
 
-반려동물 상세정보 없음
+"" 빈 문자열
 
-21. 보안 기본 규칙
+예상 못한 field
 
-비밀번호는 BCrypt 등 안전한 단방향 해시 사용
+반려동물 상세 없음
 
-API Key Git commit 금지
+Parser — 실제 fixture 기반
 
-.env, application-secret.yml 등 secret 파일 commit 금지
+최소:
 
-한국관광공사 / 기상청 / OpenAI 등 서버용 Secret Key를 Frontend 코드에 하드코딩 금지
+전구역 동반가능
+일부구역 동반가능
+20㎏ 미만
+9kg 이하
+목줄 착용
+맹견 입마개 필수
+배변봉투 지참 및 배변처리
+이동장(켄넬)사용
+야외 공간만 동반 가능
+중소형견
+사전 문의
+마릿수 제한
 
-Kakao Map JavaScript Key는 브라우저 SDK 특성에 맞게 사용하되 Kakao Developers에서 허용 도메인을 제한하고 환경별 설정을 분리
+반드시:
 
-로그에 API Key 출력 금지
+kg / ㎏
 
-userId 요청값만 믿지 말고 인증 주체 기준으로 소유권 검증
+이하 / 미만
 
-다른 사용자의 pet/course 접근 금지
+체중→크기 추론 금지
 
-ADMIN 전용 API는 Role 검증 필수
+중소형견 오인식 금지
 
-일반 회원가입으로 ADMIN 생성 금지
+source field 보존
 
-CORS는 필요한 Origin만 허용
+빈 문자열 unknown 오판 금지
 
-운영 환경 stack trace 노출 금지
+unknown fragment 보존
 
-22. Git / 브랜치 작업 규칙
+복수 WeightLimit
 
-main 브랜치에서 직접 기능을 개발하거나 직접 push하지 않는다.
-
-모든 기능 개발은 별도의 작업 브랜치에서 수행한다.
-
-신규 기능은 feat/*
-
-버그 수정은 fix/*
-
-문서 수정은 docs/*
-
-리팩터링은 refactor/*
-
-작업 전 최신 main을 pull한다.
-
-작업 완료 후 build/test를 수행한다.
-
-Pull Request를 통해 main에 병합한다.
-
-Codex는 사용자의 명시적 지시 없이 main에 직접 commit/push하지 않는다.
-
-Codex는 임의로 branch merge를 수행하지 않는다.
-
-23. Codex 작업 단위 규칙
-
-각 작업 요청은 아래 순서를 따른다.
-
-Inspect
-↓
-Plan
-↓
-Implement
-↓
-Test
-↓
-Verify
-↓
-Report
-
-작업 종료 시 다음을 보고한다.
-
-변경한 내용
-변경한 주요 파일
-실행한 테스트
-테스트 결과
-남아 있는 확인사항
-
-24. 문서 / 결정 우선순위
-
-정보가 충돌할 경우 다음 순서를 따른다.
-
-1. 사용자의 최신 명시적 팀 결정
-2. 실제 공모전 공식 자료 / FAQ
-3. 최신 PetWay 기획 문서
-4. 이 PETWAY_CODEX_CONTEXT.md
-5. Repository 기존 코드
-6. Codex 자체 추론
-
-단, 제품 범위와 구현 우선순위는 구분한다.
+Compatibility
 
 예:
 
-기획상 방문 기록 존재
-하지만 현재 구현 우선순위는 M4
+7kg + 10kg 이하
+→ AVAILABLE
+(추가 조건이 있으면 CONDITIONAL)
 
-이 경우 Codex가 임의로 방문 기록부터 구현하지 않는다.
+12kg + 10kg 이하
+→ UNAVAILABLE
 
-25. 모르는 데이터에 대한 처리
+7kg + 목줄 착용
+→ CONDITIONAL
 
-한국관광공사 실제 response field나 분류코드가 확인되지 않은 경우:
+실내 이용 개별 문의
+→ NEED_CONFIRMATION
 
-추측해서 필드명을 만들지 않는다.
+Security
 
-공식 API 명세 또는 실제 응답을 먼저 확인한다.
+다른 사용자 Pet 접근 금지
 
-확인 전에는 TODO 또는 확인 필요 사항으로 남긴다.
+다른 사용자 Course 접근 금지
 
-실제 응답 샘플 확보 후 DTO/Parser를 맞춘다.
+USER ADMIN API 접근 금지
 
-특히 다음은 실제 데이터 확인 후 확정한다.
+일반 회원가입 ADMIN 생성 금지
 
-카페 분류 방식
+비밀번호 원문 저장 금지
 
-반려동물 상세정보 실제 필드
+AI
 
-체중/크기/이동장 조건 실제 원문 형태
+UNAVAILABLE 후보 OpenAI 전달 금지
 
-API Operation 이름 및 파라미터
+AI가 공식 규정 생성 금지
 
-외부 resultCode 정상값
+AI가 Compatibility 변경 금지
 
-26. 핵심 시연 시나리오
+36. Parser 검증
 
-1. 로그인
+최종 Parser는 실제 detailPetTour2 데이터를 사용해 검증한다.
 
-2. 반려견 등록
-   로켓 / 8kg
+목적:
 
-3. 지역 검색
+실 관광데이터 기반 규칙 엔진임을 입증
 
-4. 한국관광공사 OpenAPI 실제 호출
+규칙별 추출 정확도 확인
 
-5. 장소 선택
+unknown / NEED_CONFIRMATION 정책 검증
 
-6. 반려동물 동반 상세정보 조회
+숫자는 실제 측정한 값만 사용한다.
 
-7. PetRule Parser
+임의 정확도 생성 금지.
 
-8. Compatibility 판정
-    + 판정 근거
+37. M4 현장 제보
 
-9. 날씨 확인
+발전 기능.
 
-10. 오늘 뭐하지? 또는 코스 구성
+사용자 현장 제보
+↓
+place_report
+↓
+AI
+- 요약
+- 유형 분류
+- 공식정보와 충돌 탐지
+  ↓
+  관리자 검토
+  ↓
+  APPROVE / REJECT / NEED_VERIFICATION
 
-11. AI 보완 요청
+AI는 공식 정보를 자동 수정하지 않는다.
 
-12. 실제 TourAPI 후보 조회
+화면:
 
-13. UNAVAILABLE 제거
+[공식 관광정보]
 
-14. 검증된 후보만 AI 추천
+[최근 현장 제보]
 
-15. 사용자 확인 후 코스 저장
+를 명확히 구분한다.
 
-16. 출발 전 tour_content_id로 최신 정보 재검증
+38. Git 규칙
 
-M4까지 구현된 경우 선택 시연:
+main 직접 개발 금지
 
-17. 사용자가 현장 정보 불일치 제보
+main 직접 push 금지
 
-18. AI가 제보 요약 / 유형 분류 / 공식정보 충돌 탐지
+기능별 branch
 
-19. 관리자가 Dashboard에서 검토
+PR 병합
 
-20. 공식 관광정보와 사용자 제보를 구분해 화면에 표시
+작업 전 main/remote 최신 상태 확인
 
-이 흐름이 깨지지 않는 것이 부가기능 수보다 중요하다.
+완료 전 전체 테스트
 
-27. Codex 시작 메시지
+Codex 임의 merge 금지
+
+Codex 임의 reset 금지
+
+기존 사용자 수정사항 보호
+
+branch naming은 팀 최신 규칙을 따른다.
+
+이미 존재하는 feature/* branch를 문서 규칙만으로 강제 rename하지 않는다.
+
+39. Codex 기본 시작 프롬프트
 
 PETWAY_CODEX_CONTEXT.md를 전체 읽어라.
 
 현재 branch가 main이면 코드를 수정하지 말고 중단하라.
 
-그 다음 현재 Repository 구조와 관련 구현을 확인하고,
-이번 요청 범위에 필요한 최소 변경만 계획하라.
+현재 working tree, remote branch, Repository 구조,
+이번 기능과 중복되는 구현을 먼저 조사하라.
 
 실제 코드를 수정하기 전에:
+
 1. 현재 구현 상태
 2. 이번 작업 범위
 3. 수정 예상 파일
 4. 테스트/완료 조건
-   을 먼저 정리하라.
 
-PetWay의 제품 범위와 현재 개발 우선순위를 혼동하지 말고,
-요청하지 않은 M4 기능이나 신규 테이블/프레임워크를 임의로 추가하지 마라.
+을 먼저 보고하라.
 
-28. 한 문장 요약
+KorPetTourService2의 공식 명세와 실응답을 최우선 기준으로 사용하고
+확인되지 않은 필드/규칙을 추측하지 마라.
 
-PetWay는 한국관광공사 OpenAPI의 실제 반려동물 동반정보를 PetRule로 구조화하고, 마이펫 기준 Compatibility를 판정한 뒤, 기상청 날씨·브라우저 거리·PetFit·Kakao Map·일상 외출·여행 코스를 연결하며, AI에는 검증된 실제 장소만 전달하고 현장 제보는 AI 분석 후 관리자 검토로 보완하는 반려생활 맞춤형 관광 서비스다.
+현재 구현된 Auth/Pet/PetRule을 중복 구현하지 마라.
+
+사용자가 요청하지 않은 M4, 신규 DB 테이블,
+신규 framework/dependency를 임의로 추가하지 마라.
+
+기존 사용자의 local 변경을 reset/revert하지 마라.
+
+작업 후 실제 build/test를 실행하고 결과를 보고하라.
+
+명시적 요청 없이는 commit/push/merge하지 마라.
+
+40. 핵심 시연 시나리오
+
+1. 로그인
+
+2. 반려견 등록
+   두부 / 8kg / 소형견
+
+3. 대표 반려견 선택
+
+4. 지역/키워드 검색
+
+5. KorPetTourService2 실제 호출
+
+6. 장소 선택
+
+7. detailCommon2
+
+8. detailPetTour2
+
+9. PetTour Raw Adapter
+
+10. PetRule Parser
+
+11. Compatibility
+
+12. "두부가 갈 수 있나요?"
+    상태 + 판정 근거
+
+13. 방문 준비물
+
+14. 공식 원문
+
+15. 출처
+
+16. 날씨 / 거리
+
+17. 오늘 뭐하지? 또는 코스
+
+18. AI 사용 시 검증된 실제 후보만 전달
+
+19. 사용자 확인 후 코스 저장
+
+20. 출발 전 tour_content_id로 최신 규정 재검증
+
+이 시나리오가 끊기지 않는 것이 가장 중요하다.
+
+41. 개발 완료 판단 기준
+
+기능은 코드가 존재한다고 완료가 아니다.
+
+완료 조건:
+
+실제 API 또는 fixture 기반 검증
+
+관련 unit/integration test 통과
+
+핵심 E2E에서 사용 가능
+
+공식 원문/근거 추적 가능
+
+다른 feature를 깨지 않음
+
+배포 환경에서도 동작 가능
+
+42. 한 문장 요약
+
+PetWay는 한국관광공사 KorPetTourService2의 실제 반려동물 동반 데이터를 필드 문맥을 보존해 PetRule로 구조화하고, 마이펫 기준 Compatibility와 판정 근거·준비물을 제공한 뒤, 날씨·거리·오늘 외출·여행 코스·출발 전 재검증까지 연결하며, AI에는 검증된 실제 장소만 전달하는 반려생활 맞춤형 관광 서비스다.
