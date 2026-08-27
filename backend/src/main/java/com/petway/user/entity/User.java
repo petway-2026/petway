@@ -10,32 +10,25 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(
-        name = "app_user",
-        uniqueConstraints = {
-                @UniqueConstraint(
-                        name = "uk_app_user_email",
-                        columnNames = "email"
-                )
-        }
-)
+@Table(name = "app_user")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class User {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(
+            strategy = GenerationType.IDENTITY
+    )
     @Column(name = "user_id")
     private Long id;
-
 
     @Column(
             name = "email",
             nullable = false,
+            unique = true,
             length = 150
     )
     private String email;
-
 
     @Column(
             name = "nickname",
@@ -43,7 +36,6 @@ public class User {
             length = 50
     )
     private String nickname;
-
 
     @Enumerated(EnumType.STRING)
     @Column(
@@ -53,7 +45,6 @@ public class User {
     )
     private UserStatus userStatus;
 
-
     @Enumerated(EnumType.STRING)
     @Column(
             name = "user_role",
@@ -62,53 +53,72 @@ public class User {
     )
     private UserRole userRole;
 
-
     @Column(
             name = "created_at",
-            nullable = false,
-            updatable = false
+            nullable = false
     )
     private LocalDateTime createdAt;
 
-
-    @Column(
-            name = "updated_at",
-            nullable = false
-    )
+    @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
 
-    /**
-     * 일반 회원가입
-     *
-     * 클라이언트에서는 Role을 전달받지 않는다.
-     * 회원가입으로 생성되는 회원은 항상 USER 권한이다.
+    /*
+     * 기존 LOCAL 회원가입에서 사용
      */
-    public User(
+    public static User create(
             String email,
             String nickname
     ) {
+        User user = new User();
 
-        this.email = email;
+        user.email = email;
+        user.nickname = nickname;
+        user.userStatus = UserStatus.ACTIVE;
+        user.userRole = UserRole.USER;
+
+        return user;
+    }
+
+
+    /*
+     * Kakao 최초 로그인에서 사용
+     */
+    public static User createOAuthUser(
+            String email,
+            String nickname
+    ) {
+        User user = new User();
+
+        user.email = email;
+        user.nickname = nickname;
+        user.userStatus = UserStatus.ACTIVE;
+        user.userRole = UserRole.USER;
+
+        return user;
+    }
+
+
+    public void updateNickname(
+            String nickname
+    ) {
         this.nickname = nickname;
+    }
 
-        this.userStatus = UserStatus.ACTIVE;
 
-        /*
-         * 회원가입 시에는 무조건 USER
-         *
-         * ADMIN 권한은 회원가입 API를 통해 생성하지 않는다.
-         */
-        this.userRole = UserRole.USER;
+    @PrePersist
+    protected void onCreate() {
+        LocalDateTime now =
+                LocalDateTime.now();
 
-        this.createdAt = LocalDateTime.now();
-        this.updatedAt = LocalDateTime.now();
+        createdAt = now;
+        updatedAt = now;
     }
 
 
     @PreUpdate
-    public void preUpdate() {
-
-        this.updatedAt = LocalDateTime.now();
+    protected void onUpdate() {
+        updatedAt =
+                LocalDateTime.now();
     }
 }

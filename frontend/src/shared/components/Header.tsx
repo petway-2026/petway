@@ -28,9 +28,9 @@ export default function Header() {
                     <NavLink to="/">홈</NavLink>
                     <NavLink to="/pets">마이펫</NavLink>
 
-                    <span className="site-nav-disabled">
-            장소찾기
-          </span>
+                    <NavLink to="/places">
+                        장소찾기
+                    </NavLink>
 
                     <span className="site-nav-disabled">
             여행코스

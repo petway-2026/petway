@@ -15,4 +15,14 @@ public interface UserAuthRepository
             AuthType authType
     );
 
+    Optional<UserAuth>
+    findByProviderAndProviderUserId(
+            String provider,
+            String providerUserId
+    );
+
+    boolean existsByUserAndAuthType(
+            User user,
+            AuthType authType
+    );
 }

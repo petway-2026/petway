@@ -9,6 +9,7 @@ import {
     useNavigate,
 } from "react-router-dom";
 
+import { loginWithKakao } from "../api/authApi";
 import { useAuth } from "../context/AuthContext";
 
 import "../styles/auth.css";
@@ -32,6 +33,10 @@ export default function LoginPage() {
 
     const [loading, setLoading] =
         useState(false);
+
+    const handleKakaoLogin = () => {
+        loginWithKakao();
+    };
 
     useEffect(() => {
         if (user) {
@@ -181,7 +186,7 @@ export default function LoginPage() {
                 <button
                     type="button"
                     className="kakao-button"
-                    disabled
+                    onClick={handleKakaoLogin}
                 >
           <span className="kakao-icon">
             K

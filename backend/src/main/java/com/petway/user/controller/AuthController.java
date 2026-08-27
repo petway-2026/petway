@@ -48,8 +48,8 @@ public class AuthController {
             SignupRequest request
     ) {
 
-        Long userId =
-                userService.signup(request);
+        long userId =
+                userService.signup(request).userId();
 
 
         return ResponseEntity.ok(

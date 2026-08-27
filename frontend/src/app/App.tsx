@@ -7,7 +7,7 @@ import {
 
 import { AuthProvider } from "../features/auth/context/AuthContext";
 import ProtectedRoute from "../features/auth/components/ProtectedRoute";
-
+import PlaceMapPage from "../features/place/pages/PlaceMapPage";
 import LoginPage from "../features/auth/pages/LoginPage";
 import SignupPage from "../features/auth/pages/SignupPage";
 
@@ -52,6 +52,10 @@ function AppLayout() {
                     <Route
                         element={<ProtectedRoute />}
                     >
+                        <Route
+                            path="/places"
+                            element={<PlaceMapPage />}
+                        />
                         <Route
                             path="/mypage"
                             element={<MyPage />}
