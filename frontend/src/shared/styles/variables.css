@@ -1,0 +1,154 @@
+:root {
+    /* =========================
+       Brand
+    ========================= */
+    --color-primary: #4f8a66;
+    --color-primary-hover: #427857;
+    --color-primary-active: #355f46;
+    --color-primary-light: #e9f4ed;
+    --color-primary-soft: #f4f9f6;
+
+    --color-secondary: #f2a96b;
+    --color-secondary-light: #fff3e7;
+
+
+    /* =========================
+       Background
+    ========================= */
+    --color-bg: #f7f9f7;
+    --color-bg-soft: #fbfcfb;
+
+    --color-surface: #ffffff;
+    --color-surface-hover: #fafcfb;
+
+
+    /* =========================
+       Text
+    ========================= */
+    --color-text: #1f2923;
+    --color-text-secondary: #667069;
+    --color-text-muted: #8f9891;
+    --color-text-disabled: #b5bbb6;
+
+    --color-white: #ffffff;
+
+
+    /* =========================
+       Border
+    ========================= */
+    --color-border: #e3e9e4;
+    --color-border-light: #edf1ee;
+    --color-border-dark: #d3ddd5;
+
+
+    /* =========================
+       Status
+    ========================= */
+    --color-success: #3e8d5c;
+    --color-success-bg: #edf7f1;
+
+    --color-warning: #b7791f;
+    --color-warning-bg: #fff8e8;
+
+    --color-danger: #d44b4b;
+    --color-danger-hover: #bd3d3d;
+    --color-danger-bg: #fff0f0;
+
+    --color-info: #4d78a8;
+    --color-info-bg: #eef5fc;
+
+
+    /* =========================
+       Pet Compatibility
+    ========================= */
+    --color-available: #3e8d5c;
+    --color-available-bg: #edf7f1;
+
+    --color-conditional: #c78a2b;
+    --color-conditional-bg: #fff8e9;
+
+    --color-confirm: #5d79aa;
+    --color-confirm-bg: #eef4fc;
+
+    --color-unavailable: #cf4e4e;
+    --color-unavailable-bg: #fff0f0;
+
+
+    /* =========================
+       Radius
+    ========================= */
+    --radius-xs: 6px;
+    --radius-sm: 9px;
+    --radius-md: 14px;
+    --radius-lg: 20px;
+    --radius-xl: 28px;
+    --radius-pill: 999px;
+
+
+    /* =========================
+       Shadow
+    ========================= */
+    --shadow-xs:
+            0 2px 6px rgba(33, 62, 43, 0.035);
+
+    --shadow-sm:
+            0 6px 18px rgba(33, 62, 43, 0.05);
+
+    --shadow-md:
+            0 14px 38px rgba(33, 62, 43, 0.08);
+
+    --shadow-lg:
+            0 28px 70px rgba(33, 62, 43, 0.12);
+
+
+    /* =========================
+       Spacing
+    ========================= */
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 20px;
+    --space-6: 24px;
+    --space-7: 28px;
+    --space-8: 32px;
+    --space-10: 40px;
+    --space-12: 48px;
+    --space-16: 64px;
+
+
+    /* =========================
+       Font Size
+    ========================= */
+    --font-xs: 12px;
+    --font-sm: 14px;
+    --font-md: 16px;
+    --font-lg: 18px;
+    --font-xl: 22px;
+    --font-2xl: 30px;
+    --font-3xl: 40px;
+
+
+    /* =========================
+       Font Weight
+    ========================= */
+    --weight-regular: 400;
+    --weight-medium: 500;
+    --weight-semibold: 600;
+    --weight-bold: 700;
+
+
+    /* =========================
+       Layout
+    ========================= */
+    --layout-max-width: 1200px;
+    --layout-content-width: 960px;
+    --layout-form-width: 640px;
+
+
+    /* =========================
+       Transition
+    ========================= */
+    --transition-fast: 0.18s ease;
+    --transition-normal: 0.28s ease;
+}
