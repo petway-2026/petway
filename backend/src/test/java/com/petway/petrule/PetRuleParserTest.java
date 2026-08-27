@@ -1,8 +1,12 @@
 package com.petway.petrule;
 
+import com.petway.petrule.PetRule.BreedGroup;
+import com.petway.petrule.PetRule.BreedRuleType;
+import com.petway.petrule.PetRule.PetRuleSource;
+import com.petway.petrule.PetRule.PetRuleSourceField;
 import com.petway.petrule.PetRule.PetSize;
-import com.petway.petrule.PetRule.Requirement;
 import com.petway.petrule.PetRule.RequirementType;
+import com.petway.petrule.PetRule.SizeConditionType;
 import com.petway.petrule.PetRule.SpaceCondition;
 import com.petway.petrule.PetRule.SpaceScope;
 import com.petway.petrule.PetRule.WeightOperator;
@@ -12,6 +16,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Stream;
 
@@ -27,227 +32,560 @@ class PetRuleParserTest {
         parser = new PetRuleParser();
     }
 
-    @Test
-    void parsesInclusiveMaximumWeight() {
-        PetRule rule = parser.parse("10kg 이하");
+    @ParameterizedTest
+    @MethodSource("weightCases")
+    void parsesRealWeightExpressions(
+            String rawText,
+            String expectedWeight,
+            WeightOperator expectedOperator
+    ) {
+        PetRule rule = parser.parse(source(
+                PetRuleSourceField.ACMPY_PSBL_CPAM,
+                rawText
+        ));
 
-        assertThat(rule.weightLimit().maxWeightKg())
-                .isEqualByComparingTo("10");
-        assertThat(rule.weightLimit().operator())
-                .isEqualTo(WeightOperator.LESS_THAN_OR_EQUAL);
-        assertThat(rule.hasUnknownContent()).isFalse();
+        assertThat(rule.weightLimits()).hasSize(1);
+        assertThat(rule.weightLimits().get(0).maxWeightKg())
+                .isEqualByComparingTo(expectedWeight);
+        assertThat(rule.weightLimits().get(0).operator())
+                .isEqualTo(expectedOperator);
+        assertThat(rule.weightLimits().get(0).scope())
+                .isEqualTo(SpaceScope.UNSPECIFIED);
+        assertThat(rule.weightLimits().get(0).source().sourceField())
+                .isEqualTo(PetRuleSourceField.ACMPY_PSBL_CPAM);
+        assertThat(rule.unparsedFragments()).isEmpty();
+    }
+
+    private static Stream<Arguments> weightCases() {
+        return Stream.of(
+                Arguments.of("10kg 이하", "10", WeightOperator.LESS_THAN_OR_EQUAL),
+                Arguments.of("10 kg 이하", "10", WeightOperator.LESS_THAN_OR_EQUAL),
+                Arguments.of("9kg 이하", "9", WeightOperator.LESS_THAN_OR_EQUAL),
+                Arguments.of("20㎏ 미만 동반 가능", "20", WeightOperator.LESS_THAN)
+        );
     }
 
     @Test
-    void parsesExclusiveMaximumWeight() {
-        PetRule rule = parser.parse("10 kg 미만");
+    void keepsMultipleWeightLimitsWithoutInformationLoss() {
+        PetRule rule = parser.parse(source(
+                PetRuleSourceField.ETC_ACMPY_INFO,
+                "실내 5kg 이하, 야외 20㎏ 미만"
+        ));
 
-        assertThat(rule.weightLimit().maxWeightKg())
-                .isEqualByComparingTo("10");
-        assertThat(rule.weightLimit().operator())
-                .isEqualTo(WeightOperator.LESS_THAN);
-        assertThat(rule.hasUnknownContent()).isFalse();
-    }
-
-    @Test
-    void inclusiveAndExclusiveWeightHaveDifferentBoundaries() {
-        PetRule inclusive = parser.parse("10kg 이하");
-        PetRule exclusive = parser.parse("10kg 미만");
-
-        assertThat(inclusive.weightLimit().operator())
-                .isNotEqualTo(exclusive.weightLimit().operator());
+        assertThat(rule.weightLimits()).hasSize(2);
+        assertThat(rule.weightLimits())
+                .extracting(limit -> limit.maxWeightKg().toPlainString())
+                .containsExactly("5", "20");
+        assertThat(rule.weightLimits())
+                .extracting(PetRule.WeightLimit::operator)
+                .containsExactly(
+                        WeightOperator.LESS_THAN_OR_EQUAL,
+                        WeightOperator.LESS_THAN
+                );
+        assertThat(rule.weightLimits())
+                .extracting(PetRule.WeightLimit::scope)
+                .containsExactly(SpaceScope.INDOOR, SpaceScope.OUTDOOR);
+        assertThat(rule.unparsedFragments()).isEmpty();
     }
 
     @ParameterizedTest
-    @MethodSource("allowedSizeCases")
-    void parsesOnlyExplicitlyDeclaredAllowedSize(
+    @MethodSource("areaCases")
+    void mapsAcmpyTypeCdByExactValue(
             String rawText,
-            PetSize expectedSize
+            SpaceCondition expectedCondition
     ) {
-        PetRule rule = parser.parse(rawText);
+        PetRule rule = parser.parse(source(
+                PetRuleSourceField.ACMPY_TYPE_CD,
+                rawText
+        ));
 
-        assertThat(rule.allowedSizes()).containsExactly(expectedSize);
-        assertThat(rule.disallowedSizes()).isEmpty();
-        assertThat(rule.hasUnknownContent()).isFalse();
+        assertThat(rule.spaceRules())
+                .extracting(PetRule.SpaceRule::condition)
+                .containsExactly(expectedCondition);
+        assertThat(rule.spaceRules().get(0).source().sourceField())
+                .isEqualTo(PetRuleSourceField.ACMPY_TYPE_CD);
+        assertThat(rule.unparsedFragments()).isEmpty();
     }
 
-    private static Stream<Arguments> allowedSizeCases() {
+    private static Stream<Arguments> areaCases() {
         return Stream.of(
-                Arguments.of("소형견", PetSize.SMALL),
-                Arguments.of("중형견 동반 가능", PetSize.MEDIUM),
-                Arguments.of("대형견 허용", PetSize.LARGE)
+                Arguments.of("전구역 동반가능", SpaceCondition.ALL_AREAS_ALLOWED),
+                Arguments.of("일부구역 동반가능", SpaceCondition.PARTIAL_AREA_ONLY)
         );
+    }
+
+    @ParameterizedTest
+    @MethodSource("explicitSpaceCases")
+    void parsesOnlyExplicitSpaceScopes(
+            String rawText,
+            SpaceCondition expectedCondition
+    ) {
+        PetRule rule = parser.parse(source(
+                PetRuleSourceField.ETC_ACMPY_INFO,
+                rawText
+        ));
+
+        assertThat(rule.spaceRules())
+                .extracting(PetRule.SpaceRule::condition)
+                .containsExactly(expectedCondition);
+        assertThat(rule.unparsedFragments()).isEmpty();
+    }
+
+    private static Stream<Arguments> explicitSpaceCases() {
+        return Stream.of(
+                Arguments.of("실내 동반 가능", SpaceCondition.INDOOR_ALLOWED),
+                Arguments.of("실내 동반 불가", SpaceCondition.INDOOR_PROHIBITED),
+                Arguments.of("야외 동반 가능", SpaceCondition.OUTDOOR_ALLOWED),
+                Arguments.of("외부 동반 불가", SpaceCondition.OUTDOOR_PROHIBITED),
+                Arguments.of("야외 공간만 동반 가능", SpaceCondition.OUTDOOR_ONLY),
+                Arguments.of("테라스만 동반 가능", SpaceCondition.TERRACE_ONLY),
+                Arguments.of("야외테라스만", SpaceCondition.TERRACE_ONLY)
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource("unsafePositiveSpaceCases")
+    void doesNotCreatePositiveSpaceRuleFromNegativeOrUncertainClause(
+            String rawText,
+            SpaceCondition forbiddenCondition
+    ) {
+        PetRule rule = parser.parse(source(
+                PetRuleSourceField.ETC_ACMPY_INFO,
+                rawText
+        ));
+
+        assertThat(rule.spaceRules())
+                .extracting(PetRule.SpaceRule::condition)
+                .doesNotContain(forbiddenCondition);
+        assertThat(rule.unparsedFragments())
+                .extracting(PetRule.UnparsedFragment::rawText)
+                .containsExactly(rawText);
+    }
+
+    private static Stream<Arguments> unsafePositiveSpaceCases() {
+        return Stream.of(
+                Arguments.of(
+                        "테라스만 이용 불가",
+                        SpaceCondition.TERRACE_ONLY
+                ),
+                Arguments.of(
+                        "야외 공간만 이용 불가",
+                        SpaceCondition.OUTDOOR_ONLY
+                ),
+                Arguments.of(
+                        "실내 이용 가능 여부 문의",
+                        SpaceCondition.INDOOR_ALLOWED
+                ),
+                Arguments.of(
+                        "전구역 동반가능 여부 문의",
+                        SpaceCondition.ALL_AREAS_ALLOWED
+                ),
+                Arguments.of(
+                        "테라스만 이용 여부 문의",
+                        SpaceCondition.TERRACE_ONLY
+                )
+        );
+    }
+
+    @Test
+    void doesNotInferIndoorAllowanceFromInquiryText() {
+        PetRule rule = parser.parse(source(
+                PetRuleSourceField.ETC_ACMPY_INFO,
+                "실내 시설 이용은 개별 문의 필요"
+        ));
+
+        assertThat(rule.spaceRules()).isEmpty();
+        assertThat(rule.hasParsedCondition()).isFalse();
+        assertThat(rule.unparsedFragments())
+                .extracting(PetRule.UnparsedFragment::rawText)
+                .containsExactly("실내 시설 이용은 개별 문의 필요");
+    }
+
+    @ParameterizedTest
+    @MethodSource("sizeCases")
+    void parsesOnlyExplicitlyDeclaredSizes(
+            String rawText,
+            Set<PetSize> expectedSizes
+    ) {
+        PetRule rule = parser.parse(source(
+                PetRuleSourceField.ACMPY_PSBL_CPAM,
+                rawText
+        ));
+
+        assertThat(rule.sizeConditions()).hasSize(1);
+        assertThat(rule.sizeConditions().get(0).type())
+                .isEqualTo(SizeConditionType.ALLOWED);
+        assertThat(rule.sizeConditions().get(0).sizes())
+                .containsExactlyInAnyOrderElementsOf(expectedSizes);
+        assertThat(rule.unparsedFragments()).isEmpty();
+    }
+
+    private static Stream<Arguments> sizeCases() {
+        return Stream.of(
+                Arguments.of("소형견", Set.of(PetSize.SMALL)),
+                Arguments.of("중형견 동반 가능", Set.of(PetSize.MEDIUM)),
+                Arguments.of("대형견 허용", Set.of(PetSize.LARGE)),
+                Arguments.of(
+                        "중소형견",
+                        Set.of(PetSize.SMALL, PetSize.MEDIUM)
+                )
+        );
+    }
+
+    @Test
+    void doesNotMisreadMediumSmallDogAsSmallOnly() {
+        PetRule rule = parser.parse("중소형견");
+
+        assertThat(rule.sizeConditions().get(0).sizes())
+                .containsExactlyInAnyOrder(PetSize.SMALL, PetSize.MEDIUM);
+        assertThat(rule.sizeConditions()).hasSize(1);
     }
 
     @Test
     void parsesExplicitlyProhibitedSize() {
         PetRule rule = parser.parse("대형견 동반 불가");
 
-        assertThat(rule.disallowedSizes()).containsExactly(PetSize.LARGE);
-        assertThat(rule.allowedSizes()).isEmpty();
-        assertThat(rule.hasUnknownContent()).isFalse();
+        assertThat(rule.sizeConditions()).hasSize(1);
+        assertThat(rule.sizeConditions().get(0).type())
+                .isEqualTo(SizeConditionType.DISALLOWED);
+        assertThat(rule.sizeConditions().get(0).sizes())
+                .containsExactly(PetSize.LARGE);
+        assertThat(rule.unparsedFragments()).isEmpty();
     }
 
     @Test
     void doesNotInferSizeFromWeight() {
         PetRule rule = parser.parse("8kg 이하");
 
-        assertThat(rule.weightLimit()).isNotNull();
-        assertThat(rule.allowedSizes()).isEmpty();
-        assertThat(rule.disallowedSizes()).isEmpty();
+        assertThat(rule.weightLimits()).hasSize(1);
+        assertThat(rule.sizeConditions()).isEmpty();
+    }
+
+    @Test
+    void parsesAllBreedsAllowed() {
+        PetRule rule = parser.parse(source(
+                PetRuleSourceField.ACMPY_PSBL_CPAM,
+                "전 견종 동반 가능"
+        ));
+
+        assertThat(rule.breedRules())
+                .extracting(PetRule.BreedRule::type)
+                .containsExactly(BreedRuleType.ALL_BREEDS_ALLOWED);
+        assertThat(rule.unparsedFragments()).isEmpty();
+    }
+
+    @Test
+    void keepsDangerousBreedAsRequirementTargetInsteadOfBlockingWholePlace() {
+        PetRule rule = parser.parse(source(
+                PetRuleSourceField.ACMPY_NEED_MTR,
+                "맹견의 경우 입마개 착용 필수"
+        ));
+
+        assertThat(rule.requirements()).hasSize(1);
+        assertThat(rule.requirements().get(0).type())
+                .isEqualTo(RequirementType.MUZZLE);
+        assertThat(rule.requirements().get(0).target().breedGroup())
+                .isEqualTo(BreedGroup.DANGEROUS_BREEDS);
+        assertThat(rule.breedRules()).isEmpty();
+        assertThat(rule.sizeConditions()).isEmpty();
+        assertThat(rule.unparsedFragments()).isEmpty();
+    }
+
+    @Test
+    void keepsLargeDogRequirementTargetWithoutCreatingAllowedSize() {
+        PetRule rule = parser.parse(source(
+                PetRuleSourceField.ACMPY_NEED_MTR,
+                "대형견 입마개 필수"
+        ));
+
+        assertThat(rule.requirements()).hasSize(1);
+        assertThat(rule.requirements().get(0).target().sizes())
+                .containsExactly(PetSize.LARGE);
+        assertThat(rule.sizeConditions()).isEmpty();
+        assertThat(rule.unparsedFragments()).isEmpty();
+    }
+
+    @Test
+    void parsesNeedMatterRequirementsWithoutMandatoryWords() {
+        PetRule rule = parser.parse(List.of(
+                source(PetRuleSourceField.ACMPY_NEED_MTR, "목줄 착용"),
+                source(PetRuleSourceField.ACMPY_NEED_MTR, "이동장(켄넬)사용")
+        ));
+
+        assertThat(rule.requirements())
+                .extracting(PetRule.Requirement::type)
+                .containsExactly(RequirementType.LEASH, RequirementType.CARRIER);
+        assertThat(rule.unparsedFragments()).isEmpty();
     }
 
     @ParameterizedTest
-    @MethodSource("spaceCases")
-    void parsesExplicitSpaceConditions(
+    @MethodSource("negatedRequirementCases")
+    void doesNotCreateRequirementFromExplicitNegation(
             String rawText,
-            SpaceCondition expectedCondition
+            RequirementType forbiddenType
     ) {
-        PetRule rule = parser.parse(rawText);
+        PetRule rule = parser.parse(source(
+                PetRuleSourceField.ACMPY_NEED_MTR,
+                rawText
+        ));
 
-        assertThat(rule.spaceConditions()).containsExactly(expectedCondition);
-        assertThat(rule.hasUnknownContent()).isFalse();
+        assertThat(rule.requirements())
+                .extracting(PetRule.Requirement::type)
+                .doesNotContain(forbiddenType);
+        assertThat(rule.unparsedFragments())
+                .extracting(PetRule.UnparsedFragment::rawText)
+                .containsExactly(rawText);
     }
 
-    private static Stream<Arguments> spaceCases() {
+    private static Stream<Arguments> negatedRequirementCases() {
         return Stream.of(
-                Arguments.of("실내 동반 가능", SpaceCondition.INDOOR_ALLOWED),
-                Arguments.of("실내 동반 불가", SpaceCondition.INDOOR_PROHIBITED),
-                Arguments.of("야외 동반 가능", SpaceCondition.OUTDOOR_ALLOWED),
-                Arguments.of("야외 동반 불가", SpaceCondition.OUTDOOR_PROHIBITED),
-                Arguments.of("테라스만 동반 가능", SpaceCondition.TERRACE_ONLY),
-                Arguments.of("일부 구역만 가능", SpaceCondition.PARTIAL_AREA_ONLY)
+                Arguments.of("입마개 불필요", RequirementType.MUZZLE),
+                Arguments.of("목줄 착용 불필요", RequirementType.LEASH),
+                Arguments.of("목줄 착용 필요 없음", RequirementType.LEASH),
+                Arguments.of("이동장 사용 안 함", RequirementType.CARRIER),
+                Arguments.of("배변봉투 필요 없음", RequirementType.WASTE_BAG),
+                Arguments.of("입마개 미착용 가능", RequirementType.MUZZLE)
         );
     }
 
     @Test
-    void treatsCarrierAndCrateAsTheSameRequirement() {
-        Requirement carrier = new Requirement(
-                RequirementType.CARRIER,
-                SpaceScope.UNSPECIFIED
+    void parsesWasteBagAndWasteDisposalAsSeparateRequirements() {
+        PetRule rule = parser.parse(source(
+                PetRuleSourceField.ACMPY_NEED_MTR,
+                "배변봉투 지참 및 배변처리 필수"
+        ));
+
+        assertThat(rule.requirements())
+                .extracting(PetRule.Requirement::type)
+                .containsExactly(
+                        RequirementType.WASTE_BAG,
+                        RequirementType.WASTE_DISPOSAL
+                );
+        assertThat(rule.unparsedFragments()).isEmpty();
+    }
+
+    @ParameterizedTest
+    @MethodSource("needMatterRequirementCases")
+    void supportsNeedMatterRequirementVocabulary(
+            String rawText,
+            RequirementType expectedType
+    ) {
+        PetRule rule = parser.parse(source(
+                PetRuleSourceField.ACMPY_NEED_MTR,
+                rawText
+        ));
+
+        assertThat(rule.requirements())
+                .extracting(PetRule.Requirement::type)
+                .containsExactly(expectedType);
+        assertThat(rule.unparsedFragments()).isEmpty();
+    }
+
+    private static Stream<Arguments> needMatterRequirementCases() {
+        return Stream.of(
+                Arguments.of("리드줄 사용", RequirementType.LEASH),
+                Arguments.of("입마개 착용", RequirementType.MUZZLE),
+                Arguments.of("배변봉투 지참", RequirementType.WASTE_BAG),
+                Arguments.of("배변처리", RequirementType.WASTE_DISPOSAL),
+                Arguments.of("캐리어 사용", RequirementType.CARRIER),
+                Arguments.of("켄넬 사용", RequirementType.CARRIER),
+                Arguments.of("케이지 사용", RequirementType.CARRIER),
+                Arguments.of("유모차 사용", RequirementType.STROLLER),
+                Arguments.of("매너벨트 착용", RequirementType.MANNER_BELT)
         );
-
-        assertThat(parser.parse("이동장 필수").requirements())
-                .containsExactly(carrier);
-        assertThat(parser.parse("캐리어 필요").requirements())
-                .containsExactly(carrier);
     }
 
     @Test
-    void preservesExplicitRequirementScopeWithoutInferringSpaceAllowance() {
-        PetRule rule = parser.parse("실내 이동장 필수");
-
-        assertThat(rule.requirements()).containsExactly(new Requirement(
-                RequirementType.CARRIER,
-                SpaceScope.INDOOR
+    void doesNotPromoteBareKeywordFromAnotherFieldToRequirement() {
+        PetRule rule = parser.parse(source(
+                PetRuleSourceField.RELA_POSES_FCLTY,
+                "이동장"
         ));
-        assertThat(rule.spaceConditions()).isEmpty();
-        assertThat(rule.hasUnknownContent()).isFalse();
-    }
 
-    @Test
-    void parsesRequiredLeash() {
-        PetRule rule = parser.parse("목줄 착용 필수");
-
-        assertThat(rule.requirements()).containsExactly(new Requirement(
-                RequirementType.LEASH,
-                SpaceScope.UNSPECIFIED
-        ));
-        assertThat(rule.hasUnknownContent()).isFalse();
-    }
-
-    @Test
-    void parsesMultipleConditionsFromOneSentence() {
-        String rawText = "10kg 이하 소형견은 목줄 착용 시 실내 동반 가능";
-
-        PetRule rule = parser.parse(rawText);
-
-        assertThat(rule.rawText()).isEqualTo(rawText);
-        assertThat(rule.weightLimit().maxWeightKg())
-                .isEqualByComparingTo("10");
-        assertThat(rule.weightLimit().operator())
-                .isEqualTo(WeightOperator.LESS_THAN_OR_EQUAL);
-        assertThat(rule.allowedSizes()).containsExactly(PetSize.SMALL);
-        assertThat(rule.requirements()).containsExactly(new Requirement(
-                RequirementType.LEASH,
-                SpaceScope.UNSPECIFIED
-        ));
-        assertThat(rule.spaceConditions())
-                .containsExactly(SpaceCondition.INDOOR_ALLOWED);
-        assertThat(rule.hasUnknownContent()).isFalse();
-    }
-
-    @Test
-    void keepsParsedConditionsAndMarksUnsupportedContent() {
-        String rawText = "10kg 이하, 예방접종 필수";
-
-        PetRule rule = parser.parse(rawText);
-
-        assertThat(rule.rawText()).isEqualTo(rawText);
-        assertThat(rule.weightLimit()).isNotNull();
         assertThat(rule.requirements()).isEmpty();
-        assertThat(rule.hasUnknownContent()).isTrue();
+        assertThat(rule.unparsedFragments()).hasSize(1);
+        assertThat(rule.unparsedFragments().get(0).sourceField())
+                .isEqualTo(PetRuleSourceField.RELA_POSES_FCLTY);
+        assertThat(rule.unparsedFragments().get(0).rawText())
+                .isEqualTo("이동장");
     }
 
     @Test
-    void marksFieldInquiryAsUnknownWithoutInventingConditions() {
-        String rawText = "자세한 사항은 현장 문의";
+    void parsesExplicitRequirementFromAnotherField() {
+        PetRule rule = parser.parse(source(
+                PetRuleSourceField.ETC_ACMPY_INFO,
+                "목줄 착용 필수"
+        ));
 
-        PetRule rule = parser.parse(rawText);
+        assertThat(rule.requirements())
+                .extracting(PetRule.Requirement::type)
+                .containsExactly(RequirementType.LEASH);
+        assertThat(rule.unparsedFragments()).isEmpty();
+    }
 
-        assertThat(rule.rawText()).isEqualTo(rawText);
+    @Test
+    void preservesRequirementScopeWithoutInferringSpaceAllowance() {
+        PetRule rule = parser.parse(source(
+                PetRuleSourceField.ACMPY_NEED_MTR,
+                "건물 내 이동 시 케이지 사용"
+        ));
+
+        assertThat(rule.requirements()).hasSize(1);
+        assertThat(rule.requirements().get(0).type())
+                .isEqualTo(RequirementType.CARRIER);
+        assertThat(rule.requirements().get(0).scope())
+                .isEqualTo(SpaceScope.INDOOR);
+        assertThat(rule.spaceRules()).isEmpty();
+        assertThat(rule.unparsedFragments()).isEmpty();
+    }
+
+    @Test
+    void preservesRequirementTargetAndScopeTogether() {
+        PetRule rule = parser.parse(source(
+                PetRuleSourceField.ACMPY_NEED_MTR,
+                "실내에서 맹견의 경우 입마개 착용 필수"
+        ));
+
+        assertThat(rule.requirements()).hasSize(1);
+        assertThat(rule.requirements().get(0).type())
+                .isEqualTo(RequirementType.MUZZLE);
+        assertThat(rule.requirements().get(0).scope())
+                .isEqualTo(SpaceScope.INDOOR);
+        assertThat(rule.requirements().get(0).target().breedGroup())
+                .isEqualTo(BreedGroup.DANGEROUS_BREEDS);
+        assertThat(rule.unparsedFragments()).isEmpty();
+    }
+
+    @Test
+    void doesNotTurnUnsupportedFacilityWeightIntoGlobalLimit() {
+        PetRule rule = parser.parse(source(
+                PetRuleSourceField.ETC_ACMPY_INFO,
+                "전체 20kg 미만, 놀이터 15kg 미만"
+        ));
+
+        assertThat(rule.weightLimits()).hasSize(1);
+        assertThat(rule.weightLimits().get(0).maxWeightKg())
+                .isEqualByComparingTo("20");
+        assertThat(rule.weightLimits().get(0).scope())
+                .isEqualTo(SpaceScope.UNSPECIFIED);
+        assertThat(rule.unparsedFragments())
+                .extracting(PetRule.UnparsedFragment::rawText)
+                .containsExactly("놀이터 15kg 미만");
+    }
+
+    @Test
+    void keepsSameKeywordFromDifferentSourceFieldsSeparate() {
+        PetRule rule = parser.parse(List.of(
+                source(PetRuleSourceField.ACMPY_NEED_MTR, "목줄 착용"),
+                source(PetRuleSourceField.ETC_ACMPY_INFO, "목줄 착용 필수")
+        ));
+
+        assertThat(rule.requirements()).hasSize(2);
+        assertThat(rule.requirements())
+                .extracting(requirement -> requirement.source().sourceField())
+                .containsExactly(
+                        PetRuleSourceField.ACMPY_NEED_MTR,
+                        PetRuleSourceField.ETC_ACMPY_INFO
+                );
+        assertThat(rule.requirements())
+                .extracting(requirement -> requirement.source().rawText())
+                .containsExactly("목줄 착용", "목줄 착용 필수");
+    }
+
+    @Test
+    void keepsParsedRulesAndOnlyPreservesUnsupportedRemainder() {
+        PetRule rule = parser.parse(source(
+                PetRuleSourceField.ETC_ACMPY_INFO,
+                "9kg 이하, 예방접종 증명서 필수"
+        ));
+
+        assertThat(rule.weightLimits()).hasSize(1);
+        assertThat(rule.unparsedFragments()).hasSize(1);
+        assertThat(rule.unparsedFragments().get(0).sourceField())
+                .isEqualTo(PetRuleSourceField.ETC_ACMPY_INFO);
+        assertThat(rule.unparsedFragments().get(0).rawText())
+                .isEqualTo("예방접종 증명서 필수");
+    }
+
+    @Test
+    void preservesCompletelyUnsupportedContent() {
+        PetRule rule = parser.parse(source(
+                PetRuleSourceField.RELA_ACDNT_RISK_MTR,
+                "자세한 사항은 현장 문의"
+        ));
+
         assertThat(rule.hasParsedCondition()).isFalse();
-        assertThat(rule.hasUnknownContent()).isTrue();
+        assertThat(rule.unparsedFragments()).hasSize(1);
+        assertThat(rule.unparsedFragments().get(0).sourceField())
+                .isEqualTo(PetRuleSourceField.RELA_ACDNT_RISK_MTR);
+        assertThat(rule.unparsedFragments().get(0).rawText())
+                .isEqualTo("자세한 사항은 현장 문의");
     }
 
     @Test
-    void treatsBlankInputAsUnknownAndPreservesIt() {
-        String rawText = "   ";
-
-        PetRule rule = parser.parse(rawText);
-
-        assertThat(rule.rawText()).isEqualTo(rawText);
-        assertThat(rule.hasParsedCondition()).isFalse();
-        assertThat(rule.hasUnknownContent()).isTrue();
-    }
-
-    @Test
-    void treatsNullInputAsUnknownWithoutThrowing() {
-        PetRule rule = parser.parse(null);
-
-        assertThat(rule.rawText()).isNull();
-        assertThat(rule.hasParsedCondition()).isFalse();
-        assertThat(rule.hasUnknownContent()).isTrue();
-    }
-
-    @Test
-    void doesNotInterpretGenericUnknownSentenceAsPositiveCondition() {
+    void doesNotInventAConcreteRuleFromGenericAllowanceText() {
         PetRule rule = parser.parse("반려동물 동반 가능");
 
         assertThat(rule.hasParsedCondition()).isFalse();
-        assertThat(rule.hasUnknownContent()).isTrue();
+        assertThat(rule.unparsedFragments())
+                .extracting(PetRule.UnparsedFragment::rawText)
+                .containsExactly("반려동물 동반 가능");
     }
 
     @Test
-    void doesNotParseUnsupportedRules() {
-        PetRule rule = parser.parse(
-                "2마리 이하, 입마개와 예방접종 필수, 예약 후 이용 가능"
-        );
+    void treatsBlankInputAsNoInformationInsteadOfUnknown() {
+        PetRule rule = parser.parse(source(
+                PetRuleSourceField.ETC_ACMPY_INFO,
+                "   "
+        ));
 
-        assertThat(rule.weightLimit()).isNull();
-        assertThat(rule.allowedSizes()).isEmpty();
-        assertThat(rule.disallowedSizes()).isEmpty();
-        assertThat(rule.spaceConditions()).isEmpty();
-        assertThat(rule.requirements()).isEmpty();
-        assertThat(rule.hasUnknownContent()).isTrue();
+        assertThat(rule.sources()).isEmpty();
+        assertThat(rule.hasParsedCondition()).isFalse();
+        assertThat(rule.hasUnknownContent()).isFalse();
+        assertThat(rule.unparsedFragments()).isEmpty();
+    }
+
+    @Test
+    void treatsNullInputAsNoInformationInsteadOfUnknown() {
+        PetRule rule = parser.parse((String) null);
+
+        assertThat(rule.sources()).isEmpty();
+        assertThat(rule.hasParsedCondition()).isFalse();
+        assertThat(rule.hasUnknownContent()).isFalse();
+        assertThat(rule.unparsedFragments()).isEmpty();
+    }
+
+    @Test
+    void keepsCanonicalSourcesWithoutCombiningMultipleFields() {
+        PetRule single = parser.parse("10kg 이하");
+        PetRule multiple = parser.parse(List.of(
+                source(PetRuleSourceField.ACMPY_PSBL_CPAM, "10kg 이하"),
+                source(PetRuleSourceField.ACMPY_NEED_MTR, "목줄 착용")
+        ));
+
+        assertThat(single.sources())
+                .extracting(PetRuleSource::rawText)
+                .containsExactly("10kg 이하");
+        assertThat(multiple.sources()).hasSize(2);
+        assertThat(multiple.sources())
+                .extracting(PetRuleSource::rawText)
+                .containsExactly("10kg 이하", "목줄 착용");
     }
 
     @Test
     void resultCollectionsAreImmutable() {
         PetRule rule = parser.parse("소형견 동반 가능");
 
-        assertThatThrownBy(() -> rule.allowedSizes().add(PetSize.LARGE))
+        assertThatThrownBy(() -> rule.sizeConditions().clear())
                 .isInstanceOf(UnsupportedOperationException.class);
-        assertThat(rule.allowedSizes()).isEqualTo(Set.of(PetSize.SMALL));
+        assertThatThrownBy(() -> rule.weightLimits().clear())
+                .isInstanceOf(UnsupportedOperationException.class);
+    }
+
+    private static PetRuleSource source(
+            PetRuleSourceField sourceField,
+            String rawText
+    ) {
+        return new PetRuleSource(sourceField, rawText);
     }
 }
