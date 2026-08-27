@@ -8,8 +8,10 @@ import {
 
 import "./index.css";
 
-import App from "./App";
-
+import App from "./app/App";
+import "./index.css";
+import "./shared/styles/variables.css";
+import "./shared/styles/common.css";
 createRoot(
     document.getElementById(
         "root"
