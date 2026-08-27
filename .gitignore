@@ -22,6 +22,7 @@ frontend/dist/
 !**/.env.example
 application-secret.yml
 application-local.yml
+backend/src/main/resources/application.yml
 **/application-secret.yml
 **/application-local.yml
 

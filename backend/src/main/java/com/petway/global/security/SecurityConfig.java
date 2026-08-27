@@ -91,7 +91,10 @@ public class SecurityConfig {
                                         "/api/auth/signup",
                                         "/api/auth/login",
                                         "/oauth2/**",
-                                        "/login/oauth2/**"
+                                        "/login/oauth2/**",
+                                        "/swagger-ui/**",
+                                        "/swagger-ui.html",
+                                        "/v3/api-docs/**"
                                 )
                                 .permitAll()
 
@@ -149,7 +152,8 @@ public class SecurityConfig {
          */
         configuration.setAllowedOrigins(
                 List.of(
-                        "http://localhost:5173"
+                        "http://localhost:5173",
+                        "http://localhost:5174"
                 )
         );
 

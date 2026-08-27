@@ -20,6 +20,8 @@ PetWay는 2026 관광데이터 활용 공모전 웹·앱 구현 부문 출품을
 
 AI는 검증된 실제 관광 장소만 추천한다.
 
+실제 현장과 공식 정보가 다를 경우 사용자 제보와 관리자 검토로 보완 가능한 구조를 갖는다.
+
 일상 외출과 여행이 하나의 서비스 흐름으로 연결된다.
 
 핵심 사용자 흐름이 처음부터 끝까지 끊기지 않고 동작한다.
@@ -254,6 +256,8 @@ M1 — 핵심 문제 해결
 
 회원가입 / 로그인 / 로그아웃
 
+USER / ADMIN Role 기반 인증 구조
+
 마이펫 등록 / 조회 / 수정 / 삭제
 
 대표 반려견 설정
@@ -269,6 +273,8 @@ PetRule Parser
 Compatibility Engine
 
 판정 상태 + 판정 근거 UI
+
+한국관광공사 데이터 출처 표기
 
 M2 — 반복 사용 가능한 일상 외출
 
@@ -313,6 +319,10 @@ M4 — 발전 기능
 방문 기록
 
 사용자 현장 제보
+
+관리자 제보 검토
+
+AI 기반 제보 요약 / 유형 분류 / 공식정보 충돌 탐지
 
 장소 정보 신뢰도
 
@@ -371,6 +381,61 @@ size_type은 유지한다.
 원문에 소형견만, 대형견 불가 등 크기 제한이 명시된 경우 size_type을 사용한다.
 
 체중만 보고 PetWay가 임의로 SMALL/MEDIUM/LARGE를 추론하지 않는다.
+
+
+
+## 7-1. 사용자 / 관리자 권한 정책
+
+PetWay는 일반 사용자와 관리자를 구분한다.
+
+Role은 아래 두 가지를 사용한다.
+
+USER
+
+ADMIN
+
+기본 원칙:
+
+일반 회원가입 시 USER로만 생성한다.
+
+클라이언트 요청으로 ADMIN 권한을 지정할 수 없도록 한다.
+
+ADMIN 계정은 초기 데이터, 운영자 전용 생성 절차 등 통제된 방법으로만 생성한다.
+
+관리자 기능은 Spring Security에서 Role 기반 권한 검증을 적용한다.
+
+현재 로그인 구현 단계에서 user_role 구조까지 포함한다.
+
+관리자 Dashboard와 제보 검토 기능 자체는 M4에서 구현해도 된다.
+
+user_status 초기 값은 다음만 사용한다.
+
+ACTIVE
+
+WITHDRAWN
+
+Codex는 필요하지 않은 Role 또는 상태값을 임의로 추가하지 않는다.
+
+## 7-2. 공모전 심사용 테스트 계정 정책
+
+PetWay가 별도 계정 로그인을 사용하는 경우 배포 환경에 공모전 지정 형식의 테스트 전용 USER 계정을 준비한다.
+
+이메일 계정 예시:
+
+ID: openapi@서비스도메인
+
+PW: 2026openapi!
+
+원칙:
+
+개인 계정을 심사용 계정으로 제출하지 않는다.
+
+테스트 계정은 일반 USER 권한으로 생성한다.
+
+테스트 계정으로 로그인부터 핵심 시연 흐름 전체를 사용할 수 있어야 한다.
+
+최종 제출 전에 실제 배포 URL에서 테스트 계정 로그인을 반드시 검증한다.
+
 
 8. PetRule Parser
 
@@ -586,6 +651,10 @@ PetWay에서 관광 장소의 Source of Truth는 한국관광공사 OpenAPI다.
 
 관광공사 전체 데이터를 PetWay DB에 대량 복제하지 않는다.
 
+공모전 공식 안내에 따라 로컬 관광지 Master DB 중심이 아니라 실제 사용자 기능에서 OpenAPI를 실시간 호출하는 구조를 우선한다.
+
+제출 인증키를 기준으로 개발 기간 내 실제 OpenAPI 호출 내역이 확인될 수 있으므로, 화면만 OpenAPI처럼 보이게 하고 실제로는 로컬 DB만 조회하는 구조를 만들지 않는다.
+
 주요 호출 흐름
 
 사용자 검색
@@ -666,6 +735,8 @@ AI 응답 전체 히스토리
 
 TourAPI라는 API 서비스명만 출처처럼 단독 표기하지 않는다.
 
+공사의 공식 CI/BI 로고 이미지는 임의로 사용하지 않고 텍스트 형태로 출처를 표기한다.
+
 PetWay가 생성한 해석 결과와 공식 원문은 구분한다.
 
 공식 관광정보
@@ -696,6 +767,31 @@ PetWay 판정/해석
 방문 예정 시간: 비
 ↓
 주의/경고
+
+
+
+기상청 날씨 조회는 개인 GPS를 서버에 전송하는 방식보다 한국관광공사에서 받은 장소 좌표/지역 정보를 기준으로 필요한 예보를 조회하는 방식을 우선한다.
+
+## 15-1. Kakao Map 정책
+
+지도는 Kakao Map JavaScript SDK를 사용한다.
+
+기본 역할:
+
+한국관광공사 장소 좌표 기반 Marker 표시
+
+코스 장소 시각화
+
+사용자의 브라우저 현재 위치 표시
+
+브라우저 내부 거리 계산 결과와 연계
+
+Kakao JavaScript Key는 브라우저 SDK 특성상 Frontend에서 사용될 수 있다.
+
+단, Kakao Developers에서 허용 도메인을 제한하고 개발/운영 환경별 설정을 분리한다.
+
+한국관광공사/기상청/OpenAI 등 서버용 Secret Key를 Frontend로 노출하지 않는다.
+
 
 16. AI 코스 어시스턴트
 
@@ -760,8 +856,17 @@ email VARCHAR(150) NOT NULL UNIQUE
 password_hash VARCHAR(255) NOT NULL
 nickname VARCHAR(50) NOT NULL
 user_status VARCHAR(20) NOT NULL
+user_role VARCHAR(20) NOT NULL
 created_at DATETIME NOT NULL
 updated_at DATETIME NOT NULL
+
+초기 값:
+
+user_status = ACTIVE / WITHDRAWN
+
+user_role = USER / ADMIN
+
+일반 회원가입은 반드시 USER로 생성한다.
 
 pet
 
@@ -843,6 +948,8 @@ external_result_code와 tour_content_id는 목적이 다르므로 둘 다 유지
 
 API Key, Authorization Header, secret은 로그에 남기지 않는다.
 
+공모전 제출을 위해 한국관광공사 OpenAPI 신청자의 인코딩키/디코딩키 정보와 실제 사용한 OpenAPI 목록을 별도로 관리하되, Repository에는 secret을 저장하지 않는다.
+
 18. 기획상 후속 기능
 
 최신 기획에는 아래 기능도 포함된다.
@@ -857,6 +964,10 @@ API Key, Authorization Header, secret은 로그에 남기지 않는다.
 
 사용자 현장 제보
 
+관리자 제보 검토
+
+AI 기반 제보 요약 / 유형 분류 / 공식정보 충돌 탐지
+
 장소 정보 신뢰도
 
 여러 반려견 동시 조건 고려
@@ -869,9 +980,102 @@ visit_pet
 place_report
 course_pet
 
+place_report는 M4 구현 시 다음 개념을 기준으로 상세 컬럼을 확정한다.
+
+report_id
+user_id
+tour_content_id
+report_type
+report_content
+ai_summary
+ai_detected_conflict
+review_status
+reviewed_by
+reviewed_at
+created_at
+
+현재 단계에서 place_report 테이블을 미리 생성하지 않는다.
+
 Codex는 현재 작업 요청 없이 위 테이블을 임의로 생성하지 않는다.
 
 공식 관광정보와 사용자 제보 정보는 반드시 구분하여 표시한다.
+
+
+
+## 18-1. 사용자 현장 제보 / 관리자 검토 / AI 분석 정책
+
+이 기능은 지정과제의 핵심 문제인 “공식 정보와 실제 현장의 차이”를 보완하기 위한 발전 기능이다.
+
+예시:
+
+공식 관광정보
+
+10kg 이하 동반 가능
+
+사용자 현장 제보
+
+8kg 반려견인데 현장에서는 5kg 이하만 가능하다고 안내받아 입장을 거절당함
+
+처리 흐름:
+
+사용자 제보
+↓
+place_report 저장
+↓
+AI 분석
+- 제보 요약
+- 유형 분류
+- 공식정보와 충돌 여부 탐지
+- 관리자 확인 포인트 정리
+  ↓
+  관리자 Dashboard
+  ↓
+  APPROVE / REJECT / NEED_VERIFICATION
+
+AI는 관리자 보조 도구로만 사용한다.
+
+AI가 할 수 있는 일:
+
+비정형 제보 요약
+
+제보 유형 분류
+
+유사/중복 제보 후보 표시
+
+한국관광공사 공식정보와 제보 내용의 차이 요약
+
+관리자 확인 필요사항 생성
+
+AI가 하면 안 되는 일:
+
+한국관광공사 공식정보 자동 수정
+
+PetRule 자동 수정
+
+Compatibility 규칙 자동 변경
+
+사용자 1인의 제보를 곧바로 사실로 확정
+
+관리자 승인 없이 사용자 제보를 공식정보처럼 노출
+
+서비스 화면에서는 다음 두 레이어를 반드시 구분한다.
+
+[공식 관광정보]
++
+[사용자 현장 제보]
+
+예:
+
+[공식 관광정보]
+10kg 이하 동반 가능
+
+[최근 현장 제보]
+체중 제한이 다르다는 이용 경험이 제보되었습니다.
+방문 전 시설 확인을 권장합니다.
+
+장소 정보 신뢰도는 향후 설명 가능한 규칙 기반 HIGH / MEDIUM / LOW로 구현할 수 있다.
+AI가 임의로 신뢰도 점수를 만들어내지 않는다.
+
 
 19. 팀 개발 순서
 
@@ -881,7 +1085,7 @@ STEP 1
 
 STEP 2 — 병렬 가능
 
-A. Auth + Pet
+A. Auth + USER/ADMIN Role + Pet
 B. TourAPI Client + 실제 응답 검증
 C. PetRule + Compatibility
 
@@ -921,6 +1125,8 @@ STEP 11
 
 시간이 남으면 M4 기능
 
+M4 우선순위는 사용자 현장 제보 → 관리자 검토 → AI 제보 분석 → 정보 신뢰도 → 나머지 편의 기능 순으로 검토한다.
+
 20. 필수 테스트
 
 Parser
@@ -956,11 +1162,17 @@ LARGE + 소형견만 가능
 
 다른 사용자의 course 접근 금지
 
+일반 USER의 ADMIN API 접근 금지
+
+일반 회원가입으로 ADMIN 생성 금지
+
 비밀번호 원문 저장 금지
 
 AI
 
 UNAVAILABLE 후보는 OpenAI 입력에 포함되지 않아야 한다.
+
+사용자 제보 AI 분석 결과가 공식정보/PetRule/Compatibility를 자동 수정하지 않아야 한다.
 
 외부 API
 
@@ -988,13 +1200,19 @@ API Key Git commit 금지
 
 .env, application-secret.yml 등 secret 파일 commit 금지
 
-외부 API Key를 Frontend 코드에 하드코딩 금지
+한국관광공사 / 기상청 / OpenAI 등 서버용 Secret Key를 Frontend 코드에 하드코딩 금지
+
+Kakao Map JavaScript Key는 브라우저 SDK 특성에 맞게 사용하되 Kakao Developers에서 허용 도메인을 제한하고 환경별 설정을 분리
 
 로그에 API Key 출력 금지
 
 userId 요청값만 믿지 말고 인증 주체 기준으로 소유권 검증
 
 다른 사용자의 pet/course 접근 금지
+
+ADMIN 전용 API는 Role 검증 필수
+
+일반 회원가입으로 ADMIN 생성 금지
 
 CORS는 필요한 Origin만 허용
 
@@ -1128,6 +1346,16 @@ API Operation 이름 및 파라미터
 
 16. 출발 전 tour_content_id로 최신 정보 재검증
 
+M4까지 구현된 경우 선택 시연:
+
+17. 사용자가 현장 정보 불일치 제보
+
+18. AI가 제보 요약 / 유형 분류 / 공식정보 충돌 탐지
+
+19. 관리자가 Dashboard에서 검토
+
+20. 공식 관광정보와 사용자 제보를 구분해 화면에 표시
+
 이 흐름이 깨지지 않는 것이 부가기능 수보다 중요하다.
 
 27. Codex 시작 메시지
@@ -1151,4 +1379,4 @@ PetWay의 제품 범위와 현재 개발 우선순위를 혼동하지 말고,
 
 28. 한 문장 요약
 
-PetWay는 한국관광공사 OpenAPI의 실제 반려동물 동반정보를 PetRule로 구조화하고, 마이펫 기준 Compatibility를 판정한 뒤, 날씨·거리·PetFit·일상 외출·여행 코스를 연결하며 AI에는 검증된 실제 장소만 전달하는 반려생활 맞춤형 관광 서비스다.
+PetWay는 한국관광공사 OpenAPI의 실제 반려동물 동반정보를 PetRule로 구조화하고, 마이펫 기준 Compatibility를 판정한 뒤, 기상청 날씨·브라우저 거리·PetFit·Kakao Map·일상 외출·여행 코스를 연결하며, AI에는 검증된 실제 장소만 전달하고 현장 제보는 AI 분석 후 관리자 검토로 보완하는 반려생활 맞춤형 관광 서비스다.
