@@ -45,7 +45,7 @@ public class KmaWeatherClient implements WeatherForecastGateway {
             LocalTime.of(14, 0), LocalTime.of(17, 0), LocalTime.of(20, 0), LocalTime.of(23, 0)
     );
     private static final Pattern SEASONAL_RSS_URL = Pattern.compile(
-            "https://www\\.kma\\.go\\.kr/repositary/xml/fct/mon/img/fct_mon3rss_108_\\d{8}\\.xml"
+            "https?://www\\.kma\\.go\\.kr/repositary/xml/fct/mon/img/fct_mon3rss_108_\\d{8}\\.xml"
     );
 
     private final RestClient restClient;
@@ -136,7 +136,7 @@ public class KmaWeatherClient implements WeatherForecastGateway {
                 throw new WeatherProviderException("기상청 3개월 전망 주소를 확인할 수 없습니다.");
             }
             byte[] xml = restClient.get()
-                    .uri(matcher.group())
+                    .uri(httpsUri(matcher.group()))
                     .retrieve()
                     .body(byte[].class);
             if (xml == null || xml.length == 0) {
@@ -252,5 +252,9 @@ public class KmaWeatherClient implements WeatherForecastGateway {
     private String decodedApiKey(String apiKey) {
         String key = apiKey.trim();
         return key.contains("%") ? URLDecoder.decode(key, StandardCharsets.UTF_8) : key;
+    }
+
+    private URI httpsUri(String url) {
+        return URI.create(url.replaceFirst("^http://", "https://"));
     }
 }
