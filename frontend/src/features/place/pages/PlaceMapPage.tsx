@@ -6,26 +6,9 @@ import type {
 
 import "../styles/map.css";
 
-const testMarkers: MapMarker[] = [
-    {
-        id: 1,
-        title: "서울시청",
-        latitude: 37.5663,
-        longitude: 126.9779,
-    },
-    {
-        id: 2,
-        title: "덕수궁",
-        latitude: 37.5658,
-        longitude: 126.9751,
-    },
-    {
-        id: 3,
-        title: "광화문",
-        latitude: 37.5759,
-        longitude: 126.9768,
-    },
-];
+// KorPetTourService2 좌표 응답을 연결할 자리입니다.
+// 운영 화면에는 임의의 장소 marker를 노출하지 않습니다.
+const placeMarkers: MapMarker[] = [];
 
 export default function PlaceMapPage() {
     return (
@@ -100,7 +83,7 @@ export default function PlaceMapPage() {
                         }}
                         level={5}
                         markers={
-                            testMarkers
+                            placeMarkers
                         }
                     />
                 </section>
