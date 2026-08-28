@@ -27,7 +27,7 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 class TourApiClientTest {
 
     private static final String BASE_URL =
-            "https://apis.data.go.kr/B551011/KorService2";
+            "https://apis.data.go.kr/B551011/KorPetTourService2";
 
     @Test
     void sendsRequiredAndOptionalAreaSearchParameters() {
@@ -35,19 +35,20 @@ class TourApiClientTest {
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
         TourApiClient client = createClient(
                 builder.baseUrl(BASE_URL).build(),
-                "test-key"
+                "test+/=key"
         );
 
         server.expect(request -> {
                     assertThat(request.getURI().getPath())
-                            .isEqualTo("/B551011/KorService2/areaBasedList2");
+                            .isEqualTo("/B551011/KorPetTourService2/areaBasedList2");
 
                     var params = UriComponentsBuilder
                             .fromUri(request.getURI())
                             .build()
                             .getQueryParams();
 
-                    assertThat(params.getFirst("serviceKey")).isEqualTo("test-key");
+                    assertThat(params.getFirst("serviceKey"))
+                            .isEqualTo("test%2B%2F%3Dkey");
                     assertThat(params.getFirst("MobileOS")).isEqualTo("ETC");
                     assertThat(params.getFirst("MobileApp")).isEqualTo("PetWay");
                     assertThat(params.getFirst("_type")).isEqualTo("json");

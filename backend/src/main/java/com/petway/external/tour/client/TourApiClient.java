@@ -9,6 +9,8 @@ import com.petway.place.model.PlaceSearchCondition;
 import com.petway.place.model.PlaceSearchResult;
 import com.petway.place.port.TourPlaceGateway;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
@@ -20,6 +22,8 @@ import java.net.http.HttpTimeoutException;
 
 @Component
 public class TourApiClient implements TourPlaceGateway {
+
+    private static final Logger log = LoggerFactory.getLogger(TourApiClient.class);
 
     private final RestClient tourApiRestClient;
     private final TourApiProperties properties;
@@ -44,7 +48,7 @@ public class TourApiClient implements TourPlaceGateway {
                     .uri(uriBuilder -> {
                         uriBuilder
                                 .path("/areaBasedList2")
-                                .queryParam("serviceKey", properties.serviceKey())
+                                .queryParam("serviceKey", "{serviceKey}")
                                 .queryParam("MobileOS", properties.mobileOs())
                                 .queryParam("MobileApp", properties.mobileApp())
                                 .queryParam("_type", "json")
@@ -60,7 +64,7 @@ public class TourApiClient implements TourPlaceGateway {
                             uriBuilder.queryParam("contentTypeId", condition.contentTypeId());
                         }
 
-                        return uriBuilder.build();
+                        return uriBuilder.build(properties.serviceKey());
                     })
                     .retrieve()
                     .body(TourApiResponse.class);
@@ -80,6 +84,7 @@ public class TourApiClient implements TourPlaceGateway {
                     e
             );
         } catch (RestClientResponseException e) {
+            log.warn("Tour API HTTP request failed: status={}", e.getStatusCode());
             throw new TourApiException(
                     TourApiErrorType.HTTP_ERROR,
                     "관광정보 제공기관 호출에 실패했습니다.",

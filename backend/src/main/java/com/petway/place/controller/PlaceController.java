@@ -5,6 +5,7 @@ import com.petway.place.dto.PlaceSearchResponse;
 import com.petway.place.service.PlaceQueryService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -19,7 +20,7 @@ public class PlaceController {
 
     @GetMapping
     public PlaceSearchResponse searchPlaces(
-            @Valid @ModelAttribute PlaceSearchRequest request
+            @Valid @ParameterObject @ModelAttribute PlaceSearchRequest request
     ) {
         return placeQueryService.searchByArea(request);
     }

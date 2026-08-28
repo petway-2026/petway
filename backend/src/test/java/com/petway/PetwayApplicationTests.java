@@ -18,7 +18,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @SpringBootTest(properties = {
         "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration",
-        "tour-api.service-key=test-key"
+        "tour-api.base-url=http://localhost",
+        "tour-api.service-key=test-key",
+        "tour-api.mobile-os=ETC",
+        "tour-api.mobile-app=PetWay",
+        "tour-api.default-page-size=20",
+        "tour-api.connect-timeout=1s",
+        "tour-api.read-timeout=1s"
 })
 class PetwayApplicationTests {
 

@@ -65,4 +65,11 @@ class PlaceControllerTest {
         mockMvc.perform(get("/api/places"))
                 .andExpect(status().isBadRequest());
     }
+
+    @Test
+    void rejectsAreaCodeThatExceedsTwoDigits() throws Exception {
+        mockMvc.perform(get("/api/places")
+                        .param("areaCode", "92034254717780654844"))
+                .andExpect(status().isBadRequest());
+    }
 }
