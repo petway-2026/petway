@@ -3,6 +3,7 @@ package com.petway.pet.dto;
 import com.petway.pet.enums.ActivityLevel;
 import com.petway.pet.enums.CrowdTolerance;
 import com.petway.pet.enums.PlacePreference;
+import com.petway.pet.enums.PetSizeType;
 import com.petway.pet.enums.SocialityLevel;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
@@ -38,6 +39,9 @@ public record PetCreateRequest(
                 message = "체중은 0kg보다 커야 합니다."
         )
         BigDecimal weightKg,
+
+
+        PetSizeType sizeType,
 
 
         ActivityLevel activityLevel,

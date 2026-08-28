@@ -4,6 +4,7 @@ import com.petway.pet.entity.Pet;
 import com.petway.pet.enums.ActivityLevel;
 import com.petway.pet.enums.CrowdTolerance;
 import com.petway.pet.enums.PlacePreference;
+import com.petway.pet.enums.PetSizeType;
 import com.petway.pet.enums.SocialityLevel;
 
 import java.math.BigDecimal;
@@ -16,6 +17,7 @@ public record PetResponse(
         String breed,
         LocalDate birthDate,
         BigDecimal weightKg,
+        PetSizeType sizeType,
 
         ActivityLevel activityLevel,
         CrowdTolerance crowdTolerance,
@@ -39,6 +41,7 @@ public record PetResponse(
                 pet.getBreed(),
                 pet.getBirthDate(),
                 pet.getWeightKg(),
+                pet.getSizeType(),
                 pet.getActivityLevel(),
                 pet.getCrowdTolerance(),
                 pet.getPlacePreference(),
