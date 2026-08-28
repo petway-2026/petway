@@ -42,6 +42,8 @@ export default function PetCard({
                     <p className="pet-summary">
                         {pet.breed ?? "견종 미등록"}
                         {" · "}
+                        {getSizeLabel(pet.sizeType)}
+                        {" · "}
                         <strong>
                             {pet.weightKg}kg
                         </strong>
@@ -144,6 +146,21 @@ function getActivityLabel(
             return "활발해요";
         default:
             return "미등록";
+    }
+}
+
+function getSizeLabel(
+    value: Pet["sizeType"]
+) {
+    switch (value) {
+        case "SMALL":
+            return "소형";
+        case "MEDIUM":
+            return "중형";
+        case "LARGE":
+            return "대형";
+        default:
+            return "크기 미등록";
     }
 }
 

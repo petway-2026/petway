@@ -7,6 +7,7 @@ import type {
     ActivityLevel,
     CrowdTolerance,
     PetCreateRequest,
+    PetSizeType,
     PlacePreference,
     SocialityLevel,
 } from "../types/pet";
@@ -26,6 +27,7 @@ const defaultData: PetCreateRequest = {
     breed: "",
     birthDate: null,
     weightKg: 0,
+    sizeType: null,
 
     activityLevel: null,
     crowdTolerance: null,
@@ -69,6 +71,13 @@ export default function PetForm({
         if (form.weightKg <= 0) {
             setError(
                 "체중은 0kg보다 커야 합니다."
+            );
+            return;
+        }
+
+        if (!form.sizeType) {
+            setError(
+                "반려견 크기를 선택해주세요."
             );
             return;
         }
@@ -176,6 +185,40 @@ export default function PetForm({
                     }
                     required
                 />
+            </div>
+
+            <div>
+                <label htmlFor="sizeType">
+                    크기 *
+                </label>
+
+                <select
+                    id="sizeType"
+                    value={form.sizeType ?? ""}
+                    onChange={(event) =>
+                        setForm({
+                            ...form,
+                            sizeType:
+                                event.target.value
+                                    ? (event.target.value as PetSizeType)
+                                    : null,
+                        })
+                    }
+                    required
+                >
+                    <option value="">
+                        선택해주세요
+                    </option>
+                    <option value="SMALL">
+                        소형
+                    </option>
+                    <option value="MEDIUM">
+                        중형
+                    </option>
+                    <option value="LARGE">
+                        대형
+                    </option>
+                </select>
             </div>
 
             <div>
