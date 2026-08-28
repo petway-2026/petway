@@ -66,6 +66,9 @@ export default function PetEditPage() {
                         weightKg:
                         pet.weightKg,
 
+                        sizeType:
+                        pet.sizeType,
+
                         activityLevel:
                         pet.activityLevel,
 

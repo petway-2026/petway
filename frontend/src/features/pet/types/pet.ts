@@ -18,12 +18,18 @@ export type SocialityLevel =
     | "MEDIUM"
     | "HIGH";
 
+export type PetSizeType =
+    | "SMALL"
+    | "MEDIUM"
+    | "LARGE";
+
 export interface Pet {
     petId: number;
     petName: string;
     breed: string | null;
     birthDate: string | null;
     weightKg: number;
+    sizeType: PetSizeType | null;
 
     activityLevel: ActivityLevel | null;
     crowdTolerance: CrowdTolerance | null;
@@ -41,6 +47,7 @@ export interface PetCreateRequest {
     breed: string;
     birthDate: string | null;
     weightKg: number;
+    sizeType: PetSizeType | null;
 
     activityLevel: ActivityLevel | null;
     crowdTolerance: CrowdTolerance | null;
