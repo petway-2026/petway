@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
         name = "user_auth",
         uniqueConstraints = {
                 @UniqueConstraint(
-                        name = "uk_user_auth_provider_user",
+                        name = "uk_user_auth_provider",
                         columnNames = {
                                 "provider",
                                 "provider_user_id"
@@ -22,16 +22,24 @@ import java.time.LocalDateTime;
         }
 )
 @Getter
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@NoArgsConstructor(
+        access = AccessLevel.PROTECTED
+)
 public class UserAuth {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(
+            strategy =
+                    GenerationType.IDENTITY
+    )
     @Column(name = "user_auth_id")
     private Long id;
 
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(
+            fetch = FetchType.LAZY,
+            optional = false
+    )
     @JoinColumn(
             name = "user_id",
             nullable = false
@@ -50,7 +58,7 @@ public class UserAuth {
 
     @Column(
             name = "provider",
-            length = 20
+            length = 30
     )
     private String provider;
 
@@ -71,31 +79,65 @@ public class UserAuth {
 
     @Column(
             name = "created_at",
-            nullable = false,
-            updatable = false
+            nullable = false
     )
     private LocalDateTime createdAt;
 
 
-    /**
-     * LOCAL 회원 생성
+    /*
+     * 기존 LOCAL 회원가입
      */
     public static UserAuth createLocal(
             User user,
             String passwordHash
     ) {
-
-        UserAuth auth = new UserAuth();
+        UserAuth auth =
+                new UserAuth();
 
         auth.user = user;
-        auth.authType = AuthType.LOCAL;
-        auth.passwordHash = passwordHash;
+        auth.authType =
+                AuthType.LOCAL;
 
-        auth.provider = null;
+        auth.provider = "local";
         auth.providerUserId = null;
 
-        auth.createdAt = LocalDateTime.now();
+        auth.passwordHash =
+                passwordHash;
 
         return auth;
+    }
+
+
+    /*
+     * Kakao 로그인
+     */
+    public static UserAuth createKakao(
+            User user,
+            String kakaoUserId
+    ) {
+        UserAuth auth =
+                new UserAuth();
+
+        auth.user = user;
+        auth.authType =
+                AuthType.KAKAO;
+
+        auth.provider =
+                "kakao";
+
+        auth.providerUserId =
+                kakaoUserId;
+
+        auth.passwordHash =
+                null;
+
+        return auth;
+    }
+
+
+    @PrePersist
+    protected void onCreate() {
+        createdAt =
+                LocalDateTime.now();
     }
 }

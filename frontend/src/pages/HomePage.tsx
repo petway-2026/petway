@@ -3,10 +3,10 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../features/auth/context/AuthContext";
 
 import "./styles/home.css";
-
+import { useNavigate } from "react-router-dom";
 export default function HomePage() {
     const { user } = useAuth();
-
+    const navigate = useNavigate();
     return (
         <div className="home-page">
 
@@ -184,7 +184,10 @@ export default function HomePage() {
               </span>
                         </Link>
 
-                        <div className="home-quick-card disabled">
+                        <div
+                            className="home-quick-card"
+                            onClick={() => navigate("/places")}
+                        >
                             <div className="home-quick-icon blue">
                                 📍
                             </div>
@@ -198,9 +201,9 @@ export default function HomePage() {
                                 반려동물 동반 장소를 찾아요.
                             </p>
 
-                            <span className="home-coming">
-                준비 중
-              </span>
+                            <span className="home-quick-link">
+        지도에서 보기 →
+    </span>
                         </div>
 
                         <div className="home-quick-card disabled">

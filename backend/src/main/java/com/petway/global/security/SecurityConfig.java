@@ -1,56 +1,41 @@
 package com.petway.global.security;
 
+import com.petway.global.security.oauth.CustomOAuth2UserService;
+import com.petway.global.security.oauth.OAuth2FailureHandler;
+import com.petway.global.security.oauth.OAuth2SuccessHandler;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
-
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-
 import org.springframework.security.config.http.SessionCreationPolicy;
-
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-
+import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
-
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.List;
 
-
 @Configuration
+@RequiredArgsConstructor
 public class SecurityConfig {
 
+    private final CustomOAuth2UserService
+            customOAuth2UserService;
 
-    /**
-     * BCrypt
-     */
-    @Bean
-    public PasswordEncoder passwordEncoder() {
+    private final OAuth2SuccessHandler
+            oAuth2SuccessHandler;
 
-        return new BCryptPasswordEncoder();
-    }
-
-
-    /**
-     * AuthenticationManager
-     */
-    @Bean
-    public AuthenticationManager authenticationManager(
-            AuthenticationConfiguration configuration
-    ) throws Exception {
-
-        return configuration.getAuthenticationManager();
-    }
+    private final OAuth2FailureHandler
+            oAuth2FailureHandler;
 
 
-    /**
-     * Security 설정
-     */
     @Bean
     public SecurityFilterChain securityFilterChain(
             HttpSecurity http
@@ -59,77 +44,113 @@ public class SecurityConfig {
         http
 
                 /*
-                 * React 개발 서버 CORS
-                 */
-                .cors(cors ->
-                        cors.configurationSource(
-                                corsConfigurationSource()
-                        )
-                )
-
-
-                /*
-                 * 현재 REST API 개발 단계에서는 비활성화.
+                 * 개발 단계
                  *
-                 * 실제 운영 전에는 CSRF 정책을 다시 설정하는 것을 권장.
+                 * Session 방식이라 최종 배포 전에는
+                 * CSRF 전략을 다시 잡는 게 좋음.
                  */
-                .csrf(csrf ->
-                        csrf.disable()
+                .csrf(
+                        csrf ->
+                                csrf.disable()
                 )
 
 
-                /*
-                 * URL 접근 권한
-                 */
-                .authorizeHttpRequests(auth ->
-                        auth
+                .cors(
+                        cors ->
+                                cors.configurationSource(
+                                        corsConfigurationSource()
+                                )
+                )
 
-                                /*
-                                 * 로그인하지 않아도 접근 가능
-                                 */
+
+                .authorizeHttpRequests(
+                        auth -> auth
+
                                 .requestMatchers(
                                         "/api/auth/signup",
                                         "/api/auth/login",
+
                                         "/oauth2/**",
                                         "/login/oauth2/**",
+                                        "/error",
                                         "/swagger-ui/**",
                                         "/swagger-ui.html",
                                         "/v3/api-docs/**"
                                 )
                                 .permitAll()
 
+                                .requestMatchers(
+                                        "/api/admin/**"
+                                )
+                                .hasRole("ADMIN")
 
-                                /*
-                                 * 그 외 API는 로그인 필요
-                                 */
                                 .anyRequest()
                                 .authenticated()
                 )
 
 
-                /*
-                 * React가 로그인 화면을 담당
-                 */
-                .formLogin(form ->
-                        form.disable()
+                .exceptionHandling(
+                        exception -> exception
+                                .defaultAuthenticationEntryPointFor(
+                                        new HttpStatusEntryPoint(
+                                                HttpStatus.FORBIDDEN
+                                        ),
+                                        new AntPathRequestMatcher(
+                                                "/api/**"
+                                        )
+                                )
                 )
 
 
                 /*
-                 * HTTP Basic 인증 사용 안 함
+                 * Kakao OAuth2
                  */
-                .httpBasic(basic ->
-                        basic.disable()
+                .oauth2Login(
+                        oauth -> oauth
+
+                                .userInfoEndpoint(
+                                        userInfo ->
+                                                userInfo
+                                                        .userService(
+                                                                customOAuth2UserService
+                                                        )
+                                )
+
+                                .successHandler(
+                                        oAuth2SuccessHandler
+                                )
+
+                                .failureHandler(
+                                        oAuth2FailureHandler
+                                )
                 )
 
 
                 /*
-                 * Session 방식
+                 * REST API 방식이므로
+                 * 기본 login page 미사용
                  */
-                .sessionManagement(session ->
-                        session.sessionCreationPolicy(
-                                SessionCreationPolicy.IF_REQUIRED
-                        )
+                .formLogin(
+                        form ->
+                                form.disable()
+                )
+
+
+                .httpBasic(
+                        basic ->
+                                basic.disable()
+                )
+
+
+                /*
+                 * LOCAL/KAKAO 모두 HttpSession 사용
+                 */
+                .sessionManagement(
+                        session ->
+                                session
+                                        .sessionCreationPolicy(
+                                                SessionCreationPolicy.IF_REQUIRED
+                                        )
                 );
 
 
@@ -137,26 +158,34 @@ public class SecurityConfig {
     }
 
 
-    /**
-     * CORS
-     */
     @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+
+
+    @Bean
+    public AuthenticationManager authenticationManager(
+            AuthenticationConfiguration configuration
+    ) throws Exception {
+
+        return configuration
+                .getAuthenticationManager();
+    }
+
+
+    @Bean
+    public CorsConfigurationSource
+    corsConfigurationSource() {
 
         CorsConfiguration configuration =
                 new CorsConfiguration();
 
-
-        /*
-         * React Vite 개발 서버
-         */
         configuration.setAllowedOrigins(
                 List.of(
-                        "http://localhost:5173",
-                        "http://localhost:5174"
+                        "http://localhost:5173"
                 )
         );
-
 
         configuration.setAllowedMethods(
                 List.of(
@@ -169,27 +198,25 @@ public class SecurityConfig {
                 )
         );
 
-
         configuration.setAllowedHeaders(
                 List.of("*")
         );
 
-
         /*
-         * JSESSIONID 쿠키 허용
+         * JSESSIONID 전송
          */
-        configuration.setAllowCredentials(true);
+        configuration.setAllowCredentials(
+                true
+        );
 
 
         UrlBasedCorsConfigurationSource source =
                 new UrlBasedCorsConfigurationSource();
 
-
         source.registerCorsConfiguration(
                 "/**",
                 configuration
         );
-
 
         return source;
     }

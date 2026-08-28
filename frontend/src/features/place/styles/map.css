@@ -1,0 +1,538 @@
+/* =========================================================
+   Place Map Page
+========================================================= */
+
+.place-map-page {
+    min-height:
+            calc(100vh - 78px);
+
+    padding:
+            52px
+            24px
+            80px;
+
+    background:
+            var(--color-bg);
+}
+
+.place-map-container {
+    width:
+            100%;
+
+    max-width:
+            var(--layout-max-width);
+
+    margin:
+            0 auto;
+}
+
+
+/* =========================================================
+   Heading
+========================================================= */
+
+.place-map-heading {
+    margin-bottom:
+            34px;
+}
+
+.place-map-eyebrow {
+    display:
+            inline-flex;
+
+    align-items:
+            center;
+
+    gap:
+            7px;
+
+    margin-bottom:
+            11px;
+
+    color:
+            var(--color-primary);
+
+    font-size:
+            11px;
+
+    font-weight:
+            800;
+
+    letter-spacing:
+            0.14em;
+}
+
+.place-map-eyebrow::before {
+    content: "";
+
+    width:
+            7px;
+
+    height:
+            7px;
+
+    border-radius:
+            50%;
+
+    background:
+            var(--color-primary);
+}
+
+.place-map-heading h1 {
+    margin:
+            0
+            0
+            12px;
+
+    color:
+            var(--color-text);
+
+    font-size:
+            42px;
+
+    line-height:
+            1.15;
+
+    letter-spacing:
+            -0.045em;
+}
+
+.place-map-heading p {
+    margin:
+            0;
+
+    color:
+            var(--color-text-secondary);
+
+    font-size:
+            14px;
+
+    line-height:
+            1.7;
+}
+
+
+/* =========================================================
+   Content
+========================================================= */
+
+.place-map-content {
+    overflow:
+            hidden;
+
+    border:
+            1px solid
+            var(--color-border);
+
+    border-radius:
+            26px;
+
+    background:
+            var(--color-surface);
+
+    box-shadow:
+            var(--shadow-md);
+}
+
+
+/* =========================================================
+   Toolbar
+========================================================= */
+
+.place-map-toolbar {
+    display:
+            flex;
+
+    align-items:
+            center;
+
+    justify-content:
+            space-between;
+
+    gap:
+            20px;
+
+    padding:
+            19px
+            22px;
+
+    border-bottom:
+            1px solid
+            var(--color-border-light);
+
+    background:
+            rgba(255, 255, 255, 0.96);
+}
+
+.place-map-toolbar-left {
+    display:
+            flex;
+
+    flex-direction:
+            column;
+
+    gap:
+            2px;
+}
+
+.place-map-toolbar-left strong {
+    color:
+            var(--color-text);
+
+    font-size:
+            14px;
+}
+
+.place-map-toolbar-left span {
+    color:
+            var(--color-text-muted);
+
+    font-size:
+            11px;
+}
+
+.place-map-filter {
+    display:
+            flex;
+
+    flex-wrap:
+            wrap;
+
+    gap:
+            7px;
+}
+
+.place-map-filter button {
+    min-height:
+            34px;
+
+    padding:
+            0
+            13px;
+
+    border:
+            1px solid
+            var(--color-border);
+
+    border-radius:
+            var(--radius-pill);
+
+    background:
+            var(--color-surface);
+
+    color:
+            var(--color-text-secondary);
+
+    font-size:
+            11px;
+
+    font-weight:
+            600;
+
+    transition:
+            background
+            var(--transition-fast),
+            color
+            var(--transition-fast),
+            border-color
+            var(--transition-fast);
+}
+
+.place-map-filter button:hover {
+    border-color:
+            var(--color-primary);
+
+    color:
+            var(--color-primary-active);
+}
+
+.place-map-filter button.active {
+    border-color:
+            var(--color-primary-active);
+
+    background:
+            var(--color-primary-active);
+
+    color:
+            var(--color-white);
+}
+
+
+/* =========================================================
+   Kakao Map
+========================================================= */
+
+.kakao-map-wrapper {
+    position:
+            relative;
+
+    width:
+            100%;
+
+    background:
+            #edf1ed;
+}
+
+.kakao-map {
+    width:
+            100%;
+
+    height:
+            600px;
+}
+
+
+/* =========================================================
+   Loading
+========================================================= */
+
+.kakao-map-status {
+    position:
+            absolute;
+
+    top:
+            18px;
+
+    left:
+            50%;
+
+    z-index:
+            20;
+
+    transform:
+            translateX(-50%);
+
+    padding:
+            10px
+            15px;
+
+    border:
+            1px solid
+            var(--color-border);
+
+    border-radius:
+            var(--radius-pill);
+
+    background:
+            rgba(255, 255, 255, 0.95);
+
+    color:
+            var(--color-text-secondary);
+
+    box-shadow:
+            var(--shadow-sm);
+
+    font-size:
+            11px;
+}
+
+
+/* =========================================================
+   Error
+========================================================= */
+
+.kakao-map-error {
+    position:
+            absolute;
+
+    top:
+            20px;
+
+    left:
+            50%;
+
+    z-index:
+            30;
+
+    display:
+            flex;
+
+    flex-direction:
+            column;
+
+    gap:
+            3px;
+
+    width:
+            calc(100% - 40px);
+
+    max-width:
+            450px;
+
+    transform:
+            translateX(-50%);
+
+    padding:
+            13px
+            16px;
+
+    border:
+            1px solid
+            rgba(212, 75, 75, 0.16);
+
+    border-radius:
+            14px;
+
+    background:
+            rgba(255, 244, 244, 0.96);
+
+    color:
+            var(--color-danger);
+
+    box-shadow:
+            var(--shadow-md);
+
+    font-size:
+            12px;
+}
+
+.kakao-map-error strong {
+    font-size:
+            12px;
+}
+
+.kakao-map-error span {
+    opacity:
+            0.84;
+}
+
+
+/* =========================================================
+   Tablet
+========================================================= */
+
+@media (max-width: 900px) {
+    .place-map-page {
+        padding:
+                42px
+                18px
+                70px;
+    }
+
+    .kakao-map {
+        height:
+                540px;
+    }
+
+    .place-map-toolbar {
+        align-items:
+                flex-start;
+
+        flex-direction:
+                column;
+    }
+}
+
+
+/* =========================================================
+   Mobile
+========================================================= */
+
+@media (max-width: 640px) {
+    .place-map-page {
+        min-height:
+                calc(100vh - 64px);
+
+        padding:
+                30px
+                14px
+                50px;
+    }
+
+    .place-map-heading {
+        margin-bottom:
+                23px;
+    }
+
+    .place-map-heading h1 {
+        font-size:
+                31px;
+    }
+
+    .place-map-heading h1 br {
+        display:
+                none;
+    }
+
+    .place-map-heading p {
+        font-size:
+                13px;
+    }
+
+    .place-map-content {
+        border-radius:
+                19px;
+    }
+
+    .place-map-toolbar {
+        padding:
+                16px;
+    }
+
+    .place-map-filter {
+        width:
+                100%;
+    }
+
+    .place-map-filter button {
+        flex:
+                1;
+
+        padding:
+                0
+                10px;
+    }
+
+    .kakao-map {
+        height:
+                460px;
+    }
+}
+
+.kakao-map-wrapper {
+    position: relative;
+
+    width: 100%;
+    height: 100%;
+}
+
+
+.kakao-map-container {
+    width: 100%;
+    height: 100%;
+
+    min-height: 280px;
+}
+
+
+.kakao-map-error {
+    position: absolute;
+
+    top: 50%;
+    left: 50%;
+
+    z-index: 10;
+
+    transform:
+            translate(
+                    -50%,
+                    -50%
+            );
+
+    padding: 14px 18px;
+
+    border-radius: 10px;
+
+    background:
+            rgba(
+                    255,
+                    255,
+                    255,
+                    0.94
+            );
+
+    font-size: 13px;
+    font-weight: 600;
+
+    color: #555;
+}

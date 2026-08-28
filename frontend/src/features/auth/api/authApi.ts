@@ -10,6 +10,10 @@ import type {
 const API_URL =
     import.meta.env.VITE_API_URL ?? "http://localhost:8080";
 
+export function loginWithKakao(): void {
+    window.location.href = `${API_URL}/oauth2/authorization/kakao`;
+}
+
 async function parseError(response: Response): Promise<string> {
     try {
         const data: ApiError = await response.json();
