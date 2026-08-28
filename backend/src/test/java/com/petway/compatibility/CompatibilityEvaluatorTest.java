@@ -185,23 +185,42 @@ class CompatibilityEvaluatorTest {
     }
 
     @Test
-    void acceptsExplicitlyAllowedSize() {
+    void treatsMatchingAllowedSizeAsConditionalBecauseVenueThresholdIsUnknown() {
         CompatibilityResult result = evaluate(
                 pet("20", PetSizeType.SMALL),
                 ruleWithSize(Set.of(PetSize.SMALL), SizeConditionType.ALLOWED)
         );
 
-        assertThat(result.status()).isEqualTo(CompatibilityStatus.AVAILABLE);
+        assertThat(result.status()).isEqualTo(CompatibilityStatus.CONDITIONAL);
+        assertThat(result.reasons()).contains(
+                "등록된 크기는 장소의 허용 표현에 해당하지만, 장소별 크기 기준을 확인해 주세요."
+        );
     }
 
     @Test
-    void rejectsSizeOutsideTheExplicitAllowedSet() {
+    void needsConfirmationForSizeOutsideAllowedLabel() {
         CompatibilityResult result = evaluate(
                 pet("2", PetSizeType.LARGE),
                 ruleWithSize(Set.of(PetSize.SMALL), SizeConditionType.ALLOWED)
         );
 
+        assertThat(result.status()).isEqualTo(CompatibilityStatus.NEED_CONFIRMATION);
+        assertThat(result.reasons()).contains(
+                "장소의 반려견 크기 기준이 명확하지 않아 방문 전 확인이 필요합니다."
+        );
+    }
+
+    @Test
+    void rejectsExplicitlyDisallowedSize() {
+        CompatibilityResult result = evaluate(
+                pet("20", PetSizeType.LARGE),
+                ruleWithSize(Set.of(PetSize.LARGE), SizeConditionType.DISALLOWED)
+        );
+
         assertThat(result.status()).isEqualTo(CompatibilityStatus.UNAVAILABLE);
+        assertThat(result.reasons()).contains(
+                "장소에서 해당 크기의 반려견 동반을 명시적으로 제한하고 있습니다."
+        );
     }
 
     @Test

@@ -75,13 +75,6 @@ export default function PetForm({
             return;
         }
 
-        if (!form.sizeType) {
-            setError(
-                "반려견 크기를 선택해주세요."
-            );
-            return;
-        }
-
         try {
             setLoading(true);
 
@@ -189,7 +182,7 @@ export default function PetForm({
 
             <div>
                 <label htmlFor="sizeType">
-                    크기 *
+                    체형 분류 (선택)
                 </label>
 
                 <select
@@ -204,21 +197,25 @@ export default function PetForm({
                                     : null,
                         })
                     }
-                    required
                 >
                     <option value="">
-                        선택해주세요
+                        잘 모르겠어요
                     </option>
                     <option value="SMALL">
-                        소형
+                        소형으로 등록
                     </option>
                     <option value="MEDIUM">
-                        중형
+                        중형으로 등록
                     </option>
                     <option value="LARGE">
-                        대형
+                        대형으로 등록
                     </option>
                 </select>
+
+                <p className="pet-size-guidance">
+                    체중만으로 자동 분류하지 않습니다. 견종과 체형을 고려해 선택하고,
+                    애매하면 비워두세요. 실제 이용 기준은 장소마다 다를 수 있습니다.
+                </p>
             </div>
 
             <div>

@@ -226,14 +226,23 @@ public class CompatibilityEvaluator {
         }
 
         PetSize petSize = toRuleSize(pet.getSizeType());
-        if ((!allowed.isEmpty() && !allowed.contains(petSize))
-                || disallowed.contains(petSize)) {
+        if (disallowed.contains(petSize)) {
             assessment.unavailable(
-                    "반려견의 크기가 허용된 이용 조건에 해당하지 않습니다."
+                    "장소에서 해당 크기의 반려견 동반을 명시적으로 제한하고 있습니다."
             );
-        } else if (allowed.contains(petSize)) {
-            assessment.positive(
-                    "반려견의 크기가 이용 기준을 충족합니다."
+            return;
+        }
+
+        if (!allowed.isEmpty() && !allowed.contains(petSize)) {
+            assessment.confirm(
+                    "장소의 반려견 크기 기준이 명확하지 않아 방문 전 확인이 필요합니다."
+            );
+            return;
+        }
+
+        if (allowed.contains(petSize)) {
+            assessment.conditional(
+                    "등록된 크기는 장소의 허용 표현에 해당하지만, 장소별 크기 기준을 확인해 주세요."
             );
         }
     }

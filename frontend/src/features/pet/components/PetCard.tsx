@@ -42,7 +42,7 @@ export default function PetCard({
                     <p className="pet-summary">
                         {pet.breed ?? "견종 미등록"}
                         {" · "}
-                        {getSizeLabel(pet.sizeType)}
+                        등록 체형: {getSizeLabel(pet.sizeType)}
                         {" · "}
                         <strong>
                             {pet.weightKg}kg
