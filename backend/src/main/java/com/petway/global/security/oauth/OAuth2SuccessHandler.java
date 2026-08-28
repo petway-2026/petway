@@ -1,20 +1,22 @@
 package com.petway.global.security.oauth;
 
+import com.petway.global.config.FrontendProperties;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
+import lombok.RequiredArgsConstructor;
 
 import java.io.IOException;
 
 @Component
+@RequiredArgsConstructor
 public class OAuth2SuccessHandler
         implements AuthenticationSuccessHandler {
 
-    private static final String FRONT_URL =
-            "http://localhost:5173";
+    private final FrontendProperties frontendProperties;
 
 
     @Override
@@ -32,7 +34,7 @@ public class OAuth2SuccessHandler
          */
 
         response.sendRedirect(
-                FRONT_URL + "/"
+                frontendProperties.primaryOrigin() + "/"
         );
     }
 }

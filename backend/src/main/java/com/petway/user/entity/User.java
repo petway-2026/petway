@@ -105,6 +105,10 @@ public class User {
         this.nickname = nickname;
     }
 
+    public void withdraw() {
+        this.userStatus = UserStatus.WITHDRAWN;
+    }
+
 
     @PrePersist
     protected void onCreate() {

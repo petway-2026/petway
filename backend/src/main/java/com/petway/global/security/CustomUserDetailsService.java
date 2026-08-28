@@ -3,12 +3,14 @@ package com.petway.global.security;
 import com.petway.user.entity.User;
 import com.petway.user.entity.UserAuth;
 import com.petway.user.enums.AuthType;
+import com.petway.user.enums.UserStatus;
 import com.petway.user.repository.UserAuthRepository;
 import com.petway.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -37,6 +39,10 @@ public class CustomUserDetailsService
                                                 "회원을 찾을 수 없습니다."
                                         )
                         );
+
+        if (user.getUserStatus() != UserStatus.ACTIVE) {
+            throw new DisabledException("비활성화된 계정입니다.");
+        }
 
 
         UserAuth userAuth =

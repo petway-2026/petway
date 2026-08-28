@@ -7,18 +7,26 @@ import {
 import {
     Link,
     useNavigate,
+    useSearchParams,
 } from "react-router-dom";
 
-import { loginWithKakao } from "../api/authApi";
+import {
+    linkKakaoAccount,
+    loginWithKakao,
+} from "../api/authApi";
 import { useAuth } from "../context/AuthContext";
 
 import "../styles/auth.css";
 
 export default function LoginPage() {
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const linkRequired =
+        searchParams.get("oauthLinkRequired") === "true";
 
     const {
         login,
+        refreshUser,
         user,
     } = useAuth();
 
@@ -56,10 +64,14 @@ export default function LoginPage() {
         try {
             setLoading(true);
 
-            await login({
-                email,
-                password,
-            });
+            const credentials = { email, password };
+
+            if (linkRequired) {
+                await linkKakaoAccount(credentials);
+                await refreshUser();
+            } else {
+                await login(credentials);
+            }
 
             navigate("/");
         } catch (error) {
@@ -112,6 +124,12 @@ export default function LoginPage() {
                     className="auth-form"
                     onSubmit={handleSubmit}
                 >
+                    {linkRequired && (
+                        <div className="auth-error">
+                            같은 이메일의 기존 PetWay 계정이 있습니다.
+                            LOCAL 비밀번호를 입력해 카카오 계정 연결을 확인해 주세요.
+                        </div>
+                    )}
                     <div className="auth-form-group">
                         <label
                             className="auth-label"
@@ -173,7 +191,9 @@ export default function LoginPage() {
                     >
                         {loading
                             ? "로그인 중..."
-                            : "로그인"}
+                            : linkRequired
+                                ? "계정 연결 후 로그인"
+                                : "로그인"}
                     </button>
                 </form>
 
