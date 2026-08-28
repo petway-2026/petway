@@ -39,6 +39,10 @@ dependencies {
     // MySQL
     runtimeOnly 'com.mysql:mysql-connector-j'
 
+    // Coordinate transformation (EPSG:5174 -> WGS84)
+    implementation 'org.locationtech.proj4j:proj4j:1.4.3'
+    implementation 'org.locationtech.proj4j:proj4j-epsg:1.4.3'
+
     // Lombok
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
