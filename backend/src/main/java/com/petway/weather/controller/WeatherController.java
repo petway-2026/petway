@@ -24,7 +24,7 @@ public class WeatherController {
 
     @Operation(
             summary = "여행일 날씨 조회",
-            description = "D0~D3은 단기예보, D4~D10은 중기예보, D11~D90은 월별 3개월 전망을 반환합니다. 중기·장기 조회에는 region이 필요합니다."
+            description = "D0~D3은 단기예보, D4~D10은 중기예보, D11~D90은 월별 3개월 전망을 반환합니다. 모든 조회에 region이 필요합니다."
     )
     @GetMapping
     public ResponseEntity<WeatherForecastResponse> getWeather(
@@ -36,8 +36,8 @@ public class WeatherController {
             @RequestParam
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
             LocalDate targetDate,
-            @Parameter(description = "중기·장기 조회용 PetWay 예보 권역")
-            @RequestParam(required = false)
+            @Parameter(description = "PetWay 예보 권역")
+            @RequestParam
             WeatherRegion region
     ) {
         return ResponseEntity.ok(

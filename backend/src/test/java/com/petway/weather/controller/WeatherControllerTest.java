@@ -4,6 +4,7 @@ import com.petway.global.exception.GlobalExceptionHandler;
 import com.petway.weather.domain.ForecastType;
 import com.petway.weather.domain.WeatherRegion;
 import com.petway.weather.dto.WeatherForecastResponse;
+import com.petway.weather.dto.WeatherDisplay;
 import com.petway.weather.service.WeatherQueryService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -44,6 +45,7 @@ class WeatherControllerTest {
                 28.0,
                 40,
                 null,
+                new WeatherDisplay("21~28℃", "강수확률 40%", "흐림", "흐린 날씨가 예상되며, 강수확률 40%입니다."),
                 null,
                 null,
                 null,
@@ -66,6 +68,8 @@ class WeatherControllerTest {
                         .param("region", "SEOUL_INCHEON_GYEONGGI"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.forecastType").value("MID_TERM"))
+                .andExpect(jsonPath("$.display.temperature").value("21~28℃"))
+                .andExpect(jsonPath("$.temperatureOutlook").doesNotExist())
                 .andExpect(jsonPath("$.source").value("기상청"));
 
         verify(service).getForecast(

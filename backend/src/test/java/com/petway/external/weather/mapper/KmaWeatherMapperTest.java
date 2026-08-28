@@ -3,6 +3,7 @@ package com.petway.external.weather.mapper;
 import com.petway.external.weather.dto.KmaShortForecastItem;
 import com.petway.weather.domain.ForecastType;
 import com.petway.weather.domain.WeatherCondition;
+import com.petway.weather.domain.WeatherRegion;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
@@ -29,7 +30,8 @@ class KmaWeatherMapperTest {
         var forecast = mapper.mapShortTerm(
                 fixture,
                 LocalDate.of(2026, 9, 1),
-                LocalDateTime.of(2026, 8, 31, 23, 0)
+                LocalDateTime.of(2026, 8, 31, 23, 0),
+                WeatherRegion.SEOUL_INCHEON_GYEONGGI
         );
 
         assertThat(forecast.forecastType()).isEqualTo(ForecastType.SHORT_TERM);
@@ -37,6 +39,7 @@ class KmaWeatherMapperTest {
         assertThat(forecast.maximumTemperature()).isEqualTo(28.0);
         assertThat(forecast.rainProbability()).isEqualTo(70);
         assertThat(forecast.weatherCondition()).isEqualTo(WeatherCondition.RAIN);
+        assertThat(forecast.regionName()).isEqualTo("서울ㆍ인천ㆍ경기도");
     }
 
     private KmaShortForecastItem item(String category, String time, String value) {

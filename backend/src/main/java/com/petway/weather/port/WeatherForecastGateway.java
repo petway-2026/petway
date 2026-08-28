@@ -7,7 +7,12 @@ import java.time.LocalDate;
 
 public interface WeatherForecastGateway {
 
-    WeatherForecast getShortTerm(double latitude, double longitude, LocalDate targetDate);
+    WeatherForecast getShortTerm(
+            double latitude,
+            double longitude,
+            LocalDate targetDate,
+            WeatherRegion region
+    );
 
     WeatherForecast getMidTerm(WeatherRegion region, LocalDate targetDate);
 

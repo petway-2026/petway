@@ -30,6 +30,9 @@ public class WeatherQueryService {
         if (targetDate == null) {
             throw new IllegalArgumentException("여행일은 필수입니다.");
         }
+        if (region == null) {
+            throw new IllegalArgumentException("날씨 조회에는 region이 필요합니다.");
+        }
 
         LocalDate today = LocalDate.now(weatherClock);
         long days = ChronoUnit.DAYS.between(today, targetDate);
@@ -42,11 +45,8 @@ public class WeatherQueryService {
 
         WeatherForecast forecast;
         if (days <= 3) {
-            forecast = weatherForecastGateway.getShortTerm(latitude, longitude, targetDate);
+            forecast = weatherForecastGateway.getShortTerm(latitude, longitude, targetDate, region);
         } else {
-            if (region == null) {
-                throw new IllegalArgumentException("중기·장기 날씨 조회에는 region이 필요합니다.");
-            }
             forecast = days <= 10
                     ? weatherForecastGateway.getMidTerm(region, targetDate)
                     : weatherForecastGateway.getSeasonalOutlook(region, targetDate);

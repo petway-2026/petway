@@ -46,12 +46,27 @@ class WeatherQueryServiceTest {
     void usesShortTermForTodayThroughDayThree() {
         LocalDate targetDate = TODAY.plusDays(3);
         WeatherForecast forecast = forecast(targetDate, ForecastType.SHORT_TERM);
-        when(gateway.getShortTerm(LATITUDE, LONGITUDE, targetDate)).thenReturn(forecast);
+        when(gateway.getShortTerm(
+                LATITUDE,
+                LONGITUDE,
+                targetDate,
+                WeatherRegion.SEOUL_INCHEON_GYEONGGI
+        )).thenReturn(forecast);
 
-        var response = service.getForecast(LATITUDE, LONGITUDE, targetDate, null);
+        var response = service.getForecast(
+                LATITUDE,
+                LONGITUDE,
+                targetDate,
+                WeatherRegion.SEOUL_INCHEON_GYEONGGI
+        );
 
         assertThat(response.forecastType()).isEqualTo(ForecastType.SHORT_TERM);
-        verify(gateway).getShortTerm(LATITUDE, LONGITUDE, targetDate);
+        verify(gateway).getShortTerm(
+                LATITUDE,
+                LONGITUDE,
+                targetDate,
+                WeatherRegion.SEOUL_INCHEON_GYEONGGI
+        );
     }
 
     @Test
@@ -85,21 +100,21 @@ class WeatherQueryServiceTest {
     }
 
     @Test
-    void requiresRegionFromDayFour() {
+    void requiresRegionForEveryForecastType() {
         assertThatThrownBy(() -> service.getForecast(
                 LATITUDE,
                 LONGITUDE,
-                TODAY.plusDays(4),
+                TODAY.plusDays(1),
                 null
         )).isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("중기·장기 날씨 조회에는 region이 필요합니다.");
+                .hasMessage("날씨 조회에는 region이 필요합니다.");
         verifyNoInteractions(gateway);
     }
 
     @Test
     void rejectsPastAndBeyondNinetyDays() {
         assertThatThrownBy(() -> service.getForecast(
-                LATITUDE, LONGITUDE, TODAY.minusDays(1), null
+                LATITUDE, LONGITUDE, TODAY.minusDays(1), WeatherRegion.JEJU
         )).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> service.getForecast(
                 LATITUDE, LONGITUDE, TODAY.plusDays(91), WeatherRegion.JEJU

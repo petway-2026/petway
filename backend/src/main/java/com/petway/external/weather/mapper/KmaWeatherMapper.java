@@ -24,7 +24,8 @@ public class KmaWeatherMapper {
     public WeatherForecast mapShortTerm(
             List<KmaShortForecastItem> items,
             LocalDate targetDate,
-            LocalDateTime announcedAt
+            LocalDateTime announcedAt,
+            WeatherRegion region
     ) {
         List<KmaShortForecastItem> targetItems = items.stream()
                 .filter(item -> targetDate.format(DATE).equals(item.fcstDate()))
@@ -64,7 +65,7 @@ public class KmaWeatherMapper {
         return new WeatherForecast(
                 targetDate,
                 ForecastType.SHORT_TERM,
-                null,
+                region.getDisplayName(),
                 minimum,
                 maximum,
                 rainProbability,

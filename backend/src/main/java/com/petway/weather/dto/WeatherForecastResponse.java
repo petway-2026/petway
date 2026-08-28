@@ -1,5 +1,6 @@
 package com.petway.weather.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.petway.weather.domain.ForecastType;
 import com.petway.weather.domain.OutlookLevel;
 import com.petway.weather.domain.OutlookProbabilities;
@@ -9,6 +10,7 @@ import com.petway.weather.domain.WeatherForecast;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public record WeatherForecastResponse(
         LocalDate targetDate,
         ForecastType forecastType,
@@ -17,6 +19,7 @@ public record WeatherForecastResponse(
         Double maximumTemperature,
         Integer rainProbability,
         WeatherCondition weatherCondition,
+        WeatherDisplay display,
         OutlookLevel temperatureOutlook,
         OutlookLevel precipitationOutlook,
         OutlookProbabilities temperatureProbabilities,
@@ -34,6 +37,7 @@ public record WeatherForecastResponse(
                 forecast.maximumTemperature(),
                 forecast.rainProbability(),
                 forecast.weatherCondition(),
+                WeatherDisplay.from(forecast),
                 forecast.temperatureOutlook(),
                 forecast.precipitationOutlook(),
                 forecast.temperatureProbabilities(),

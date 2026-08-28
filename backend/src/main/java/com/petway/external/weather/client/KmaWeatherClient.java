@@ -72,11 +72,17 @@ public class KmaWeatherClient implements WeatherForecastGateway {
     }
 
     @Override
-    public WeatherForecast getShortTerm(double latitude, double longitude, LocalDate targetDate) {
-        ensureApiKey();
+    public WeatherForecast getShortTerm(
+            double latitude,
+            double longitude,
+            LocalDate targetDate,
+            WeatherRegion region
+    ) {
+        String apiKey = properties.getShort().getApiKey();
+        ensureApiKey(apiKey, "단기예보");
         KmaGridConverter.GridPoint grid = gridConverter.convert(latitude, longitude);
         LocalDateTime base = latestShortBaseTime();
-        URI uri = UriComponentsBuilder.fromUriString(properties.getShortTermBaseUrl())
+        URI uri = UriComponentsBuilder.fromUriString(properties.getShort().getBaseUrl())
                 .path("/getVilageFcst")
                 .queryParam("serviceKey", "{serviceKey}")
                 .queryParam("pageNo", 1)
@@ -87,7 +93,7 @@ public class KmaWeatherClient implements WeatherForecastGateway {
                 .queryParam("nx", grid.nx())
                 .queryParam("ny", grid.ny())
                 .encode()
-                .buildAndExpand(decodedApiKey())
+                .buildAndExpand(decodedApiKey(apiKey))
                 .toUri();
 
         KmaApiResponse<KmaShortForecastItem> response = get(
@@ -97,7 +103,7 @@ public class KmaWeatherClient implements WeatherForecastGateway {
         );
         List<KmaShortForecastItem> items = items(response);
         try {
-            return mapper.mapShortTerm(items, targetDate, base);
+            return mapper.mapShortTerm(items, targetDate, base, region);
         } catch (IllegalStateException exception) {
             throw new WeatherForecastUnavailableException(exception.getMessage());
         }
@@ -105,7 +111,8 @@ public class KmaWeatherClient implements WeatherForecastGateway {
 
     @Override
     public WeatherForecast getMidTerm(WeatherRegion region, LocalDate targetDate) {
-        ensureApiKey();
+        String apiKey = properties.getMid().getApiKey();
+        ensureApiKey(apiKey, "중기예보");
         LocalDateTime base = latestMidBaseTime();
         int forecastDay = Math.toIntExact(ChronoUnit.DAYS.between(base.toLocalDate(), targetDate));
         if (forecastDay < 4 || forecastDay > 10) {
@@ -158,7 +165,8 @@ public class KmaWeatherClient implements WeatherForecastGateway {
     }
 
     private URI midUri(String path, String regionCode, LocalDateTime base) {
-        return UriComponentsBuilder.fromUriString(properties.getMidTermBaseUrl())
+        String apiKey = properties.getMid().getApiKey();
+        return UriComponentsBuilder.fromUriString(properties.getMid().getBaseUrl())
                 .path(path)
                 .queryParam("serviceKey", "{serviceKey}")
                 .queryParam("pageNo", 1)
@@ -167,7 +175,7 @@ public class KmaWeatherClient implements WeatherForecastGateway {
                 .queryParam("regId", regionCode)
                 .queryParam("tmFc", base.format(DateTimeFormatter.ofPattern("yyyyMMddHHmm")))
                 .encode()
-                .buildAndExpand(decodedApiKey())
+                .buildAndExpand(decodedApiKey(apiKey))
                 .toUri();
     }
 
@@ -235,14 +243,14 @@ public class KmaWeatherClient implements WeatherForecastGateway {
         return LocalDateTime.of(date, time);
     }
 
-    private void ensureApiKey() {
-        if (properties.getApiKey() == null || properties.getApiKey().isBlank()) {
-            throw new WeatherProviderException("기상청 API 인증키가 설정되지 않았습니다.");
+    private void ensureApiKey(String apiKey, String forecastName) {
+        if (apiKey == null || apiKey.isBlank()) {
+            throw new WeatherProviderException("기상청 " + forecastName + " API 인증키가 설정되지 않았습니다.");
         }
     }
 
-    private String decodedApiKey() {
-        String key = properties.getApiKey().trim();
+    private String decodedApiKey(String apiKey) {
+        String key = apiKey.trim();
         return key.contains("%") ? URLDecoder.decode(key, StandardCharsets.UTF_8) : key;
     }
 }
