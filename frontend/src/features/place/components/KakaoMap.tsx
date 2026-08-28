@@ -8,6 +8,9 @@ import {
     loadKakaoMap,
 } from "../utils/loadKakaoMap";
 
+import currentLocationMarkerUrl
+    from "../assets/current-location-marker.svg";
+
 import type {
     MapCenter,
     MapMarker,
@@ -233,11 +236,25 @@ export default function KakaoMap({
                         );
 
 
+                    const markerOptions: Record<string, unknown> = {
+                        position,
+                        map: mapRef.current,
+                    };
+
+                    if (markerData.kind === "current-location") {
+                        markerOptions.image =
+                            new kakao.maps.MarkerImage(
+                                currentLocationMarkerUrl,
+                                new kakao.maps.Size(32, 32),
+                                {
+                                    offset:
+                                        new kakao.maps.Point(16, 16),
+                                }
+                            );
+                    }
+
                     const marker =
-                        new kakao.maps.Marker({
-                            position,
-                            map: mapRef.current,
-                        });
+                        new kakao.maps.Marker(markerOptions);
 
 
                     /*

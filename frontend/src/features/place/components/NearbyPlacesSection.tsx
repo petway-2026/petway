@@ -93,6 +93,7 @@ export default function NearbyPlacesSection() {
                     {
                         id: "current",
                         title: "내 위치",
+                        kind: "current-location",
                         latitude:
                         location.latitude,
                         longitude:

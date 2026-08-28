@@ -9,4 +9,5 @@ export interface MapMarker {
     title: string;
     latitude: number;
     longitude: number;
+    kind?: "place" | "current-location";
 }
