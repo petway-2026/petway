@@ -1,5 +1,7 @@
 package com.petway.global.exception;
 
+import com.petway.weather.service.WeatherForecastUnavailableException;
+import com.petway.weather.service.WeatherProviderException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
@@ -14,6 +16,20 @@ import java.util.Map;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    @ExceptionHandler(WeatherForecastUnavailableException.class)
+    public ResponseEntity<?> handleWeatherUnavailable(WeatherForecastUnavailableException e) {
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(Map.of("message", e.getMessage()));
+    }
+
+    @ExceptionHandler(WeatherProviderException.class)
+    public ResponseEntity<?> handleWeatherProvider(WeatherProviderException e) {
+        return ResponseEntity
+                .status(HttpStatus.BAD_GATEWAY)
+                .body(Map.of("message", "기상청 날씨 정보 호출에 실패했습니다."));
+    }
 
 
     /**
