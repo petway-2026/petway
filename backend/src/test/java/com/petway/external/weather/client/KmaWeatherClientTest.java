@@ -4,6 +4,7 @@ import com.petway.external.weather.config.WeatherApiProperties;
 import com.petway.external.weather.mapper.KmaGridConverter;
 import com.petway.external.weather.mapper.KmaSeasonalOutlookParser;
 import com.petway.external.weather.mapper.KmaWeatherMapper;
+import com.petway.weather.domain.ForecastType;
 import com.petway.weather.domain.WeatherCondition;
 import com.petway.weather.domain.WeatherRegion;
 import org.junit.jupiter.api.BeforeEach;
@@ -125,6 +126,42 @@ class KmaWeatherClientTest {
         server.verify();
     }
 
+    @Test
+    void upgradesHttpSeasonalRssUrlToHttps() {
+        assertSeasonalRssUrl(
+                "http://www.kma.go.kr/repositary/xml/fct/mon/img/fct_mon3rss_108_20260824.xml",
+                "https://www.kma.go.kr/repositary/xml/fct/mon/img/fct_mon3rss_108_20260824.xml"
+        );
+    }
+
+    @Test
+    void keepsHttpsSeasonalRssUrl() {
+        assertSeasonalRssUrl(
+                "https://www.kma.go.kr/repositary/xml/fct/mon/img/fct_mon3rss_108_20260824.xml",
+                "https://www.kma.go.kr/repositary/xml/fct/mon/img/fct_mon3rss_108_20260824.xml"
+        );
+    }
+
+    private void assertSeasonalRssUrl(String guideRssUrl, String expectedRequestUrl) {
+        properties.setSeasonalGuideUrl("https://weather.test/seasonal-guide");
+        server.expect(requestTo("https://weather.test/seasonal-guide"))
+                .andRespond(withSuccess(
+                        "<html><body><a href=\"" + guideRssUrl + "\">3개월전망 RSS</a></body></html>",
+                        MediaType.TEXT_HTML
+                ));
+        server.expect(requestTo(expectedRequestUrl))
+                .andRespond(withSuccess(seasonalResponse(), MediaType.APPLICATION_XML));
+
+        var forecast = client.getSeasonalOutlook(
+                WeatherRegion.SEOUL_INCHEON_GYEONGGI,
+                LocalDate.of(2026, 9, 15)
+        );
+
+        assertThat(forecast.forecastType()).isEqualTo(ForecastType.SEASONAL_OUTLOOK);
+        assertThat(forecast.targetDate()).isEqualTo(LocalDate.of(2026, 9, 15));
+        server.verify();
+    }
+
     private String midResponse(String item) {
         return """
                 {
@@ -137,5 +174,26 @@ class KmaWeatherClientTest {
                   }
                 }
                 """.formatted(item);
+    }
+
+    private String seasonalResponse() {
+        return """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <rss><channel><item><description>
+                  <header><ydate>2026년 8월 24일 11시</ydate></header>
+                  <threemonth_ta_forecast><local_ta>
+                    <local_ta_name><![CDATA[ 서울ㆍ인천ㆍ경기도 ]]></local_ta_name>
+                    <month1_local_ta_minVal>20</month1_local_ta_minVal>
+                    <month1_local_ta_similarVal>40</month1_local_ta_similarVal>
+                    <month1_local_ta_maxVal>40</month1_local_ta_maxVal>
+                  </local_ta></threemonth_ta_forecast>
+                  <threemonth_rn_forecast><local_rn>
+                    <local_rn_name><![CDATA[ 서울ㆍ인천ㆍ경기도 ]]></local_rn_name>
+                    <month1_local_rn_minVal>20</month1_local_rn_minVal>
+                    <month1_local_rn_similarVal>50</month1_local_rn_similarVal>
+                    <month1_local_rn_maxVal>30</month1_local_rn_maxVal>
+                  </local_rn></threemonth_rn_forecast>
+                </description></item></channel></rss>
+                """;
     }
 }
