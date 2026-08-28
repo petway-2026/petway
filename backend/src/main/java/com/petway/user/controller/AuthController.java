@@ -134,6 +134,40 @@ public class AuthController {
     }
 
 
+    @PostMapping("/oauth/kakao/link")
+    public ResponseEntity<?> confirmKakaoLink(
+            @Valid @RequestBody LoginRequest request,
+            HttpServletRequest httpRequest
+    ) {
+        HttpSession session = httpRequest.getSession(false);
+        Authentication authentication =
+                authService.confirmAndLinkKakao(request, session);
+
+        SecurityContext securityContext =
+                SecurityContextHolder.createEmptyContext();
+        securityContext.setAuthentication(authentication);
+        SecurityContextHolder.setContext(securityContext);
+
+        if (session == null) {
+            session = httpRequest.getSession(true);
+        }
+        session.setAttribute(
+                HttpSessionSecurityContextRepository
+                        .SPRING_SECURITY_CONTEXT_KEY,
+                securityContext
+        );
+
+        UserResponse user = authService.getCurrentUser(
+                authentication.getName()
+        );
+
+        return ResponseEntity.ok(Map.of(
+                "message", "카카오 계정 연결 및 로그인에 성공했습니다.",
+                "user", user
+        ));
+    }
+
+
     /**
      * 현재 로그인 사용자
      */

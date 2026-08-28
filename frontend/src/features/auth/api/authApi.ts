@@ -74,6 +74,28 @@ export async function login(
     return response.json();
 }
 
+export async function linkKakaoAccount(
+    request: LoginRequest
+): Promise<LoginResponse> {
+    const response = await fetch(
+        `${API_URL}/api/auth/oauth/kakao/link`,
+        {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            credentials: "include",
+            body: JSON.stringify(request),
+        }
+    );
+
+    if (!response.ok) {
+        throw new Error(await parseError(response));
+    }
+
+    return response.json();
+}
+
 export async function getMe(): Promise<User> {
     const response = await fetch(
         `${API_URL}/api/auth/me`,

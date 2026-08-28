@@ -1,22 +1,25 @@
 package com.petway.global.security.oauth;
 
+import com.petway.global.config.FrontendProperties;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 import org.springframework.stereotype.Component;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 
 @Component
+@RequiredArgsConstructor
 public class OAuth2FailureHandler
         implements AuthenticationFailureHandler {
 
-    private static final String FRONT_URL =
-            "http://localhost:5173";
+    private final FrontendProperties frontendProperties;
 
 
     @Override
@@ -26,6 +29,16 @@ public class OAuth2FailureHandler
             AuthenticationException exception
     ) throws IOException, ServletException {
 
+        if (exception instanceof OAuth2AuthenticationException oauthException
+                && CustomOAuth2UserService.LINK_REQUIRED.equals(
+                oauthException.getError().getErrorCode())) {
+            response.sendRedirect(
+                    frontendProperties.primaryOrigin()
+                            + "/login?oauthLinkRequired=true"
+            );
+            return;
+        }
+
         String message =
                 URLEncoder.encode(
                         "카카오 로그인에 실패했습니다.",
@@ -33,7 +46,7 @@ public class OAuth2FailureHandler
                 );
 
         response.sendRedirect(
-                FRONT_URL +
+                frontendProperties.primaryOrigin() +
                         "/login?oauthError=" +
                         message
         );

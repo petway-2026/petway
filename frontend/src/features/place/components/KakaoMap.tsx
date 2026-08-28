@@ -244,19 +244,16 @@ export default function KakaoMap({
                      * 마커 클릭 시
                      * 장소명 표시
                      */
+                    const infoContent =
+                        document.createElement("div");
+                    infoContent.textContent = markerData.title;
+                    infoContent.style.padding = "8px 12px";
+                    infoContent.style.fontSize = "12px";
+                    infoContent.style.whiteSpace = "nowrap";
+
                     const infoWindow =
                         new kakao.maps.InfoWindow({
-                            content: `
-                <div
-                  style="
-                    padding:8px 12px;
-                    font-size:12px;
-                    white-space:nowrap;
-                  "
-                >
-                  ${markerData.title}
-                </div>
-              `,
+                            content: infoContent,
                         });
 
 

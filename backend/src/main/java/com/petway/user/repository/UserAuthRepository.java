@@ -25,4 +25,10 @@ public interface UserAuthRepository
             User user,
             AuthType authType
     );
+
+    Optional<UserAuth> findByUserAndAuthTypeAndProvider(
+            User user,
+            AuthType authType,
+            String provider
+    );
 }
