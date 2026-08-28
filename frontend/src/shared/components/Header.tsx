@@ -32,6 +32,10 @@ export default function Header() {
                         장소찾기
                     </NavLink>
 
+                    <NavLink to="/hospitals">
+                        동물병원
+                    </NavLink>
+
                     <span className="site-nav-disabled">
             여행코스
           </span>
