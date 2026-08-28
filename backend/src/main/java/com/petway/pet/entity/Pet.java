@@ -3,6 +3,7 @@ package com.petway.pet.entity;
 import com.petway.pet.enums.ActivityLevel;
 import com.petway.pet.enums.CrowdTolerance;
 import com.petway.pet.enums.PlacePreference;
+import com.petway.pet.enums.PetSizeType;
 import com.petway.pet.enums.SocialityLevel;
 import com.petway.user.entity.User;
 import jakarta.persistence.*;
@@ -68,6 +69,14 @@ public class Pet {
             scale = 2
     )
     private BigDecimal weightKg;
+
+
+    @Enumerated(EnumType.STRING)
+    @Column(
+            name = "size_type",
+            length = 20
+    )
+    private PetSizeType sizeType;
 
 
     @Enumerated(EnumType.STRING)
@@ -138,6 +147,7 @@ public class Pet {
             String breed,
             LocalDate birthDate,
             BigDecimal weightKg,
+            PetSizeType sizeType,
             ActivityLevel activityLevel,
             CrowdTolerance crowdTolerance,
             PlacePreference placePreference,
@@ -154,6 +164,7 @@ public class Pet {
         pet.breed = breed;
         pet.birthDate = birthDate;
         pet.weightKg = weightKg;
+        pet.sizeType = sizeType;
         pet.activityLevel = activityLevel;
         pet.crowdTolerance = crowdTolerance;
         pet.placePreference = placePreference;
@@ -174,6 +185,7 @@ public class Pet {
             String breed,
             LocalDate birthDate,
             BigDecimal weightKg,
+            PetSizeType sizeType,
             ActivityLevel activityLevel,
             CrowdTolerance crowdTolerance,
             PlacePreference placePreference,
@@ -186,6 +198,7 @@ public class Pet {
         this.breed = breed;
         this.birthDate = birthDate;
         this.weightKg = weightKg;
+        this.sizeType = sizeType;
         this.activityLevel = activityLevel;
         this.crowdTolerance = crowdTolerance;
         this.placePreference = placePreference;
