@@ -5,6 +5,7 @@ import com.petway.pet.enums.CrowdTolerance;
 import com.petway.pet.enums.PlacePreference;
 import com.petway.pet.enums.PetSizeType;
 import com.petway.pet.enums.SocialityLevel;
+import com.petway.pet.enums.DogBreed;
 import com.petway.user.entity.User;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -55,7 +56,14 @@ public class Pet {
             name = "breed",
             length = 100
     )
-    private String breed;
+    private String breedDetail;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "breed_type", length = 50)
+    private DogBreed breed;
+
+    @Column(name = "animal_registered")
+    private Boolean animalRegistered;
 
 
     @Column(name = "birth_date")
@@ -144,7 +152,9 @@ public class Pet {
     public static Pet create(
             User user,
             String petName,
-            String breed,
+            String breedDetail,
+            DogBreed breed,
+            Boolean animalRegistered,
             LocalDate birthDate,
             BigDecimal weightKg,
             PetSizeType sizeType,
@@ -161,7 +171,9 @@ public class Pet {
 
         pet.user = user;
         pet.petName = petName;
+        pet.breedDetail = breedDetail;
         pet.breed = breed;
+        pet.animalRegistered = animalRegistered;
         pet.birthDate = birthDate;
         pet.weightKg = weightKg;
         pet.sizeType = sizeType;
@@ -182,7 +194,9 @@ public class Pet {
 
     public void update(
             String petName,
-            String breed,
+            String breedDetail,
+            DogBreed breed,
+            Boolean animalRegistered,
             LocalDate birthDate,
             BigDecimal weightKg,
             PetSizeType sizeType,
@@ -195,7 +209,9 @@ public class Pet {
     ) {
 
         this.petName = petName;
+        this.breedDetail = breedDetail;
         this.breed = breed;
+        this.animalRegistered = animalRegistered;
         this.birthDate = birthDate;
         this.weightKg = weightKg;
         this.sizeType = sizeType;

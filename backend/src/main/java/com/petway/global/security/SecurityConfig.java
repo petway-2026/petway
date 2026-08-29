@@ -80,6 +80,7 @@ public class SecurityConfig {
                                         "/api/auth/signup",
                                         "/api/auth/login",
                                         "/api/auth/oauth/kakao/link",
+                                        "/api/places/**",
 
                                         "/oauth2/**",
                                         "/login/oauth2/**",
