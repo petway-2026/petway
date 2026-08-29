@@ -7,6 +7,7 @@ import com.petway.external.tour.exception.TourApiErrorType;
 import com.petway.external.tour.exception.TourApiException;
 import com.petway.place.model.PlaceSearchResult;
 import com.petway.place.model.PlaceSummary;
+import com.petway.place.model.PlacePetDetail;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -51,6 +52,29 @@ public class TourPlaceMapper {
                 body.totalCount(),
                 places
         );
+    }
+
+    public PlacePetDetail toPlacePetDetail(TourApiResponse apiResponse) {
+        TourApiResponse.Response response = requireResponse(apiResponse);
+        if (response.header() == null || !SUCCESS_RESULT_CODE.equals(response.header().resultCode())) {
+            throw new TourApiException(TourApiErrorType.API_ERROR, "반려동물 동반 상세정보를 불러오지 못했습니다.");
+        }
+        JsonNode items = response.body() == null ? null : response.body().items();
+        JsonNode item = items == null ? null : items.get("item");
+        if (item != null && item.isArray()) item = item.path(0);
+        if (item == null || !item.isObject()) throw invalidResponse();
+
+        return new PlacePetDetail(
+                textOrNull(item, "acmpyTypeCd"),
+                textOrNull(item, "acmpyPsblCpam"),
+                textOrNull(item, "acmpyNeedMtr"),
+                textOrNull(item, "etcAcmpyInfo"),
+                textOrNull(item, "relaAcdntRiskMtr")
+        );
+    }
+
+    private String textOrNull(JsonNode item, String field) {
+        return blankToNull(item.path(field).asText(null));
     }
 
     private TourApiResponse.Response requireResponse(TourApiResponse apiResponse) {

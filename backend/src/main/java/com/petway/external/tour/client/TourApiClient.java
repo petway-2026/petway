@@ -7,6 +7,8 @@ import com.petway.external.tour.exception.TourApiException;
 import com.petway.external.tour.mapper.TourPlaceMapper;
 import com.petway.place.model.PlaceSearchCondition;
 import com.petway.place.model.PlaceSearchResult;
+import com.petway.place.model.NearbyPlaceSearchCondition;
+import com.petway.place.model.PlacePetDetail;
 import com.petway.place.port.TourPlaceGateway;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.slf4j.Logger;
@@ -98,6 +100,87 @@ public class TourApiClient implements TourPlaceGateway {
                     "관광정보 제공기관에 연결할 수 없습니다.",
                     e
             );
+        }
+    }
+
+    @Override
+    public PlaceSearchResult searchNearby(NearbyPlaceSearchCondition condition) {
+        validateConfiguration();
+
+        try {
+            TourApiResponse response = tourApiRestClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/locationBasedList2")
+                            .queryParam("serviceKey", "{serviceKey}")
+                            .queryParam("MobileOS", properties.mobileOs())
+                            .queryParam("MobileApp", properties.mobileApp())
+                            .queryParam("_type", "json")
+                            .queryParam("numOfRows", condition.size())
+                            .queryParam("pageNo", 1)
+                            .queryParam("arrange", "E")
+                            .queryParam("mapX", condition.longitude())
+                            .queryParam("mapY", condition.latitude())
+                            .queryParam("radius", condition.radius())
+                            .build(properties.serviceKey()))
+                    .retrieve()
+                    .body(TourApiResponse.class);
+
+            return tourPlaceMapper.toPlaceSearchResult(response);
+        } catch (ResourceAccessException e) {
+            if (hasTimeoutCause(e)) {
+                throw new TourApiException(
+                        TourApiErrorType.TIMEOUT,
+                        "주변 반려동물 동반 장소 조회 시간이 초과되었습니다.",
+                        e
+                );
+            }
+            throw new TourApiException(
+                    TourApiErrorType.CONNECTION,
+                    "반려동물 관광정보 제공기관에 연결할 수 없습니다.",
+                    e
+            );
+        } catch (RestClientResponseException e) {
+            log.warn("Tour API nearby request failed: status={}", e.getStatusCode());
+            throw new TourApiException(
+                    TourApiErrorType.HTTP_ERROR,
+                    "주변 반려동물 동반 장소 조회에 실패했습니다.",
+                    e
+            );
+        } catch (TourApiException e) {
+            throw e;
+        } catch (RestClientException e) {
+            throw new TourApiException(
+                    TourApiErrorType.CONNECTION,
+                    "반려동물 관광정보 제공기관에 연결할 수 없습니다.",
+                    e
+            );
+        }
+    }
+
+    @Override
+    public PlacePetDetail getPetDetail(String contentId) {
+        validateConfiguration();
+        try {
+            TourApiResponse response = tourApiRestClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/detailPetTour2")
+                            .queryParam("serviceKey", "{serviceKey}")
+                            .queryParam("MobileOS", properties.mobileOs())
+                            .queryParam("MobileApp", properties.mobileApp())
+                            .queryParam("_type", "json")
+                            .queryParam("contentId", contentId)
+                            .build(properties.serviceKey()))
+                    .retrieve()
+                    .body(TourApiResponse.class);
+            return tourPlaceMapper.toPlacePetDetail(response);
+        } catch (TourApiException e) {
+            throw e;
+        } catch (RestClientResponseException e) {
+            throw new TourApiException(TourApiErrorType.HTTP_ERROR, "반려동물 동반 상세정보 조회에 실패했습니다.", e);
+        } catch (ResourceAccessException e) {
+            throw new TourApiException(TourApiErrorType.CONNECTION, "반려동물 관광정보 제공기관에 연결할 수 없습니다.", e);
+        } catch (RestClientException e) {
+            throw new TourApiException(TourApiErrorType.CONNECTION, "반려동물 관광정보 제공기관에 연결할 수 없습니다.", e);
         }
     }
 

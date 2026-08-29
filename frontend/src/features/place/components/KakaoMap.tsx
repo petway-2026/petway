@@ -23,6 +23,7 @@ interface KakaoMapProps {
     center: MapCenter;
     level?: number;
     markers?: MapMarker[];
+    onCenterChange?: (center: MapCenter) => void;
 }
 
 
@@ -30,6 +31,7 @@ export default function KakaoMap({
                                      center,
                                      level = 5,
                                      markers = [],
+                                     onCenterChange,
                                  }: KakaoMapProps) {
 
     const mapContainerRef =
@@ -186,6 +188,24 @@ export default function KakaoMap({
 
         mapRef.current.setLevel(level);
     }, [mapReady, level]);
+
+    useEffect(() => {
+        if (!mapRef.current || !window.kakao || !onCenterChange) return;
+
+        const map = mapRef.current;
+        const handleIdle = () => {
+            const nextCenter = map.getCenter();
+            onCenterChange({
+                latitude: nextCenter.getLat(),
+                longitude: nextCenter.getLng(),
+            });
+        };
+
+        window.kakao.maps.event.addListener(map, "idle", handleIdle);
+        return () => {
+            window.kakao.maps.event.removeListener(map, "idle", handleIdle);
+        };
+    }, [mapReady, onCenterChange]);
 
 
     /*

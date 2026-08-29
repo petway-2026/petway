@@ -199,6 +199,27 @@
     height: 100%;
 }
 
+.nearby-search-area-button {
+    position: absolute;
+    top: 18px;
+    left: 50%;
+    z-index: 20;
+    width: auto;
+    height: auto;
+    transform: translateX(-50%);
+    padding: 10px 16px;
+    border: 1px solid var(--pw-green, #526f5d);
+    border-radius: 999px;
+    background: var(--pw-white, #fffdfa);
+    color: var(--pw-green, #526f5d);
+    box-shadow: 0 8px 24px rgba(23, 29, 25, 0.18);
+    font-size: 13px;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.nearby-search-area-button:disabled { cursor: wait; opacity: 0.6; }
+
 
 /* =========================
    MAP STATUS
@@ -319,6 +340,104 @@
     text-decoration: underline;
 }
 
+.nearby-location-refresh:disabled { cursor: wait; opacity: 0.55; }
+
+.nearby-place-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 18px;
+    margin-top: 14px;
+}
+
+.nearby-place-card {
+    display: grid;
+    grid-template-columns: 190px minmax(0, 1fr);
+    overflow: hidden;
+    border: 1px solid var(--pw-line, #cfd5cf);
+    border-radius: 18px;
+    background: var(--pw-white, #fffdfa);
+    box-shadow: 0 12px 32px rgba(23, 29, 25, 0.06);
+}
+
+.nearby-place-image {
+    display: grid;
+    height: 100%;
+    min-height: 160px;
+    place-items: center;
+    overflow: hidden;
+    background: #e9eee9;
+    color: var(--pw-green, #526f5d);
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+}
+
+.nearby-place-image img { width: 100%; height: 100%; object-fit: cover; }
+.nearby-place-body { padding: 16px 18px; }
+
+.nearby-place-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 24px;
+}
+
+.nearby-radius-label {
+    display: inline-flex;
+    align-items: center;
+    padding: 9px 2px;
+    color: var(--pw-muted, #7d837e);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.nearby-place-filters button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 9px 13px;
+    border: 1px solid var(--pw-line, #cfd5cf);
+    border-radius: 999px;
+    background: var(--pw-white, #fffdfa);
+    color: var(--pw-muted, #7d837e);
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.nearby-place-filters button span { opacity: 0.65; }
+.nearby-place-filters button.active { border-color: var(--pw-green, #526f5d); background: var(--pw-green, #526f5d); color: #fff; }
+
+.nearby-place-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    color: var(--pw-green, #526f5d);
+    font-size: 12px;
+}
+
+.nearby-place-meta strong { flex-shrink: 0; }
+.nearby-place-body h3 { margin: 7px 0 5px; color: var(--pw-black, #171d19); font-size: 17px; line-height: 1.35; }
+.nearby-place-body p { margin: 0 0 8px; color: var(--pw-muted, #7d837e); font-size: 13px; line-height: 1.5; }
+.nearby-place-body small { color: var(--pw-muted, #7d837e); font-size: 11px; }
+
+.nearby-detail-button {
+    width: auto;
+    margin-top: 10px;
+    padding: 7px 11px;
+    border: 1px solid var(--pw-line, #cfd5cf);
+    border-radius: 10px;
+    background: transparent;
+    color: var(--pw-green, #526f5d);
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.nearby-pet-detail { margin: 14px 0 0; padding-top: 12px; border-top: 1px solid var(--pw-line, #cfd5cf); }
+.nearby-pet-detail dt { margin-top: 9px; color: var(--pw-black, #171d19); font-size: 12px; font-weight: 800; }
+.nearby-pet-detail dd { margin: 3px 0 0; color: var(--pw-muted, #7d837e); font-size: 12px; line-height: 1.5; }
+
 
 /* =========================
    RESPONSIVE
@@ -327,6 +446,10 @@
 @media (
 max-width: 768px
 ) {
+
+    .nearby-place-card {
+        grid-template-columns: 160px minmax(0, 1fr);
+    }
 
     .nearby-section {
         padding:
@@ -382,6 +505,19 @@ max-width: 768px
 @media (
 max-width: 480px
 ) {
+
+    .nearby-place-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .nearby-place-card {
+        display: block;
+    }
+
+    .nearby-place-image {
+        height: 160px;
+        min-height: 0;
+    }
 
     .nearby-section {
         padding:

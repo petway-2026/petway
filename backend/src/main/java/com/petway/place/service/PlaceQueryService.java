@@ -3,6 +3,9 @@ package com.petway.place.service;
 import com.petway.place.dto.PlaceSearchRequest;
 import com.petway.place.dto.PlaceSearchResponse;
 import com.petway.place.dto.PlaceSummaryResponse;
+import com.petway.place.dto.NearbyPlaceSearchRequest;
+import com.petway.place.model.NearbyPlaceSearchCondition;
+import com.petway.place.dto.PlacePetDetailResponse;
 import com.petway.place.model.PlaceSearchCondition;
 import com.petway.place.model.PlaceSearchResult;
 import com.petway.place.port.TourPlaceGateway;
@@ -24,7 +27,32 @@ public class PlaceQueryService {
                 request.getSize()
         );
 
-        PlaceSearchResult result = tourPlaceGateway.searchByArea(condition);
+        return toResponse(tourPlaceGateway.searchByArea(condition));
+    }
+
+    public PlaceSearchResponse searchNearby(NearbyPlaceSearchRequest request) {
+        NearbyPlaceSearchCondition condition = new NearbyPlaceSearchCondition(
+                request.getLatitude(),
+                request.getLongitude(),
+                request.getRadius(),
+                request.getSize()
+        );
+
+        return toResponse(tourPlaceGateway.searchNearby(condition));
+    }
+
+    public PlacePetDetailResponse getPetDetail(String contentId) {
+        var detail = tourPlaceGateway.getPetDetail(contentId);
+        return new PlacePetDetailResponse(
+                detail.accompanimentType(),
+                detail.allowedCapacity(),
+                detail.requiredItems(),
+                detail.additionalInformation(),
+                detail.safetyNotice()
+        );
+    }
+
+    private PlaceSearchResponse toResponse(PlaceSearchResult result) {
 
         return new PlaceSearchResponse(
                 result.page(),
