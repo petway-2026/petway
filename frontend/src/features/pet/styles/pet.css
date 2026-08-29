@@ -909,6 +909,105 @@
     }
 }
 
+/* 현재 PetForm의 직접 자식 필드에도 동일한 폼 스타일을 적용합니다. */
+.pet-form-card > div {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+.pet-form-card > div > label {
+    color: var(--color-text);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.pet-form-card > div > input,
+.pet-form-card > div > select {
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 48px;
+    padding: 0 14px;
+    border: 1px solid var(--color-border-dark);
+    border-radius: 14px;
+    background-color: var(--color-white);
+    color: var(--color-text);
+    font: inherit;
+    outline: none;
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.pet-form-card > div > select {
+    appearance: none;
+    padding-right: 42px;
+    background-image: linear-gradient(45deg, transparent 50%, #718078 50%), linear-gradient(135deg, #718078 50%, transparent 50%);
+    background-position: calc(100% - 19px) 21px, calc(100% - 14px) 21px;
+    background-size: 5px 5px, 5px 5px;
+    background-repeat: no-repeat;
+}
+
+.pet-form-card > div > input:hover,
+.pet-form-card > div > select:hover { border-color: #aac2b0; }
+
+.pet-form-card > div > input:focus,
+.pet-form-card > div > select:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 4px rgba(79, 138, 102, 0.1);
+}
+
+.pet-breed-selected {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 48px;
+    padding: 0 10px 0 14px;
+    border: 1px solid var(--color-border-dark);
+    border-radius: 14px;
+    background: var(--color-white);
+}
+
+.pet-breed-selected strong { color: var(--color-text); font-size: 14px; }
+.pet-breed-selected button {
+    padding: 7px 11px;
+    border: 0;
+    border-radius: 9px;
+    background: rgba(79, 138, 102, 0.1);
+    color: var(--color-primary);
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.pet-breed-results {
+    overflow-y: auto;
+    max-height: 260px;
+    padding: 6px;
+    border: 1px solid var(--color-border-dark);
+    border-radius: 14px;
+    background: var(--color-white);
+}
+
+.pet-breed-results button {
+    display: block;
+    width: 100%;
+    padding: 11px 12px;
+    border: 0;
+    border-radius: 9px;
+    background: transparent;
+    color: var(--color-text);
+    text-align: left;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.pet-breed-results button:hover,
+.pet-breed-results button:focus-visible {
+    background: rgba(79, 138, 102, 0.1);
+    color: var(--color-primary);
+    outline: none;
+}
+
 .pet-size-guidance {
     margin: 8px 0 0;
     color: var(--color-text-muted);

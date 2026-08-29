@@ -466,6 +466,8 @@ class CompatibilityEvaluatorTest {
                 "두부",
                 null,
                 null,
+                null,
+                null,
                 weightKg == null ? null : new BigDecimal(weightKg),
                 sizeType,
                 null,
