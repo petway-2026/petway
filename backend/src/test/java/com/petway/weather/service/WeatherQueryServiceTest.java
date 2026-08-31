@@ -17,6 +17,7 @@ import java.time.ZoneId;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -33,14 +34,19 @@ class WeatherQueryServiceTest {
     private WeatherForecastGateway gateway;
 
     private WeatherQueryService service;
+    private Clock clock;
 
     @BeforeEach
     void setUp() {
-        Clock clock = Clock.fixed(
+        clock = Clock.fixed(
                 Instant.parse("2026-08-28T03:00:00Z"),
                 ZoneId.of("Asia/Seoul")
         );
-        service = new WeatherQueryService(gateway, clock);
+        service = new WeatherQueryService(
+                gateway,
+                clock,
+                new WeatherForecastCache(clock)
+        );
     }
 
     @Test
@@ -103,6 +109,74 @@ class WeatherQueryServiceTest {
 
         verify(gateway).getMidTerm(WeatherRegion.SEOUL_INCHEON_GYEONGGI, targetDate);
         verifyNoMoreInteractions(gateway);
+    }
+
+    @Test
+    void reusesSuccessfulForecastWithinCacheTtl() {
+        LocalDate targetDate = TODAY.plusDays(1);
+        WeatherForecast forecast = forecast(targetDate, ForecastType.SHORT_TERM);
+        when(gateway.getShortTerm(
+                LATITUDE,
+                LONGITUDE,
+                targetDate,
+                WeatherRegion.SEOUL_INCHEON_GYEONGGI
+        )).thenReturn(forecast);
+
+        var first = service.getForecast(
+                LATITUDE,
+                LONGITUDE,
+                targetDate,
+                WeatherRegion.SEOUL_INCHEON_GYEONGGI
+        );
+        var second = service.getForecast(
+                LATITUDE,
+                LONGITUDE,
+                targetDate,
+                WeatherRegion.SEOUL_INCHEON_GYEONGGI
+        );
+
+        assertThat(second).isSameAs(first);
+        verify(gateway).getShortTerm(
+                LATITUDE,
+                LONGITUDE,
+                targetDate,
+                WeatherRegion.SEOUL_INCHEON_GYEONGGI
+        );
+        verifyNoMoreInteractions(gateway);
+    }
+
+    @Test
+    void doesNotCacheProviderFailure() {
+        LocalDate targetDate = TODAY.plusDays(1);
+        when(gateway.getShortTerm(
+                LATITUDE,
+                LONGITUDE,
+                targetDate,
+                WeatherRegion.SEOUL_INCHEON_GYEONGGI
+        ))
+                .thenThrow(new WeatherProviderException("일시 실패"))
+                .thenReturn(forecast(targetDate, ForecastType.SHORT_TERM));
+
+        assertThatThrownBy(() -> service.getForecast(
+                LATITUDE,
+                LONGITUDE,
+                targetDate,
+                WeatherRegion.SEOUL_INCHEON_GYEONGGI
+        )).isInstanceOf(WeatherProviderException.class);
+
+        service.getForecast(
+                LATITUDE,
+                LONGITUDE,
+                targetDate,
+                WeatherRegion.SEOUL_INCHEON_GYEONGGI
+        );
+
+        verify(gateway, times(2)).getShortTerm(
+                LATITUDE,
+                LONGITUDE,
+                targetDate,
+                WeatherRegion.SEOUL_INCHEON_GYEONGGI
+        );
     }
 
     @Test

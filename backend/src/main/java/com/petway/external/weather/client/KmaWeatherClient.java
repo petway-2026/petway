@@ -8,6 +8,7 @@ import com.petway.external.weather.dto.KmaShortForecastItem;
 import com.petway.external.weather.mapper.KmaGridConverter;
 import com.petway.external.weather.mapper.KmaSeasonalOutlookParser;
 import com.petway.external.weather.mapper.KmaWeatherMapper;
+import com.petway.external.weather.mapper.SeasonalOutlookUnavailableException;
 import com.petway.weather.domain.WeatherForecast;
 import com.petway.weather.domain.WeatherRegion;
 import com.petway.weather.port.WeatherForecastGateway;
@@ -130,7 +131,13 @@ public class KmaWeatherClient implements WeatherForecastGateway {
 
         KmaMidLandItem land = first(getMidLand(region, base));
         KmaMidTemperatureItem temperature = first(getMidTemperature(region, base));
-        return mapper.mapMidTerm(land, temperature, region, targetDate, forecastDay, base);
+        try {
+            return mapper.mapMidTerm(land, temperature, region, targetDate, forecastDay, base);
+        } catch (IllegalStateException exception) {
+            throw new WeatherForecastUnavailableException(
+                    "요청한 여행일(" + targetDate + ")의 중기예보 항목이 아직 완전하게 제공되지 않았습니다."
+            );
+        }
     }
 
     @Override
@@ -154,8 +161,10 @@ public class KmaWeatherClient implements WeatherForecastGateway {
             return seasonalParser.parse(xml, region, targetDate);
         } catch (WeatherProviderException exception) {
             throw exception;
-        } catch (IllegalStateException exception) {
+        } catch (SeasonalOutlookUnavailableException exception) {
             throw new WeatherForecastUnavailableException(exception.getMessage());
+        } catch (IllegalStateException exception) {
+            throw new WeatherProviderException("기상청 3개월 전망 응답 형식이 올바르지 않습니다.", exception);
         } catch (ResourceAccessException exception) {
             throw providerAccessException("기상청 3개월 전망 호출", exception);
         } catch (RestClientException exception) {

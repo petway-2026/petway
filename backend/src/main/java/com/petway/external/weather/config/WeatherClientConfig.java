@@ -6,17 +6,16 @@ import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
 
 import java.time.Clock;
-import java.time.Duration;
 import java.time.ZoneId;
 
 @Configuration
 public class WeatherClientConfig {
 
     @Bean
-    public RestClient weatherRestClient() {
+    public RestClient weatherRestClient(WeatherApiProperties properties) {
         SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
-        requestFactory.setConnectTimeout(Duration.ofSeconds(3));
-        requestFactory.setReadTimeout(Duration.ofSeconds(5));
+        requestFactory.setConnectTimeout(properties.getTimeout().getConnectTimeout());
+        requestFactory.setReadTimeout(properties.getTimeout().getReadTimeout());
         return RestClient.builder()
                 .requestFactory(requestFactory)
                 .build();

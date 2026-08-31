@@ -35,7 +35,9 @@ public class KmaSeasonalOutlookParser {
                     YearMonth.from(targetDate)
             ));
             if (month < 1 || month > 3) {
-                throw new IllegalStateException("요청한 달의 3개월 전망이 아직 제공되지 않았습니다.");
+                throw new SeasonalOutlookUnavailableException(
+                        "요청한 달의 3개월 전망이 아직 제공되지 않았습니다."
+                );
             }
 
             Element temperatureRegion = regionElement(
@@ -68,7 +70,7 @@ public class KmaSeasonalOutlookParser {
                     announcedAt,
                     "특정 날짜의 날씨가 아닌 해당 월의 기온·강수량 확률 전망입니다."
             );
-        } catch (IllegalStateException exception) {
+        } catch (SeasonalOutlookUnavailableException exception) {
             throw exception;
         } catch (Exception exception) {
             throw new IllegalStateException("3개월 전망 응답 형식을 해석할 수 없습니다.", exception);

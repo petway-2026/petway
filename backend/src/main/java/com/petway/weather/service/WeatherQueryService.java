@@ -19,6 +19,7 @@ public class WeatherQueryService {
 
     private final WeatherForecastGateway weatherForecastGateway;
     private final Clock weatherClock;
+    private final WeatherForecastCache weatherForecastCache;
 
     public WeatherForecastResponse getForecast(
             double latitude,
@@ -43,6 +44,16 @@ public class WeatherQueryService {
             throw new IllegalArgumentException("날씨 전망은 오늘부터 90일 이내만 조회할 수 있습니다.");
         }
 
+        WeatherForecastResponse cached = weatherForecastCache.get(
+                latitude,
+                longitude,
+                targetDate,
+                region
+        ).orElse(null);
+        if (cached != null) {
+            return cached;
+        }
+
         WeatherForecast forecast;
         if (days <= 3) {
             forecast = weatherForecastGateway.getShortTerm(latitude, longitude, targetDate, region);
@@ -51,7 +62,9 @@ public class WeatherQueryService {
                     ? weatherForecastGateway.getMidTerm(region, targetDate)
                     : weatherForecastGateway.getSeasonalOutlook(region, targetDate);
         }
-        return WeatherForecastResponse.from(forecast);
+        WeatherForecastResponse response = WeatherForecastResponse.from(forecast);
+        weatherForecastCache.put(latitude, longitude, targetDate, region, response);
+        return response;
     }
 
     private void validateCoordinates(double latitude, double longitude) {

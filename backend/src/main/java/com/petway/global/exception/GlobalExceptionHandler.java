@@ -5,6 +5,8 @@ import com.petway.external.tour.exception.TourApiException;
 import com.petway.weather.service.WeatherForecastUnavailableException;
 import com.petway.weather.service.WeatherProviderException;
 import com.petway.weather.service.WeatherProviderTimeoutException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
@@ -21,6 +23,8 @@ import java.util.Map;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
     @ExceptionHandler(WeatherForecastUnavailableException.class)
     public ResponseEntity<?> handleWeatherUnavailable(WeatherForecastUnavailableException e) {
         return ResponseEntity
@@ -30,6 +34,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(WeatherProviderTimeoutException.class)
     public ResponseEntity<?> handleWeatherProviderTimeout(WeatherProviderTimeoutException e) {
+        log.warn("Weather provider timeout: {}", e.getMessage());
         return ResponseEntity
                 .status(HttpStatus.GATEWAY_TIMEOUT)
                 .body(Map.of("message", "기상청 날씨 정보 응답 시간이 초과되었습니다."));
@@ -37,6 +42,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(WeatherProviderException.class)
     public ResponseEntity<?> handleWeatherProvider(WeatherProviderException e) {
+        log.warn("Weather provider failure: {}", e.getMessage());
         return ResponseEntity
                 .status(HttpStatus.BAD_GATEWAY)
                 .body(Map.of("message", "기상청 날씨 정보 호출에 실패했습니다."));

@@ -62,6 +62,8 @@ public class KmaWeatherMapper {
                 .findFirst()
                 .orElseGet(() -> skyCondition(targetItems));
 
+        validateDailyForecast(minimum, maximum, rainProbability, condition);
+
         return new WeatherForecast(
                 targetDate,
                 ForecastType.SHORT_TERM,
@@ -87,14 +89,20 @@ public class KmaWeatherMapper {
             int forecastDay,
             LocalDateTime announcedAt
     ) {
+        Double minimum = temperature.minimumTemperature(forecastDay);
+        Double maximum = temperature.maximumTemperature(forecastDay);
+        Integer rainProbability = land.rainProbability(forecastDay);
+        WeatherCondition condition = descriptionCondition(land.weatherDescription(forecastDay));
+        validateDailyForecast(minimum, maximum, rainProbability, condition);
+
         return new WeatherForecast(
                 targetDate,
                 ForecastType.MID_TERM,
                 region.getDisplayName(),
-                temperature.minimumTemperature(forecastDay),
-                temperature.maximumTemperature(forecastDay),
-                land.rainProbability(forecastDay),
-                descriptionCondition(land.weatherDescription(forecastDay)),
+                minimum,
+                maximum,
+                rainProbability,
+                condition,
                 null,
                 null,
                 null,
@@ -102,6 +110,21 @@ public class KmaWeatherMapper {
                 announcedAt,
                 "중기예보의 지역 대표 지점 기온과 권역 날씨입니다."
         );
+    }
+
+    private void validateDailyForecast(
+            Double minimum,
+            Double maximum,
+            Integer rainProbability,
+            WeatherCondition condition
+    ) {
+        if (minimum == null
+                || maximum == null
+                || rainProbability == null
+                || condition == null
+                || condition == WeatherCondition.UNKNOWN) {
+            throw new IllegalStateException("예보에 필요한 기온, 강수확률 또는 날씨 상태가 누락되었습니다.");
+        }
     }
 
     public LocalDateTime announcedAt(String baseDate, String baseTime) {

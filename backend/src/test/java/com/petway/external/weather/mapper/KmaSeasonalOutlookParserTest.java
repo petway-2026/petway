@@ -9,6 +9,7 @@ import java.time.LocalDate;
 import java.nio.charset.StandardCharsets;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class KmaSeasonalOutlookParserTest {
 
@@ -80,5 +81,30 @@ class KmaSeasonalOutlookParserTest {
         assertThat(forecast.regionName()).isEqualTo("전북자치도");
         assertThat(forecast.temperatureOutlook()).isEqualTo(OutlookLevel.MIXED);
         assertThat(forecast.precipitationOutlook()).isEqualTo(OutlookLevel.NEAR_NORMAL);
+    }
+
+    @Test
+    void distinguishesUnavailableTargetMonthFromInvalidXml() {
+        String fixture = """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <rss><channel><item><description>
+                  <header><ydate>2026년 8월 24일 11시</ydate></header>
+                </description></item></channel></rss>
+                """;
+
+        assertThatThrownBy(() -> parser.parse(
+                fixture.getBytes(StandardCharsets.UTF_8),
+                WeatherRegion.JEJU,
+                LocalDate.of(2026, 12, 1)
+        )).isInstanceOf(SeasonalOutlookUnavailableException.class);
+
+        assertThatThrownBy(() -> parser.parse(
+                "<not-closed>".getBytes(StandardCharsets.UTF_8),
+                WeatherRegion.JEJU,
+                LocalDate.of(2026, 9, 1)
+        ))
+                .isInstanceOf(IllegalStateException.class)
+                .isNotInstanceOf(SeasonalOutlookUnavailableException.class)
+                .hasMessageContaining("형식");
     }
 }

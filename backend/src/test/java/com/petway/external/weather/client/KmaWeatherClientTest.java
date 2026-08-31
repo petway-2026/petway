@@ -127,6 +127,27 @@ class KmaWeatherClientTest {
     }
 
     @Test
+    void returnsUnavailableWhenMidTermFieldsAreIncomplete() {
+        server.expect(requestTo(containsString("/getMidLandFcst")))
+                .andRespond(withSuccess(midResponse("""
+                        {"regId":"11B00000","rnSt5Am":30,"rnSt5Pm":60}
+                        """), MediaType.APPLICATION_JSON));
+        server.expect(requestTo(containsString("/getMidTa")))
+                .andRespond(withSuccess(midResponse("""
+                        {"regId":"11B10101","taMin5":21,"taMax5":28}
+                        """), MediaType.APPLICATION_JSON));
+
+        assertThatThrownBy(() -> client.getMidTerm(
+                WeatherRegion.SEOUL_INCHEON_GYEONGGI,
+                LocalDate.of(2026, 9, 2)
+        ))
+                .isInstanceOf(WeatherForecastUnavailableException.class)
+                .hasMessageContaining("완전하게");
+
+        server.verify();
+    }
+
+    @Test
     void returnsUnavailableForDayTenBeforeNewMidTermForecastIsPublished() {
         KmaWeatherClient beforeMorningIssue = newClient(
                 restClient,
@@ -370,6 +391,40 @@ class KmaWeatherClientTest {
                 new KmaSeasonalOutlookParser(),
                 clock
         );
+    }
+
+    @Test
+    void treatsMissingSeasonalRssLinkAsProviderFailure() {
+        properties.setSeasonalGuideUrl("https://weather.test/seasonal-guide");
+        server.expect(requestTo("https://weather.test/seasonal-guide"))
+                .andRespond(withSuccess("<html><body>링크 없음</body></html>", MediaType.TEXT_HTML));
+
+        assertThatThrownBy(() -> client.getSeasonalOutlook(
+                WeatherRegion.SEOUL_INCHEON_GYEONGGI,
+                LocalDate.of(2026, 9, 15)
+        )).isInstanceOf(WeatherProviderException.class);
+
+        server.verify();
+    }
+
+    @Test
+    void treatsMalformedSeasonalXmlAsProviderFailure() {
+        properties.setSeasonalGuideUrl("https://weather.test/seasonal-guide");
+        String rssUrl = "https://www.kma.go.kr/repositary/xml/fct/mon/img/fct_mon3rss_108_20260824.xml";
+        server.expect(requestTo("https://weather.test/seasonal-guide"))
+                .andRespond(withSuccess(
+                        "<html><body><a href=\"" + rssUrl + "\">3개월전망 RSS</a></body></html>",
+                        MediaType.TEXT_HTML
+                ));
+        server.expect(requestTo(rssUrl))
+                .andRespond(withSuccess("<not-closed>", MediaType.APPLICATION_XML));
+
+        assertThatThrownBy(() -> client.getSeasonalOutlook(
+                WeatherRegion.SEOUL_INCHEON_GYEONGGI,
+                LocalDate.of(2026, 9, 15)
+        )).isInstanceOf(WeatherProviderException.class);
+
+        server.verify();
     }
 
     private Clock fixedClock(String instant) {
