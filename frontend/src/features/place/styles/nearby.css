@@ -459,6 +459,7 @@
 .nearby-pet-detail dd { margin: 3px 0 0; color: var(--pw-muted, #7d837e); font-size: 12px; line-height: 1.5; }
 
 .nearby-pet-detail-status,
+.nearby-pet-detail-empty,
 .nearby-pet-detail-error {
     margin-top: 14px;
     padding: 12px;
@@ -466,6 +467,10 @@
     color: var(--pw-muted, #7d837e);
     font-size: 12px;
     line-height: 1.5;
+}
+
+.nearby-pet-detail-empty {
+    margin-bottom: 0;
 }
 
 .nearby-pet-detail-error {

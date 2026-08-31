@@ -436,6 +436,13 @@ export default function NearbyPlacesSection({
                     {filteredPlaces.map((place) => {
                         const weatherSelected = selectedPlace?.contentId === place.contentId;
                         const detailExpanded = expandedPlaceId === place.contentId;
+                        const hasPetDetail = detail !== null && Boolean(
+                            detail.accompanimentType
+                            || detail.allowedCapacity
+                            || detail.requiredItems
+                            || detail.additionalInformation
+                            || detail.safetyNotice
+                        );
 
                         return (
                             <div
@@ -482,20 +489,19 @@ export default function NearbyPlacesSection({
                                                 </button>
                                             </div>
                                         )}
-                                        {detailExpanded && detail && !detailLoading && !detailError && (
+                                        {detailExpanded && detail && hasPetDetail && !detailLoading && !detailError && (
                                             <dl className="nearby-pet-detail">
                                                 {detail.accompanimentType && <><dt>동반 유형</dt><dd>{detail.accompanimentType}</dd></>}
-                                                {detail.allowedCapacity && <><dt>동반 가능 범위</dt><dd>{detail.allowedCapacity}</dd></>}
+                                                {detail.allowedCapacity && <><dt>동반 가능 동물</dt><dd>{detail.allowedCapacity}</dd></>}
                                                 {detail.requiredItems && <><dt>필요사항</dt><dd>{detail.requiredItems}</dd></>}
                                                 {detail.additionalInformation && <><dt>이용 안내</dt><dd>{detail.additionalInformation}</dd></>}
                                                 {detail.safetyNotice && <><dt>안전 유의사항</dt><dd>{detail.safetyNotice}</dd></>}
-                                                {!detail.accompanimentType
-                                                    && !detail.allowedCapacity
-                                                    && !detail.requiredItems
-                                                    && !detail.additionalInformation
-                                                    && !detail.safetyNotice
-                                                    && <dd>제공된 반려동물 동반 상세정보가 없습니다.</dd>}
                                             </dl>
+                                        )}
+                                        {detailExpanded && detail && !hasPetDetail && !detailLoading && !detailError && (
+                                            <p className="nearby-pet-detail-empty">
+                                                제공된 반려동물 동반 상세정보가 없습니다.
+                                            </p>
                                         )}
                                     </div>
 
