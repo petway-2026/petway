@@ -62,6 +62,8 @@ public class PlaceQueryService {
                         .map(place -> new PlaceSummaryResponse(
                                 place.contentId(),
                                 place.contentTypeId(),
+                                place.areaCode(),
+                                place.sigunguCode(),
                                 place.title(),
                                 place.address(),
                                 place.latitude(),

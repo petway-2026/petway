@@ -44,6 +44,8 @@ class PlaceControllerTest {
                         List.of(new PlaceSummaryResponse(
                                 "125266",
                                 "12",
+                                "1",
+                                "1",
                                 "경복궁",
                                 "서울특별시 종로구 사직로 161",
                                 null,
@@ -57,7 +59,9 @@ class PlaceControllerTest {
                         .param("contentTypeId", "12"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.page").value(1))
-                .andExpect(jsonPath("$.items[0].contentId").value("125266"));
+                .andExpect(jsonPath("$.items[0].contentId").value("125266"))
+                .andExpect(jsonPath("$.items[0].areaCode").value("1"))
+                .andExpect(jsonPath("$.items[0].sigunguCode").value("1"));
     }
 
     @Test

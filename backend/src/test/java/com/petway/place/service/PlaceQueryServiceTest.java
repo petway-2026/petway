@@ -45,6 +45,8 @@ class PlaceQueryServiceTest {
                         List.of(new PlaceSummary(
                                 "125266",
                                 "12",
+                                "1",
+                                "1",
                                 "경복궁",
                                 "서울특별시 종로구 사직로 161",
                                 new BigDecimal("37.5788222356"),
@@ -59,6 +61,8 @@ class PlaceQueryServiceTest {
         assertThat(response.size()).isEqualTo(10);
         assertThat(response.items()).extracting("contentId")
                 .containsExactly("125266");
+        assertThat(response.items().get(0).areaCode()).isEqualTo("1");
+        assertThat(response.items().get(0).sigunguCode()).isEqualTo("1");
 
         ArgumentCaptor<com.petway.place.model.PlaceSearchCondition> captor =
                 ArgumentCaptor.forClass(
