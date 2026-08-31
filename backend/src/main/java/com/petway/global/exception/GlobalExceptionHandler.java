@@ -2,6 +2,8 @@ package com.petway.global.exception;
 
 import com.petway.weather.service.WeatherForecastUnavailableException;
 import com.petway.weather.service.WeatherProviderException;
+import com.petway.external.tour.exception.TourApiErrorType;
+import com.petway.external.tour.exception.TourApiException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
@@ -32,6 +34,21 @@ public class GlobalExceptionHandler {
                 .body(Map.of("message", "기상청 날씨 정보 호출에 실패했습니다."));
     }
 
+    @ExceptionHandler(TourApiException.class)
+    public ResponseEntity<?> handleTourApiException(
+            TourApiException e
+    ) {
+        HttpStatus status = switch (e.getErrorType()) {
+            case CONFIGURATION -> HttpStatus.SERVICE_UNAVAILABLE;
+            case TIMEOUT -> HttpStatus.GATEWAY_TIMEOUT;
+            case CONNECTION, HTTP_ERROR, API_ERROR -> HttpStatus.BAD_GATEWAY;
+            case INVALID_RESPONSE -> HttpStatus.BAD_GATEWAY;
+        };
+
+        return ResponseEntity
+                .status(status)
+                .body(Map.of("message", e.getMessage()));
+    }
 
     /**
      * 중복 이메일 등

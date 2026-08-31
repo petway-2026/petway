@@ -49,7 +49,9 @@ public class PetService {
                 Pet.create(
                         user,
                         request.petName(),
+                        request.breedDetail(),
                         request.breed(),
+                        request.animalRegistered(),
                         request.birthDate(),
                         request.weightKg(),
                         request.sizeType(),
@@ -139,7 +141,9 @@ public class PetService {
 
         pet.update(
                 request.petName(),
+                request.breedDetail(),
                 request.breed(),
+                request.animalRegistered(),
                 request.birthDate(),
                 request.weightKg(),
                 request.sizeType(),

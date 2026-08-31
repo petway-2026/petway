@@ -6,6 +6,7 @@ import com.petway.pet.enums.CrowdTolerance;
 import com.petway.pet.enums.PlacePreference;
 import com.petway.pet.enums.PetSizeType;
 import com.petway.pet.enums.SocialityLevel;
+import com.petway.pet.enums.DogBreed;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -14,7 +15,10 @@ public record PetResponse(
 
         Long petId,
         String petName,
-        String breed,
+        String breedDetail,
+        DogBreed breed,
+        Boolean dangerousBreed,
+        Boolean animalRegistered,
         LocalDate birthDate,
         BigDecimal weightKg,
         PetSizeType sizeType,
@@ -38,7 +42,10 @@ public record PetResponse(
         return new PetResponse(
                 pet.getId(),
                 pet.getPetName(),
+                pet.getBreedDetail(),
                 pet.getBreed(),
+                pet.getBreed() == null ? null : pet.getBreed().isDangerous(),
+                pet.getAnimalRegistered(),
                 pet.getBirthDate(),
                 pet.getWeightKg(),
                 pet.getSizeType(),

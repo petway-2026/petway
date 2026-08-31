@@ -8,6 +8,9 @@ import {
     loadKakaoMap,
 } from "../utils/loadKakaoMap";
 
+import currentLocationMarkerUrl
+    from "../assets/current-location-marker.svg";
+
 import type {
     MapCenter,
     MapMarker,
@@ -22,6 +25,7 @@ interface KakaoMapProps {
     markers?: MapMarker[];
     selectedMarkerId?: MapMarker["id"] | null;
     onMarkerSelect?: (marker: MapMarker | null) => void;
+    onCenterChange?: (center: MapCenter) => void;
 }
 
 
@@ -31,6 +35,7 @@ export default function KakaoMap({
                                      markers = [],
                                      selectedMarkerId = null,
                                      onMarkerSelect,
+                                     onCenterChange,
                                  }: KakaoMapProps) {
 
     const mapContainerRef =
@@ -201,6 +206,24 @@ export default function KakaoMap({
         mapRef.current.setLevel(level);
     }, [mapReady, level]);
 
+    useEffect(() => {
+        if (!mapRef.current || !window.kakao || !onCenterChange) return;
+
+        const map = mapRef.current;
+        const handleIdle = () => {
+            const nextCenter = map.getCenter();
+            onCenterChange({
+                latitude: nextCenter.getLat(),
+                longitude: nextCenter.getLng(),
+            });
+        };
+
+        window.kakao.maps.event.addListener(map, "idle", handleIdle);
+        return () => {
+            window.kakao.maps.event.removeListener(map, "idle", handleIdle);
+        };
+    }, [mapReady, onCenterChange]);
+
 
     /*
      * marker 변경
@@ -250,11 +273,25 @@ export default function KakaoMap({
                         );
 
 
+                    const markerOptions: Record<string, unknown> = {
+                        position,
+                        map: mapRef.current,
+                    };
+
+                    if (markerData.kind === "current-location") {
+                        markerOptions.image =
+                            new kakao.maps.MarkerImage(
+                                currentLocationMarkerUrl,
+                                new kakao.maps.Size(32, 32),
+                                {
+                                    offset:
+                                        new kakao.maps.Point(16, 16),
+                                }
+                            );
+                    }
+
                     const marker =
-                        new kakao.maps.Marker({
-                            position,
-                            map: mapRef.current,
-                        });
+                        new kakao.maps.Marker(markerOptions);
 
 
                     /*

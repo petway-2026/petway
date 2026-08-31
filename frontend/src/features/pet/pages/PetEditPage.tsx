@@ -57,8 +57,14 @@ export default function PetEditPage() {
                         petName:
                         pet.petName,
 
+                        breedDetail:
+                            pet.breedDetail ?? "",
+
                         breed:
-                            pet.breed ?? "",
+                            pet.breed,
+
+                        animalRegistered:
+                            pet.animalRegistered,
 
                         birthDate:
                         pet.birthDate,
