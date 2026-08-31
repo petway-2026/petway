@@ -83,8 +83,13 @@ export async function searchNearbyPlaces(
     return response.json() as Promise<PlaceSearchResponse>;
 }
 
-export async function getPlacePetDetail(contentId: string): Promise<PlacePetDetail> {
-    const response = await fetch(`${API_URL}/api/places/${contentId}/pet-detail`);
+export async function getPlacePetDetail(
+    contentId: string,
+    signal?: AbortSignal
+): Promise<PlacePetDetail> {
+    const response = await fetch(`${API_URL}/api/places/${contentId}/pet-detail`, {
+        signal,
+    });
     if (!response.ok) throw new Error("반려동물 동반 상세정보를 불러오지 못했습니다.");
     return response.json() as Promise<PlacePetDetail>;
 }
