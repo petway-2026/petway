@@ -8,7 +8,10 @@ import {
     type PlaceSummary,
 } from "../api/placeApi";
 import KakaoMap from "./KakaoMap";
+import PlaceWeatherPanel from "./PlaceWeatherPanel";
 import type { MapCenter, MapMarker } from "../types/map";
+import type { SelectedPlace } from "../types/place";
+import { resolveWeatherRegion } from "../utils/resolveWeatherRegion";
 
 import "../styles/nearby.css";
 
@@ -59,10 +62,12 @@ function formatDistance(distance: number | null): string {
 
 interface NearbyPlacesSectionProps {
     showFullMapButton?: boolean;
+    enableWeatherSelection?: boolean;
 }
 
 export default function NearbyPlacesSection({
     showFullMapButton = true,
+    enableWeatherSelection = false,
 }: NearbyPlacesSectionProps) {
     const navigate = useNavigate();
     const [currentLocation, setCurrentLocation] = useState(DEFAULT_LOCATION);
@@ -74,6 +79,7 @@ export default function NearbyPlacesSection({
     const [places, setPlaces] = useState<PlaceSummary[]>([]);
     const [details, setDetails] = useState<Record<string, PlacePetDetail>>({});
     const [detailLoadingId, setDetailLoadingId] = useState<string | null>(null);
+    const [selectedPlace, setSelectedPlace] = useState<SelectedPlace | null>(null);
     const [selectedType, setSelectedType] = useState("all");
     const [locationLoading, setLocationLoading] = useState(false);
     const [locationMessage, setLocationMessage] = useState(
@@ -112,6 +118,7 @@ export default function NearbyPlacesSection({
                         - (distanceInMeters(location, right) ?? Number.MAX_VALUE)
                     );
                     setPlaces(sortedPlaces);
+                    setSelectedPlace(null);
                     setSelectedType("all");
                     setMapMoved(false);
                     setRadiusPolicy(policy);
@@ -159,6 +166,7 @@ export default function NearbyPlacesSection({
             );
             setSearchOrigin(location);
             setPlaces(sortedPlaces);
+            setSelectedPlace(null);
             setSelectedType("all");
             setMapMoved(false);
             setRadiusPolicy(policy);
@@ -194,8 +202,8 @@ export default function NearbyPlacesSection({
         [places, selectedType]
     );
 
-    const markers: MapMarker[] = [
-        ...(filteredPlaces
+    const markers = useMemo<MapMarker[]>(() => [
+        ...filteredPlaces
             .filter((place) => place.latitude !== null && place.longitude !== null)
             .map((place) => ({
                 id: place.contentId,
@@ -203,7 +211,7 @@ export default function NearbyPlacesSection({
                 latitude: place.latitude as number,
                 longitude: place.longitude as number,
                 kind: "place" as const,
-            }))),
+            })),
         ...(hasCurrentLocation ? [{
             id: "current",
             title: "현재 위치",
@@ -211,21 +219,71 @@ export default function NearbyPlacesSection({
             longitude: currentLocation.longitude,
             kind: "current-location" as const,
         }] : []),
-    ];
+    ], [currentLocation, filteredPlaces, hasCurrentLocation]);
 
-    const toggleDetail = async (contentId: string) => {
-        if (details[contentId]) {
-            setDetails((current) => {
-                const next = { ...current };
-                delete next[contentId];
-                return next;
-            });
+    const selectPlace = useCallback((place: PlaceSummary) => {
+        if (!enableWeatherSelection) return;
+        if (place.latitude === null || place.longitude === null) {
+            setSelectedPlace(null);
+            setLocationMessage("선택한 장소의 좌표 정보가 없어 날씨를 조회할 수 없어요.");
             return;
         }
+
+        const region = resolveWeatherRegion(place.areaCode, place.sigunguCode);
+        if (!region) {
+            setSelectedPlace(null);
+            setLocationMessage("선택한 장소의 지역 정보가 없어 날씨를 조회할 수 없어요.");
+            return;
+        }
+
+        setSelectedPlace({
+            id: place.contentId,
+            contentId: place.contentId,
+            contentTypeId: place.contentTypeId,
+            title: place.title,
+            address: place.address ?? "주소 정보가 제공되지 않습니다.",
+            latitude: place.latitude,
+            longitude: place.longitude,
+            kind: "place",
+            region,
+            thumbnailUrl: place.thumbnailUrl ?? undefined,
+        });
+    }, [enableWeatherSelection]);
+
+    const handleMarkerSelect = useCallback((marker: MapMarker | null) => {
+        if (!marker || marker.kind !== "place") {
+            setSelectedPlace(null);
+            return;
+        }
+
+        const place = places.find((candidate) => candidate.contentId === String(marker.id));
+        if (place) selectPlace(place);
+    }, [places, selectPlace]);
+
+    const closePlaceExpansion = (contentId: string) => {
+        setDetails((current) => {
+            const next = { ...current };
+            delete next[contentId];
+            return next;
+        });
+        if (selectedPlace?.contentId === contentId) {
+            setSelectedPlace(null);
+        }
+    };
+
+    const toggleDetail = async (place: PlaceSummary) => {
+        const { contentId } = place;
+
+        if (details[contentId]) {
+            closePlaceExpansion(contentId);
+            return;
+        }
+
         setDetailLoadingId(contentId);
         try {
             const detail = await getPlacePetDetail(contentId);
             setDetails((current) => ({ ...current, [contentId]: detail }));
+            selectPlace(place);
         } finally {
             setDetailLoadingId(null);
         }
@@ -254,6 +312,8 @@ export default function NearbyPlacesSection({
                         center={currentLocation}
                         markers={markers}
                         level={7}
+                        selectedMarkerId={selectedPlace?.id ?? null}
+                        onMarkerSelect={enableWeatherSelection ? handleMarkerSelect : undefined}
                         onCenterChange={handleMapCenterChange}
                     />
                     {mapMoved && (
@@ -290,7 +350,10 @@ export default function NearbyPlacesSection({
                         <button
                             type="button"
                             className={selectedType === "all" ? "active" : ""}
-                            onClick={() => setSelectedType("all")}
+                            onClick={() => {
+                                setSelectedType("all");
+                                setSelectedPlace(null);
+                            }}
                         >
                             전체 <span>{places.length}</span>
                         </button>
@@ -299,7 +362,10 @@ export default function NearbyPlacesSection({
                                 type="button"
                                 key={contentTypeId}
                                 className={selectedType === contentTypeId ? "active" : ""}
-                                onClick={() => setSelectedType(contentTypeId)}
+                                onClick={() => {
+                                    setSelectedType(contentTypeId);
+                                    setSelectedPlace(null);
+                                }}
                             >
                                 {CONTENT_TYPE_NAMES[contentTypeId] ?? "기타"}
                                 <span>{places.filter((place) => place.contentTypeId === contentTypeId).length}</span>
@@ -307,44 +373,60 @@ export default function NearbyPlacesSection({
                         ))}
                     </div>
                     <div className="nearby-place-grid">
-                    {filteredPlaces.map((place) => (
-                        <article className="nearby-place-card" key={place.contentId}>
-                            <div className="nearby-place-image">
-                                {place.thumbnailUrl ? (
-                                    <img src={place.thumbnailUrl} alt="" loading="lazy" />
-                                ) : (
-                                    <span>PetWay</span>
-                                )}
+                    {filteredPlaces.map((place) => {
+                        const weatherSelected = selectedPlace?.contentId === place.contentId;
+
+                        return (
+                            <div
+                                className="nearby-place-row"
+                                key={place.contentId}
+                            >
+                                <article className={weatherSelected ? "nearby-place-card has-weather" : "nearby-place-card"}>
+                                    <div className="nearby-place-image">
+                                        {place.thumbnailUrl ? (
+                                            <img src={place.thumbnailUrl} alt="" loading="lazy" />
+                                        ) : (
+                                            <span>PetWay</span>
+                                        )}
+                                    </div>
+                                    <div className="nearby-place-body">
+                                        <div className="nearby-place-meta">
+                                            <span>{CONTENT_TYPE_NAMES[place.contentTypeId] ?? "동반 장소"}</span>
+                                            <strong>{formatDistance(distanceInMeters(searchOrigin, place))}</strong>
+                                        </div>
+                                        <h3>{place.title}</h3>
+                                        <p>{place.address ?? "주소 정보가 제공되지 않습니다."}</p>
+                                        <small>한국관광공사 반려동물 동반여행 정보</small>
+                                        <button
+                                            type="button"
+                                            className="nearby-detail-button"
+                                            onClick={() => void toggleDetail(place)}
+                                            disabled={detailLoadingId === place.contentId}
+                                        >
+                                            {detailLoadingId === place.contentId
+                                                ? "불러오는 중…"
+                                                : details[place.contentId] ? "상세정보 닫기" : "동반 상세정보"}
+                                        </button>
+                                        {details[place.contentId] && (
+                                            <dl className="nearby-pet-detail">
+                                                {details[place.contentId].allowedCapacity && <><dt>동반 가능 범위</dt><dd>{details[place.contentId].allowedCapacity}</dd></>}
+                                                {details[place.contentId].requiredItems && <><dt>필요사항</dt><dd>{details[place.contentId].requiredItems}</dd></>}
+                                                {details[place.contentId].additionalInformation && <><dt>이용 안내</dt><dd>{details[place.contentId].additionalInformation}</dd></>}
+                                                {details[place.contentId].safetyNotice && <><dt>안전 유의사항</dt><dd>{details[place.contentId].safetyNotice}</dd></>}
+                                            </dl>
+                                        )}
+                                    </div>
+
+                                    {weatherSelected && (
+                                        <PlaceWeatherPanel
+                                            place={selectedPlace}
+                                            onClose={() => closePlaceExpansion(place.contentId)}
+                                        />
+                                    )}
+                                </article>
                             </div>
-                            <div className="nearby-place-body">
-                                <div className="nearby-place-meta">
-                                    <span>{CONTENT_TYPE_NAMES[place.contentTypeId] ?? "동반 장소"}</span>
-                                    <strong>{formatDistance(distanceInMeters(searchOrigin, place))}</strong>
-                                </div>
-                                <h3>{place.title}</h3>
-                                <p>{place.address ?? "주소 정보가 제공되지 않습니다."}</p>
-                                <small>한국관광공사 반려동물 동반여행 정보</small>
-                                <button
-                                    type="button"
-                                    className="nearby-detail-button"
-                                    onClick={() => void toggleDetail(place.contentId)}
-                                    disabled={detailLoadingId === place.contentId}
-                                >
-                                    {detailLoadingId === place.contentId
-                                        ? "불러오는 중…"
-                                        : details[place.contentId] ? "상세정보 닫기" : "동반 상세정보"}
-                                </button>
-                                {details[place.contentId] && (
-                                    <dl className="nearby-pet-detail">
-                                        {details[place.contentId].allowedCapacity && <><dt>동반 가능 범위</dt><dd>{details[place.contentId].allowedCapacity}</dd></>}
-                                        {details[place.contentId].requiredItems && <><dt>필요사항</dt><dd>{details[place.contentId].requiredItems}</dd></>}
-                                        {details[place.contentId].additionalInformation && <><dt>이용 안내</dt><dd>{details[place.contentId].additionalInformation}</dd></>}
-                                        {details[place.contentId].safetyNotice && <><dt>안전 유의사항</dt><dd>{details[place.contentId].safetyNotice}</dd></>}
-                                    </dl>
-                                )}
-                            </div>
-                        </article>
-                    ))}
+                        );
+                    })}
                     </div>
                 </>
             )}

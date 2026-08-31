@@ -633,6 +633,16 @@
     background: var(--color-primary-soft);
 }
 
+.place-map-page > .pet-registration-prompt {
+    width: calc(100% - 64px);
+    max-width: 1216px;
+    margin: 0 auto;
+}
+
+.place-map-page > .nearby-section {
+    padding-top: 32px;
+}
+
 .pet-registration-prompt-icon {
     display: grid;
     width: 42px;
@@ -777,6 +787,13 @@
     display: flex;
     align-items: flex-start;
     gap: 10px;
+}
+
+.place-weather-panel-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
 }
 
 .place-weather-title-group > span {

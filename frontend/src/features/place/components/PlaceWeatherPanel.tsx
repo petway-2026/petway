@@ -30,17 +30,6 @@ const WEATHER_ICONS: Record<WeatherCondition, string> = {
   UNKNOWN: "🌡️",
 };
 
-const PLACE_TYPE_LABELS: Record<string, string> = {
-  "12": "관광지",
-  "14": "문화시설",
-  "15": "축제·공연",
-  "25": "여행코스",
-  "28": "레포츠",
-  "32": "숙박",
-  "38": "쇼핑",
-  "39": "음식점",
-};
-
 function formatLocalDate(date: Date): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -149,50 +138,25 @@ export default function PlaceWeatherPanel({
   return (
     <aside
       className="place-detail-panel"
-      aria-label={`${place.title} 상세 및 날씨`}
+      aria-label={`${place.title} 여행일 날씨`}
     >
-      <div className="place-detail-panel-handle" aria-hidden="true" />
-
-      <div className="place-detail-header">
-        <div>
-          <span className="place-detail-label">선택한 장소</span>
-          <h2>{place.title}</h2>
-          <span className="place-detail-type">
-            {PLACE_TYPE_LABELS[place.contentTypeId] ?? "장소"}
-          </span>
-        </div>
-        <button
-          type="button"
-          className="place-detail-close"
-          onClick={onClose}
-          aria-label="장소 상세 닫기"
-        >
-          ×
-        </button>
-      </div>
-
-      {place.thumbnailUrl && (
-        <img
-          className="place-detail-thumbnail"
-          src={place.thumbnailUrl}
-          alt=""
-        />
-      )}
-
-      <p className="place-detail-address">
-        <span aria-hidden="true">📍</span>
-        {place.address || "주소 정보가 없습니다."}
-      </p>
-
-      <div className="place-weather-divider" />
-
       <section className="place-weather-section">
-        <div className="place-weather-title-group">
-          <span aria-hidden="true">📅</span>
-          <div>
-            <h3>여행일 날씨</h3>
-            <p>방문할 날짜를 선택해 주세요.</p>
+        <div className="place-weather-panel-header">
+          <div className="place-weather-title-group">
+            <span aria-hidden="true">📅</span>
+            <div>
+              <h3>여행일 날씨</h3>
+              <p>방문할 날짜를 선택해 주세요.</p>
+            </div>
           </div>
+          <button
+            type="button"
+            className="place-detail-close"
+            onClick={onClose}
+            aria-label="여행일 날씨 닫기"
+          >
+            ×
+          </button>
         </div>
 
         <label
