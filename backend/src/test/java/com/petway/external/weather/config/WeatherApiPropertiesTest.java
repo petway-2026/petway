@@ -5,6 +5,7 @@ import org.springframework.boot.context.properties.bind.Bindable;
 import org.springframework.boot.context.properties.bind.Binder;
 import org.springframework.boot.context.properties.source.MapConfigurationPropertySource;
 
+import java.time.Duration;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -18,7 +19,9 @@ class WeatherApiPropertiesTest {
                 "weather.short.api-key", "short-key",
                 "weather.mid.base-url", "https://weather.test/mid",
                 "weather.mid.api-key", "mid-key",
-                "weather.seasonal-guide-url", "https://weather.test/seasonal-guide"
+                "weather.seasonal-guide-url", "https://weather.test/seasonal-guide",
+                "weather.timeout.connect-timeout", "2s",
+                "weather.timeout.read-timeout", "4s"
         ));
 
         WeatherApiProperties properties = new Binder(source)
@@ -30,5 +33,7 @@ class WeatherApiPropertiesTest {
         assertThat(properties.getMid().getBaseUrl()).isEqualTo("https://weather.test/mid");
         assertThat(properties.getMid().getApiKey()).isEqualTo("mid-key");
         assertThat(properties.getSeasonalGuideUrl()).isEqualTo("https://weather.test/seasonal-guide");
+        assertThat(properties.getTimeout().getConnectTimeout()).isEqualTo(Duration.ofSeconds(2));
+        assertThat(properties.getTimeout().getReadTimeout()).isEqualTo(Duration.ofSeconds(4));
     }
 }

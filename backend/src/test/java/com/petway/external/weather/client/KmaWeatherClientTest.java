@@ -7,18 +7,23 @@ import com.petway.external.weather.mapper.KmaWeatherMapper;
 import com.petway.weather.domain.ForecastType;
 import com.petway.weather.domain.WeatherCondition;
 import com.petway.weather.domain.WeatherRegion;
+import com.petway.weather.service.WeatherForecastUnavailableException;
+import com.petway.weather.service.WeatherProviderException;
+import com.petway.weather.service.WeatherProviderTimeoutException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
 
+import java.net.SocketTimeoutException;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
@@ -29,11 +34,13 @@ class KmaWeatherClientTest {
     private MockRestServiceServer server;
     private KmaWeatherClient client;
     private WeatherApiProperties properties;
+    private RestClient restClient;
 
     @BeforeEach
     void setUp() {
         RestClient.Builder builder = RestClient.builder();
         server = MockRestServiceServer.bindTo(builder).build();
+        restClient = builder.build();
         properties = new WeatherApiProperties();
         properties.getShort().setApiKey("short-key");
         properties.getShort().setBaseUrl("https://weather.test/short");
@@ -43,14 +50,7 @@ class KmaWeatherClientTest {
                 Instant.parse("2026-08-28T03:00:00Z"),
                 ZoneId.of("Asia/Seoul")
         );
-        client = new KmaWeatherClient(
-                builder,
-                properties,
-                new KmaGridConverter(),
-                new KmaWeatherMapper(),
-                new KmaSeasonalOutlookParser(),
-                clock
-        );
+        client = newClient(restClient, clock);
     }
 
     @Test
@@ -127,6 +127,191 @@ class KmaWeatherClientTest {
     }
 
     @Test
+    void returnsUnavailableWhenMidTermFieldsAreIncomplete() {
+        server.expect(requestTo(containsString("/getMidLandFcst")))
+                .andRespond(withSuccess(midResponse("""
+                        {"regId":"11B00000","rnSt5Am":30,"rnSt5Pm":60}
+                        """), MediaType.APPLICATION_JSON));
+        server.expect(requestTo(containsString("/getMidTa")))
+                .andRespond(withSuccess(midResponse("""
+                        {"regId":"11B10101","taMin5":21,"taMax5":28}
+                        """), MediaType.APPLICATION_JSON));
+
+        assertThatThrownBy(() -> client.getMidTerm(
+                WeatherRegion.SEOUL_INCHEON_GYEONGGI,
+                LocalDate.of(2026, 9, 2)
+        ))
+                .isInstanceOf(WeatherForecastUnavailableException.class)
+                .hasMessageContaining("완전하게");
+
+        server.verify();
+    }
+
+    @Test
+    void returnsUnavailableForDayTenBeforeNewMidTermForecastIsPublished() {
+        KmaWeatherClient beforeMorningIssue = newClient(
+                restClient,
+                fixedClock("2026-08-27T20:00:00Z")
+        );
+
+        assertThatThrownBy(() -> beforeMorningIssue.getMidTerm(
+                WeatherRegion.SEOUL_INCHEON_GYEONGGI,
+                LocalDate.of(2026, 9, 7)
+        ))
+                .isInstanceOf(WeatherForecastUnavailableException.class)
+                .hasMessageContaining("2026-09-07");
+
+        server.verify();
+    }
+
+    @Test
+    void usesNewMorningIssueForDayTenAfterPublicationDelay() {
+        KmaWeatherClient afterMorningIssue = newClient(
+                restClient,
+                fixedClock("2026-08-27T21:10:00Z")
+        );
+        server.expect(requestTo(allOf(
+                        containsString("https://weather.test/mid/getMidLandFcst"),
+                        containsString("tmFc=202608280600")
+                )))
+                .andRespond(withSuccess(midResponse("""
+                        {"regId":"11B00000","rnSt10":40,"wf10":"구름많음"}
+                        """), MediaType.APPLICATION_JSON));
+        server.expect(requestTo(allOf(
+                        containsString("https://weather.test/mid/getMidTa"),
+                        containsString("tmFc=202608280600")
+                )))
+                .andRespond(withSuccess(midResponse("""
+                        {"regId":"11B10101","taMin10":20,"taMax10":29}
+                        """), MediaType.APPLICATION_JSON));
+
+        var forecast = afterMorningIssue.getMidTerm(
+                WeatherRegion.SEOUL_INCHEON_GYEONGGI,
+                LocalDate.of(2026, 9, 7)
+        );
+
+        assertThat(forecast.minimumTemperature()).isEqualTo(20.0);
+        assertThat(forecast.maximumTemperature()).isEqualTo(29.0);
+        assertThat(forecast.rainProbability()).isEqualTo(40);
+        server.verify();
+    }
+
+    @Test
+    void returnsUnavailableForDayThreeMissingFromLatestShortTermIssue() {
+        KmaWeatherClient beforeFirstShortIssue = newClient(
+                restClient,
+                fixedClock("2026-08-27T16:00:00Z")
+        );
+        server.expect(requestTo(allOf(
+                        containsString("base_date=20260827"),
+                        containsString("base_time=2300")
+                )))
+                .andRespond(withSuccess("""
+                        {
+                          "response": {
+                            "header": {"resultCode": "00", "resultMsg": "NORMAL_SERVICE"},
+                            "body": {
+                              "totalCount": 1,
+                              "items": {"item": [
+                                {"category":"TMP","fcstDate":"20260830","fcstTime":"1500","fcstValue":"28","nx":60,"ny":127}
+                              ]}
+                            }
+                          }
+                        }
+                        """, MediaType.APPLICATION_JSON));
+
+        assertThatThrownBy(() -> beforeFirstShortIssue.getShortTerm(
+                37.5665,
+                126.9780,
+                LocalDate.of(2026, 8, 31),
+                WeatherRegion.SEOUL_INCHEON_GYEONGGI
+        ))
+                .isInstanceOf(WeatherForecastUnavailableException.class)
+                .hasMessageContaining("2026-08-31");
+
+        server.verify();
+    }
+
+    @Test
+    void rejectsProviderErrorResultCode() {
+        server.expect(requestTo(containsString("/getVilageFcst")))
+                .andRespond(withSuccess("""
+                        {
+                          "response": {
+                            "header": {"resultCode": "03", "resultMsg": "NO_DATA"}
+                          }
+                        }
+                        """, MediaType.APPLICATION_JSON));
+
+        assertThatThrownBy(() -> client.getShortTerm(
+                37.5665,
+                126.9780,
+                LocalDate.of(2026, 8, 29),
+                WeatherRegion.SEOUL_INCHEON_GYEONGGI
+        )).isInstanceOf(WeatherProviderException.class);
+
+        server.verify();
+    }
+
+    @Test
+    void returnsUnavailableWhenProviderItemsAreEmpty() {
+        server.expect(requestTo(containsString("/getVilageFcst")))
+                .andRespond(withSuccess("""
+                        {
+                          "response": {
+                            "header": {"resultCode": "00", "resultMsg": "NORMAL_SERVICE"},
+                            "body": {"totalCount": 0, "items": {"item": []}}
+                          }
+                        }
+                        """, MediaType.APPLICATION_JSON));
+
+        assertThatThrownBy(() -> client.getShortTerm(
+                37.5665,
+                126.9780,
+                LocalDate.of(2026, 8, 29),
+                WeatherRegion.SEOUL_INCHEON_GYEONGGI
+        )).isInstanceOf(WeatherForecastUnavailableException.class);
+
+        server.verify();
+    }
+
+    @Test
+    void rejectsRequestWhenShortTermApiKeyIsMissing() {
+        properties.getShort().setApiKey(" ");
+
+        assertThatThrownBy(() -> client.getShortTerm(
+                37.5665,
+                126.9780,
+                LocalDate.of(2026, 8, 29),
+                WeatherRegion.SEOUL_INCHEON_GYEONGGI
+        ))
+                .isInstanceOf(WeatherProviderException.class)
+                .hasMessageContaining("인증키");
+
+        server.verify();
+    }
+
+    @Test
+    void distinguishesProviderTimeout() {
+        RestClient timeoutRestClient = RestClient.builder()
+                .requestFactory((uri, httpMethod) -> {
+                    throw new SocketTimeoutException("Read timed out");
+                })
+                .build();
+        KmaWeatherClient timeoutClient = newClient(
+                timeoutRestClient,
+                fixedClock("2026-08-28T03:00:00Z")
+        );
+
+        assertThatThrownBy(() -> timeoutClient.getShortTerm(
+                37.5665,
+                126.9780,
+                LocalDate.of(2026, 8, 29),
+                WeatherRegion.SEOUL_INCHEON_GYEONGGI
+        )).isInstanceOf(WeatherProviderTimeoutException.class);
+    }
+
+    @Test
     void upgradesHttpSeasonalRssUrlToHttps() {
         assertSeasonalRssUrl(
                 "http://www.kma.go.kr/repositary/xml/fct/mon/img/fct_mon3rss_108_20260824.xml",
@@ -195,5 +380,54 @@ class KmaWeatherClientTest {
                   </local_rn></threemonth_rn_forecast>
                 </description></item></channel></rss>
                 """;
+    }
+
+    private KmaWeatherClient newClient(RestClient clientRestClient, Clock clock) {
+        return new KmaWeatherClient(
+                clientRestClient,
+                properties,
+                new KmaGridConverter(),
+                new KmaWeatherMapper(),
+                new KmaSeasonalOutlookParser(),
+                clock
+        );
+    }
+
+    @Test
+    void treatsMissingSeasonalRssLinkAsProviderFailure() {
+        properties.setSeasonalGuideUrl("https://weather.test/seasonal-guide");
+        server.expect(requestTo("https://weather.test/seasonal-guide"))
+                .andRespond(withSuccess("<html><body>링크 없음</body></html>", MediaType.TEXT_HTML));
+
+        assertThatThrownBy(() -> client.getSeasonalOutlook(
+                WeatherRegion.SEOUL_INCHEON_GYEONGGI,
+                LocalDate.of(2026, 9, 15)
+        )).isInstanceOf(WeatherProviderException.class);
+
+        server.verify();
+    }
+
+    @Test
+    void treatsMalformedSeasonalXmlAsProviderFailure() {
+        properties.setSeasonalGuideUrl("https://weather.test/seasonal-guide");
+        String rssUrl = "https://www.kma.go.kr/repositary/xml/fct/mon/img/fct_mon3rss_108_20260824.xml";
+        server.expect(requestTo("https://weather.test/seasonal-guide"))
+                .andRespond(withSuccess(
+                        "<html><body><a href=\"" + rssUrl + "\">3개월전망 RSS</a></body></html>",
+                        MediaType.TEXT_HTML
+                ));
+        server.expect(requestTo(rssUrl))
+                .andRespond(withSuccess("<not-closed>", MediaType.APPLICATION_XML));
+
+        assertThatThrownBy(() -> client.getSeasonalOutlook(
+                WeatherRegion.SEOUL_INCHEON_GYEONGGI,
+                LocalDate.of(2026, 9, 15)
+        )).isInstanceOf(WeatherProviderException.class);
+
+        server.verify();
+    }
+
+    private Clock fixedClock(String instant) {
+        return Clock.fixed(Instant.parse(instant), ZoneId.of("Asia/Seoul"));
     }
 }

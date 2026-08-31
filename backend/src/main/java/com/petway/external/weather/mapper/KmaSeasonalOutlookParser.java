@@ -35,20 +35,22 @@ public class KmaSeasonalOutlookParser {
                     YearMonth.from(targetDate)
             ));
             if (month < 1 || month > 3) {
-                throw new IllegalStateException("요청한 달의 3개월 전망이 아직 제공되지 않았습니다.");
+                throw new SeasonalOutlookUnavailableException(
+                        "요청한 달의 3개월 전망이 아직 제공되지 않았습니다."
+                );
             }
 
             Element temperatureRegion = regionElement(
                     document,
                     "local_ta",
                     "local_ta_name",
-                    region.getDisplayName()
+                    region
             );
             Element precipitationRegion = regionElement(
                     document,
                     "local_rn",
                     "local_rn_name",
-                    region.getDisplayName()
+                    region
             );
             OutlookProbabilities temperatures = probabilities(temperatureRegion, month, "ta");
             OutlookProbabilities precipitation = probabilities(precipitationRegion, month, "rn");
@@ -68,7 +70,7 @@ public class KmaSeasonalOutlookParser {
                     announcedAt,
                     "특정 날짜의 날씨가 아닌 해당 월의 기온·강수량 확률 전망입니다."
             );
-        } catch (IllegalStateException exception) {
+        } catch (SeasonalOutlookUnavailableException exception) {
             throw exception;
         } catch (Exception exception) {
             throw new IllegalStateException("3개월 전망 응답 형식을 해석할 수 없습니다.", exception);
@@ -87,11 +89,20 @@ public class KmaSeasonalOutlookParser {
         return factory.newDocumentBuilder().parse(new ByteArrayInputStream(xml));
     }
 
-    private Element regionElement(Document document, String tag, String nameTag, String expectedName) {
+    private Element regionElement(
+            Document document,
+            String tag,
+            String nameTag,
+            WeatherRegion region
+    ) {
         NodeList nodes = document.getElementsByTagName(tag);
         for (int index = 0; index < nodes.getLength(); index++) {
             Element element = (Element) nodes.item(index);
-            if (normalize(text(element, nameTag)).equals(normalize(expectedName))) {
+            String actualName = normalize(text(element, nameTag));
+            boolean matches = region.getSeasonalRegionNames().stream()
+                    .map(this::normalize)
+                    .anyMatch(actualName::equals);
+            if (matches) {
                 return element;
             }
         }

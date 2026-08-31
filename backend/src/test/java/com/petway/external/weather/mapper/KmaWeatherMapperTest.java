@@ -11,6 +11,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class KmaWeatherMapperTest {
 
@@ -40,6 +41,117 @@ class KmaWeatherMapperTest {
         assertThat(forecast.rainProbability()).isEqualTo(70);
         assertThat(forecast.weatherCondition()).isEqualTo(WeatherCondition.RAIN);
         assertThat(forecast.regionName()).isEqualTo("서울ㆍ인천ㆍ경기도");
+    }
+
+    @Test
+    void rejectsIncompleteShortTermDailySummary() {
+        List<KmaShortForecastItem> fixture = List.of(
+                item("TMP", "0900", "21"),
+                item("TMP", "1500", "28"),
+                item("SKY", "1500", "1")
+        );
+
+        assertThatThrownBy(() -> mapper.mapShortTerm(
+                fixture,
+                LocalDate.of(2026, 9, 1),
+                LocalDateTime.of(2026, 8, 31, 23, 0),
+                WeatherRegion.SEOUL_INCHEON_GYEONGGI
+        ))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("누락");
+    }
+
+    @Test
+    void combinesRainAndSnowAcrossHourlyForecasts() {
+        List<KmaShortForecastItem> rainThenSnow = List.of(
+                item("TMP", "0900", "1"),
+                item("TMP", "1500", "5"),
+                item("POP", "0900", "70"),
+                item("SKY", "0900", "4"),
+                item("PTY", "0900", "1"),
+                item("PTY", "1500", "3")
+        );
+        List<KmaShortForecastItem> snowThenRain = List.of(
+                item("TMP", "0900", "1"),
+                item("TMP", "1500", "5"),
+                item("POP", "0900", "70"),
+                item("SKY", "0900", "4"),
+                item("PTY", "0900", "3"),
+                item("PTY", "1500", "1")
+        );
+
+        var first = mapper.mapShortTerm(
+                rainThenSnow,
+                LocalDate.of(2026, 9, 1),
+                LocalDateTime.of(2026, 8, 31, 23, 0),
+                WeatherRegion.SEOUL_INCHEON_GYEONGGI
+        );
+        var second = mapper.mapShortTerm(
+                snowThenRain,
+                LocalDate.of(2026, 9, 1),
+                LocalDateTime.of(2026, 8, 31, 23, 0),
+                WeatherRegion.SEOUL_INCHEON_GYEONGGI
+        );
+
+        assertThat(first.weatherCondition()).isEqualTo(WeatherCondition.RAIN_OR_SNOW);
+        assertThat(second.weatherCondition()).isEqualTo(WeatherCondition.RAIN_OR_SNOW);
+    }
+
+    @Test
+    void rejectsMinimumTemperatureGreaterThanMaximum() {
+        List<KmaShortForecastItem> fixture = List.of(
+                item("TMN", "0600", "29"),
+                item("TMX", "1500", "20"),
+                item("POP", "1500", "50"),
+                item("SKY", "1500", "1")
+        );
+
+        assertThatThrownBy(() -> mapper.mapShortTerm(
+                fixture,
+                LocalDate.of(2026, 9, 1),
+                LocalDateTime.of(2026, 8, 31, 23, 0),
+                WeatherRegion.SEOUL_INCHEON_GYEONGGI
+        ))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("범위");
+    }
+
+    @Test
+    void rejectsRainProbabilityOutsideZeroToOneHundred() {
+        List<KmaShortForecastItem> fixture = List.of(
+                item("TMP", "0600", "20"),
+                item("TMP", "1500", "29"),
+                item("POP", "1500", "101"),
+                item("SKY", "1500", "1")
+        );
+
+        assertThatThrownBy(() -> mapper.mapShortTerm(
+                fixture,
+                LocalDate.of(2026, 9, 1),
+                LocalDateTime.of(2026, 8, 31, 23, 0),
+                WeatherRegion.SEOUL_INCHEON_GYEONGGI
+        ))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("범위");
+    }
+
+    @Test
+    void rejectsNonFiniteTemperature() {
+        List<KmaShortForecastItem> fixture = List.of(
+                item("TMP", "0600", "NaN"),
+                item("TMP", "1500", "29"),
+                item("POP", "1500", "50"),
+                item("SKY", "1500", "1")
+        );
+
+        assertThatThrownBy(() -> mapper.mapShortTerm(
+                fixture,
+                LocalDate.of(2026, 9, 1),
+                LocalDateTime.of(2026, 8, 31, 23, 0),
+                WeatherRegion.SEOUL_INCHEON_GYEONGGI
+        ))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("범위");
     }
 
     private KmaShortForecastItem item(String category, String time, String value) {

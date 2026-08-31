@@ -24,7 +24,8 @@ public class WeatherController {
 
     @Operation(
             summary = "여행일 날씨 조회",
-            description = "D0~D3은 단기예보, D4~D10은 중기예보, D11~D90은 월별 3개월 전망을 반환합니다. 모든 조회에 region이 필요합니다."
+            description = "D0~D3은 단기예보, D4~D10은 중기예보, D11~D90은 월별 3개월 전망을 반환합니다. "
+                    + "기상청 최신 발표 자료에 경계 날짜가 아직 포함되지 않은 경우 404를 반환하며, 모든 조회에 region이 필요합니다."
     )
     @GetMapping
     public ResponseEntity<WeatherForecastResponse> getWeather(

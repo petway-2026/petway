@@ -54,13 +54,18 @@ public class KmaWeatherMapper {
                 .max(Integer::compareTo)
                 .orElse(null);
 
-        WeatherCondition condition = targetItems.stream()
+        List<WeatherCondition> precipitationConditions = targetItems.stream()
                 .filter(item -> "PTY".equals(item.category()))
                 .map(KmaShortForecastItem::fcstValue)
                 .map(this::precipitationCondition)
                 .filter(value -> value != WeatherCondition.UNKNOWN)
-                .findFirst()
-                .orElseGet(() -> skyCondition(targetItems));
+                .distinct()
+                .toList();
+        WeatherCondition condition = precipitationConditions.isEmpty()
+                ? skyCondition(targetItems)
+                : summarizePrecipitation(precipitationConditions);
+
+        validateDailyForecast(minimum, maximum, rainProbability, condition);
 
         return new WeatherForecast(
                 targetDate,
@@ -87,14 +92,20 @@ public class KmaWeatherMapper {
             int forecastDay,
             LocalDateTime announcedAt
     ) {
+        Double minimum = temperature.minimumTemperature(forecastDay);
+        Double maximum = temperature.maximumTemperature(forecastDay);
+        Integer rainProbability = land.rainProbability(forecastDay);
+        WeatherCondition condition = descriptionCondition(land.weatherDescription(forecastDay));
+        validateDailyForecast(minimum, maximum, rainProbability, condition);
+
         return new WeatherForecast(
                 targetDate,
                 ForecastType.MID_TERM,
                 region.getDisplayName(),
-                temperature.minimumTemperature(forecastDay),
-                temperature.maximumTemperature(forecastDay),
-                land.rainProbability(forecastDay),
-                descriptionCondition(land.weatherDescription(forecastDay)),
+                minimum,
+                maximum,
+                rainProbability,
+                condition,
                 null,
                 null,
                 null,
@@ -102,6 +113,28 @@ public class KmaWeatherMapper {
                 announcedAt,
                 "중기예보의 지역 대표 지점 기온과 권역 날씨입니다."
         );
+    }
+
+    private void validateDailyForecast(
+            Double minimum,
+            Double maximum,
+            Integer rainProbability,
+            WeatherCondition condition
+    ) {
+        if (minimum == null
+                || maximum == null
+                || rainProbability == null
+                || condition == null
+                || condition == WeatherCondition.UNKNOWN) {
+            throw new IllegalStateException("예보에 필요한 기온, 강수확률 또는 날씨 상태가 누락되었습니다.");
+        }
+        if (!Double.isFinite(minimum)
+                || !Double.isFinite(maximum)
+                || minimum > maximum
+                || rainProbability < 0
+                || rainProbability > 100) {
+            throw new IllegalStateException("예보의 기온 또는 강수확률 값이 올바른 범위를 벗어났습니다.");
+        }
     }
 
     public LocalDateTime announcedAt(String baseDate, String baseTime) {
@@ -144,6 +177,22 @@ public class KmaWeatherMapper {
             case 4 -> WeatherCondition.SHOWER;
             default -> WeatherCondition.UNKNOWN;
         };
+    }
+
+    private WeatherCondition summarizePrecipitation(List<WeatherCondition> conditions) {
+        boolean hasRain = conditions.contains(WeatherCondition.RAIN)
+                || conditions.contains(WeatherCondition.SHOWER);
+        boolean hasSnow = conditions.contains(WeatherCondition.SNOW);
+        if (conditions.contains(WeatherCondition.RAIN_OR_SNOW) || hasRain && hasSnow) {
+            return WeatherCondition.RAIN_OR_SNOW;
+        }
+        if (hasSnow) {
+            return WeatherCondition.SNOW;
+        }
+        if (conditions.contains(WeatherCondition.SHOWER)) {
+            return WeatherCondition.SHOWER;
+        }
+        return WeatherCondition.RAIN;
     }
 
     private WeatherCondition descriptionCondition(String description) {

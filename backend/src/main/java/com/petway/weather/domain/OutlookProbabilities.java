@@ -5,6 +5,14 @@ public record OutlookProbabilities(
         int nearNormal,
         int aboveNormal
 ) {
+    public OutlookProbabilities {
+        if (!isProbability(belowNormal)
+                || !isProbability(nearNormal)
+                || !isProbability(aboveNormal)) {
+            throw new IllegalArgumentException("전망 확률은 0 이상 100 이하여야 합니다.");
+        }
+    }
+
     public OutlookLevel dominantLevel() {
         int maximum = Math.max(belowNormal, Math.max(nearNormal, aboveNormal));
         int count = (belowNormal == maximum ? 1 : 0)
@@ -14,5 +22,9 @@ public record OutlookProbabilities(
         if (maximum == belowNormal) return OutlookLevel.BELOW_NORMAL;
         if (maximum == nearNormal) return OutlookLevel.NEAR_NORMAL;
         return OutlookLevel.ABOVE_NORMAL;
+    }
+
+    private static boolean isProbability(int value) {
+        return value >= 0 && value <= 100;
     }
 }
