@@ -36,6 +36,8 @@ class TourPlaceMapperTest {
                           {
                             "contentid": "125266",
                             "contenttypeid": "12",
+                            "areacode": "1",
+                            "sigungucode": "1",
                             "title": "경복궁",
                             "addr1": "서울특별시 종로구 사직로 161",
                             "mapx": "126.9769930325",
@@ -61,6 +63,8 @@ class TourPlaceMapperTest {
         assertThat(result.items()).hasSize(1);
         assertThat(result.items().get(0).contentId()).isEqualTo("125266");
         assertThat(result.items().get(0).contentTypeId()).isEqualTo("12");
+        assertThat(result.items().get(0).areaCode()).isEqualTo("1");
+        assertThat(result.items().get(0).sigunguCode()).isEqualTo("1");
         assertThat(result.items().get(0).title()).isEqualTo("경복궁");
         assertThat(result.items().get(0).latitude())
                 .isEqualByComparingTo("37.5788222356");

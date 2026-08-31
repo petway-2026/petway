@@ -36,6 +36,8 @@ public record TourApiResponse(
     public record Item(
             @JsonProperty("contentid") String contentId,
             @JsonProperty("contenttypeid") String contentTypeId,
+            @JsonProperty("areacode") String areaCode,
+            @JsonProperty("sigungucode") String sigunguCode,
             String title,
             @JsonProperty("addr1") String address,
             @JsonProperty("mapy") String latitude,

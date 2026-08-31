@@ -133,6 +133,8 @@ public class TourPlaceMapper {
         return new PlaceSummary(
                 item.contentId(),
                 item.contentTypeId(),
+                blankToNull(item.areaCode()),
+                blankToNull(item.sigunguCode()),
                 item.title(),
                 blankToNull(item.address()),
                 parseCoordinate(item.latitude()),
