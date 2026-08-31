@@ -108,6 +108,45 @@ class WeatherForecastCacheTest {
         )).isEmpty();
     }
 
+    @Test
+    void sharesRegionalForecastAcrossCoordinatesButKeepsShortTermLocationSpecific() {
+        MutableClock clock = new MutableClock(Instant.parse("2026-08-28T03:00:00Z"));
+        WeatherForecastCache cache = new WeatherForecastCache(clock);
+        LocalDate targetDate = LocalDate.of(2026, 9, 2);
+
+        cache.put(
+                37.5665,
+                126.9780,
+                targetDate,
+                WeatherRegion.SEOUL_INCHEON_GYEONGGI,
+                ForecastType.MID_TERM,
+                response(targetDate, ForecastType.MID_TERM)
+        );
+        cache.put(
+                37.5665,
+                126.9780,
+                targetDate,
+                WeatherRegion.SEOUL_INCHEON_GYEONGGI,
+                ForecastType.SHORT_TERM,
+                response(targetDate, ForecastType.SHORT_TERM)
+        );
+
+        assertThat(cache.get(
+                37.4,
+                127.1,
+                targetDate,
+                WeatherRegion.SEOUL_INCHEON_GYEONGGI,
+                ForecastType.MID_TERM
+        )).isPresent();
+        assertThat(cache.get(
+                37.4,
+                127.1,
+                targetDate,
+                WeatherRegion.SEOUL_INCHEON_GYEONGGI,
+                ForecastType.SHORT_TERM
+        )).isEmpty();
+    }
+
     private WeatherForecastResponse response(LocalDate targetDate) {
         return response(targetDate, ForecastType.SHORT_TERM);
     }

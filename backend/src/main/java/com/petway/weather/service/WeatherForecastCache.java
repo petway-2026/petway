@@ -54,7 +54,7 @@ public class WeatherForecastCache {
             WeatherRegion region,
             ForecastType forecastType
     ) {
-        Key key = new Key(latitude, longitude, targetDate, region, forecastType);
+        Key key = key(latitude, longitude, targetDate, region, forecastType);
         Entry entry = entries.get(key);
         if (entry == null) {
             return Optional.empty();
@@ -76,7 +76,7 @@ public class WeatherForecastCache {
     ) {
         Instant now = clock.instant();
         removeExpired(now);
-        Key key = new Key(latitude, longitude, targetDate, region, forecastType);
+        Key key = key(latitude, longitude, targetDate, region, forecastType);
         if (!entries.containsKey(key) && entries.size() >= maxEntries) {
             entries.entrySet().stream()
                     .min(Comparator.comparing(entry -> entry.getValue().cachedAt()))
@@ -87,6 +87,19 @@ public class WeatherForecastCache {
 
     private void removeExpired(Instant now) {
         entries.entrySet().removeIf(entry -> !entry.getValue().expiresAt().isAfter(now));
+    }
+
+    private Key key(
+            double latitude,
+            double longitude,
+            LocalDate targetDate,
+            WeatherRegion region,
+            ForecastType forecastType
+    ) {
+        if (forecastType == ForecastType.SHORT_TERM) {
+            return new Key(latitude, longitude, targetDate, region, forecastType);
+        }
+        return new Key(0.0, 0.0, targetDate, region, forecastType);
     }
 
     private record Key(
