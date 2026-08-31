@@ -23,6 +23,8 @@ interface KakaoMapProps {
     center: MapCenter;
     level?: number;
     markers?: MapMarker[];
+    selectedMarkerId?: MapMarker["id"] | null;
+    onMarkerSelect?: (marker: MapMarker | null) => void;
     onCenterChange?: (center: MapCenter) => void;
 }
 
@@ -31,6 +33,8 @@ export default function KakaoMap({
                                      center,
                                      level = 5,
                                      markers = [],
+                                     selectedMarkerId = null,
+                                     onMarkerSelect,
                                      onCenterChange,
                                  }: KakaoMapProps) {
 
@@ -68,6 +72,19 @@ export default function KakaoMap({
     /*
      * 지도 최초 생성
      */
+    useEffect(() => {
+
+        if (selectedMarkerId !== null) {
+            return;
+        }
+
+        openInfoWindowRef.current?.close();
+        openInfoWindowRef.current = null;
+        openMarkerRef.current = null;
+
+    }, [selectedMarkerId]);
+
+
     useEffect(() => {
 
         let mounted = true;
@@ -304,6 +321,7 @@ export default function KakaoMap({
                                 infoWindow.close();
                                 openInfoWindowRef.current = null;
                                 openMarkerRef.current = null;
+                                onMarkerSelect?.(null);
 
                                 return;
                             }
@@ -317,6 +335,7 @@ export default function KakaoMap({
 
                             openInfoWindowRef.current = infoWindow;
                             openMarkerRef.current = marker;
+                            onMarkerSelect?.(markerData);
 
                         }
                     );
@@ -346,7 +365,7 @@ export default function KakaoMap({
 
         };
 
-    }, [mapReady, markers]);
+    }, [mapReady, markers, onMarkerSelect]);
 
 
     return (

@@ -4,6 +4,8 @@ const API_URL =
 export interface PlaceSummary {
     contentId: string;
     contentTypeId: string;
+    areaCode: string | null;
+    sigunguCode: string | null;
     title: string;
     address: string | null;
     latitude: number | null;
