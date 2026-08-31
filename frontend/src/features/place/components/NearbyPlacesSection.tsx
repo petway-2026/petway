@@ -20,6 +20,9 @@ const DEFAULT_LOCATION: MapCenter = {
     longitude: 126.978,
 };
 
+const INITIAL_LOCATION_MESSAGE =
+    "위치 사용에 동의하면 가까운 반려동물 동반 장소를 보여드려요.";
+
 const CONTENT_TYPE_NAMES: Record<string, string> = {
     "12": "관광지",
     "14": "문화시설",
@@ -84,11 +87,28 @@ export default function NearbyPlacesSection({
     const [selectedPlace, setSelectedPlace] = useState<SelectedPlace | null>(null);
     const [selectedType, setSelectedType] = useState("all");
     const [locationLoading, setLocationLoading] = useState(false);
-    const [locationMessage, setLocationMessage] = useState(
-        "위치 사용에 동의하면 가까운 반려동물 동반 장소를 보여드려요."
-    );
+    const [locationMessage, setLocationMessage] = useState(INITIAL_LOCATION_MESSAGE);
     const detailRequestRef = useRef<{ id: number; controller: AbortController } | null>(null);
     const detailRequestIdRef = useRef(0);
+    const locationStatusMessageRef = useRef(INITIAL_LOCATION_MESSAGE);
+    const weatherMessageActiveRef = useRef(false);
+
+    const updateLocationMessage = useCallback((message: string) => {
+        locationStatusMessageRef.current = message;
+        weatherMessageActiveRef.current = false;
+        setLocationMessage(message);
+    }, []);
+
+    const showWeatherSelectionMessage = useCallback((message: string) => {
+        weatherMessageActiveRef.current = true;
+        setLocationMessage(message);
+    }, []);
+
+    const restoreLocationMessage = useCallback(() => {
+        if (!weatherMessageActiveRef.current) return;
+        weatherMessageActiveRef.current = false;
+        setLocationMessage(locationStatusMessageRef.current);
+    }, []);
 
     const closePlaceExpansion = useCallback(() => {
         detailRequestRef.current?.controller.abort();
@@ -98,7 +118,8 @@ export default function NearbyPlacesSection({
         setDetailLoading(false);
         setDetailError("");
         setSelectedPlace(null);
-    }, []);
+        restoreLocationMessage();
+    }, [restoreLocationMessage]);
 
     useEffect(() => () => {
         detailRequestRef.current?.controller.abort();
@@ -106,12 +127,12 @@ export default function NearbyPlacesSection({
 
     const getCurrentLocation = () => {
         if (!navigator.geolocation) {
-            setLocationMessage("이 브라우저에서는 현재 위치를 사용할 수 없습니다.");
+            updateLocationMessage("이 브라우저에서는 현재 위치를 사용할 수 없습니다.");
             return;
         }
 
         setLocationLoading(true);
-        setLocationMessage("현재 위치와 가까운 장소를 찾고 있어요.");
+        updateLocationMessage("현재 위치와 가까운 장소를 찾고 있어요.");
 
         navigator.geolocation.getCurrentPosition(
             async (position) => {
@@ -140,14 +161,14 @@ export default function NearbyPlacesSection({
                     setSelectedType("all");
                     setMapMoved(false);
                     setRadiusPolicy(policy);
-                    setLocationMessage(
+                    updateLocationMessage(
                         sortedPlaces.length > 0
                             ? `${policy.label} 범위에서 가까운 순으로 ${sortedPlaces.length}곳을 찾았어요.`
                             : `${policy.label} 범위에서 등록된 반려동물 동반 장소를 찾지 못했어요.`
                     );
                 } catch (cause) {
                     setPlaces([]);
-                    setLocationMessage(
+                    updateLocationMessage(
                         cause instanceof Error
                             ? cause.message
                             : "주변 장소를 불러오지 못했습니다."
@@ -158,7 +179,7 @@ export default function NearbyPlacesSection({
             },
             (error) => {
                 setLocationLoading(false);
-                setLocationMessage(
+                updateLocationMessage(
                     error.code === error.PERMISSION_DENIED
                         ? "위치 권한을 허용하면 가까운 순으로 장소를 확인할 수 있어요."
                         : "현재 위치를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요."
@@ -170,7 +191,7 @@ export default function NearbyPlacesSection({
 
     const searchAt = async (location: MapCenter) => {
         setLocationLoading(true);
-        setLocationMessage("선택한 지도 영역의 장소를 찾고 있어요.");
+        updateLocationMessage("선택한 지도 영역의 장소를 찾고 있어요.");
         try {
             const policy = getRadiusPolicy(location);
             const response = await searchNearbyPlaces(
@@ -188,13 +209,13 @@ export default function NearbyPlacesSection({
             setSelectedType("all");
             setMapMoved(false);
             setRadiusPolicy(policy);
-            setLocationMessage(
+            updateLocationMessage(
                 sortedPlaces.length > 0
                     ? `${policy.label} 범위에서 가까운 순으로 ${sortedPlaces.length}곳을 찾았어요.`
                     : `${policy.label} 범위에서 등록된 동반 장소를 찾지 못했어요.`
             );
         } catch (cause) {
-            setLocationMessage(cause instanceof Error ? cause.message : "주변 장소를 불러오지 못했습니다.");
+            updateLocationMessage(cause instanceof Error ? cause.message : "주변 장소를 불러오지 못했습니다.");
         } finally {
             setLocationLoading(false);
         }
@@ -243,16 +264,18 @@ export default function NearbyPlacesSection({
         if (!enableWeatherSelection) return;
         if (place.latitude === null || place.longitude === null) {
             setSelectedPlace(null);
-            setLocationMessage("선택한 장소의 좌표 정보가 없어 날씨를 조회할 수 없어요.");
+            showWeatherSelectionMessage("선택한 장소의 좌표 정보가 없어 날씨를 조회할 수 없어요.");
             return;
         }
 
         const region = resolveWeatherRegion(place.areaCode, place.sigunguCode);
         if (!region) {
             setSelectedPlace(null);
-            setLocationMessage("선택한 장소의 지역 정보가 없어 날씨를 조회할 수 없어요.");
+            showWeatherSelectionMessage("선택한 장소의 지역 정보가 없어 날씨를 조회할 수 없어요.");
             return;
         }
+
+        restoreLocationMessage();
 
         setSelectedPlace({
             id: place.contentId,
@@ -266,7 +289,7 @@ export default function NearbyPlacesSection({
             region,
             thumbnailUrl: place.thumbnailUrl ?? undefined,
         });
-    }, [enableWeatherSelection]);
+    }, [enableWeatherSelection, restoreLocationMessage, showWeatherSelectionMessage]);
 
     const handleMarkerSelect = useCallback((marker: MapMarker | null) => {
         if (!marker || marker.kind !== "place") {
@@ -461,11 +484,13 @@ export default function NearbyPlacesSection({
                                         )}
                                         {detailExpanded && detail && !detailLoading && !detailError && (
                                             <dl className="nearby-pet-detail">
+                                                {detail.accompanimentType && <><dt>동반 유형</dt><dd>{detail.accompanimentType}</dd></>}
                                                 {detail.allowedCapacity && <><dt>동반 가능 범위</dt><dd>{detail.allowedCapacity}</dd></>}
                                                 {detail.requiredItems && <><dt>필요사항</dt><dd>{detail.requiredItems}</dd></>}
                                                 {detail.additionalInformation && <><dt>이용 안내</dt><dd>{detail.additionalInformation}</dd></>}
                                                 {detail.safetyNotice && <><dt>안전 유의사항</dt><dd>{detail.safetyNotice}</dd></>}
-                                                {!detail.allowedCapacity
+                                                {!detail.accompanimentType
+                                                    && !detail.allowedCapacity
                                                     && !detail.requiredItems
                                                     && !detail.additionalInformation
                                                     && !detail.safetyNotice

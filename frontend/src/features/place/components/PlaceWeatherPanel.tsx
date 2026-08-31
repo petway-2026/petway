@@ -104,10 +104,7 @@ function toWeatherErrorView(cause: unknown): WeatherErrorView {
 
   return {
     title: "날씨를 불러오지 못했어요.",
-    message:
-      cause instanceof Error
-        ? cause.message
-        : "네트워크 연결을 확인한 뒤 다시 시도해 주세요.",
+    message: "네트워크 연결을 확인한 뒤 다시 시도해 주세요.",
     retryable: true,
   };
 }
@@ -155,13 +152,10 @@ export default function PlaceWeatherPanel({
         region: place.region,
       },
       controller.signal,
-    )
+      )
       .then(setForecast)
       .catch((requestError: unknown) => {
-        if (
-          requestError instanceof DOMException &&
-          requestError.name === "AbortError"
-        ) {
+        if (controller.signal.aborted) {
           return;
         }
 
