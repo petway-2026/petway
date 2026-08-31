@@ -1,5 +1,6 @@
 package com.petway.weather.service;
 
+import com.petway.weather.domain.ForecastType;
 import com.petway.weather.domain.WeatherRegion;
 import com.petway.weather.dto.WeatherForecastResponse;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -50,9 +51,10 @@ public class WeatherForecastCache {
             double latitude,
             double longitude,
             LocalDate targetDate,
-            WeatherRegion region
+            WeatherRegion region,
+            ForecastType forecastType
     ) {
-        Key key = new Key(latitude, longitude, targetDate, region);
+        Key key = new Key(latitude, longitude, targetDate, region, forecastType);
         Entry entry = entries.get(key);
         if (entry == null) {
             return Optional.empty();
@@ -69,11 +71,12 @@ public class WeatherForecastCache {
             double longitude,
             LocalDate targetDate,
             WeatherRegion region,
+            ForecastType forecastType,
             WeatherForecastResponse response
     ) {
         Instant now = clock.instant();
         removeExpired(now);
-        Key key = new Key(latitude, longitude, targetDate, region);
+        Key key = new Key(latitude, longitude, targetDate, region, forecastType);
         if (!entries.containsKey(key) && entries.size() >= maxEntries) {
             entries.entrySet().stream()
                     .min(Comparator.comparing(entry -> entry.getValue().cachedAt()))
@@ -90,7 +93,8 @@ public class WeatherForecastCache {
             double latitude,
             double longitude,
             LocalDate targetDate,
-            WeatherRegion region
+            WeatherRegion region,
+            ForecastType forecastType
     ) {
     }
 

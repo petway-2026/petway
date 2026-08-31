@@ -27,6 +27,7 @@ class WeatherForecastCacheTest {
                 126.9780,
                 targetDate,
                 WeatherRegion.SEOUL_INCHEON_GYEONGGI,
+                ForecastType.SHORT_TERM,
                 response(targetDate)
         );
 
@@ -34,7 +35,8 @@ class WeatherForecastCacheTest {
                 37.5665,
                 126.9780,
                 targetDate,
-                WeatherRegion.SEOUL_INCHEON_GYEONGGI
+                WeatherRegion.SEOUL_INCHEON_GYEONGGI,
+                ForecastType.SHORT_TERM
         )).isPresent();
 
         clock.advance(Duration.ofMinutes(10));
@@ -43,7 +45,8 @@ class WeatherForecastCacheTest {
                 37.5665,
                 126.9780,
                 targetDate,
-                WeatherRegion.SEOUL_INCHEON_GYEONGGI
+                WeatherRegion.SEOUL_INCHEON_GYEONGGI,
+                ForecastType.SHORT_TERM
         )).isEmpty();
     }
 
@@ -54,22 +57,65 @@ class WeatherForecastCacheTest {
         LocalDate firstDate = LocalDate.of(2026, 8, 29);
         LocalDate secondDate = LocalDate.of(2026, 8, 30);
 
-        cache.put(37.5665, 126.9780, firstDate, WeatherRegion.SEOUL_INCHEON_GYEONGGI, response(firstDate));
+        cache.put(
+                37.5665, 126.9780, firstDate, WeatherRegion.SEOUL_INCHEON_GYEONGGI,
+                ForecastType.SHORT_TERM, response(firstDate)
+        );
         clock.advance(Duration.ofSeconds(1));
-        cache.put(37.5665, 126.9780, secondDate, WeatherRegion.SEOUL_INCHEON_GYEONGGI, response(secondDate));
+        cache.put(
+                37.5665, 126.9780, secondDate, WeatherRegion.SEOUL_INCHEON_GYEONGGI,
+                ForecastType.SHORT_TERM, response(secondDate)
+        );
 
         assertThat(cache.get(
-                37.5665, 126.9780, firstDate, WeatherRegion.SEOUL_INCHEON_GYEONGGI
+                37.5665, 126.9780, firstDate, WeatherRegion.SEOUL_INCHEON_GYEONGGI,
+                ForecastType.SHORT_TERM
         )).isEmpty();
         assertThat(cache.get(
-                37.5665, 126.9780, secondDate, WeatherRegion.SEOUL_INCHEON_GYEONGGI
+                37.5665, 126.9780, secondDate, WeatherRegion.SEOUL_INCHEON_GYEONGGI,
+                ForecastType.SHORT_TERM
         )).isPresent();
     }
 
+    @Test
+    void separatesForecastTypesForSamePlaceAndTargetDate() {
+        MutableClock clock = new MutableClock(Instant.parse("2026-08-28T03:00:00Z"));
+        WeatherForecastCache cache = new WeatherForecastCache(clock);
+        LocalDate targetDate = LocalDate.of(2026, 9, 1);
+
+        cache.put(
+                37.5665,
+                126.9780,
+                targetDate,
+                WeatherRegion.SEOUL_INCHEON_GYEONGGI,
+                ForecastType.MID_TERM,
+                response(targetDate, ForecastType.MID_TERM)
+        );
+
+        assertThat(cache.get(
+                37.5665,
+                126.9780,
+                targetDate,
+                WeatherRegion.SEOUL_INCHEON_GYEONGGI,
+                ForecastType.MID_TERM
+        )).isPresent();
+        assertThat(cache.get(
+                37.5665,
+                126.9780,
+                targetDate,
+                WeatherRegion.SEOUL_INCHEON_GYEONGGI,
+                ForecastType.SHORT_TERM
+        )).isEmpty();
+    }
+
     private WeatherForecastResponse response(LocalDate targetDate) {
+        return response(targetDate, ForecastType.SHORT_TERM);
+    }
+
+    private WeatherForecastResponse response(LocalDate targetDate, ForecastType forecastType) {
         return new WeatherForecastResponse(
                 targetDate,
-                ForecastType.SHORT_TERM,
+                forecastType,
                 "서울ㆍ인천ㆍ경기도",
                 20.0,
                 28.0,
