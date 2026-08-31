@@ -1,9 +1,10 @@
 package com.petway.global.exception;
 
-import com.petway.weather.service.WeatherForecastUnavailableException;
-import com.petway.weather.service.WeatherProviderException;
 import com.petway.external.tour.exception.TourApiErrorType;
 import com.petway.external.tour.exception.TourApiException;
+import com.petway.weather.service.WeatherForecastUnavailableException;
+import com.petway.weather.service.WeatherProviderException;
+import com.petway.weather.service.WeatherProviderTimeoutException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
@@ -25,6 +26,13 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(HttpStatus.NOT_FOUND)
                 .body(Map.of("message", e.getMessage()));
+    }
+
+    @ExceptionHandler(WeatherProviderTimeoutException.class)
+    public ResponseEntity<?> handleWeatherProviderTimeout(WeatherProviderTimeoutException e) {
+        return ResponseEntity
+                .status(HttpStatus.GATEWAY_TIMEOUT)
+                .body(Map.of("message", "기상청 날씨 정보 응답 시간이 초과되었습니다."));
     }
 
     @ExceptionHandler(WeatherProviderException.class)

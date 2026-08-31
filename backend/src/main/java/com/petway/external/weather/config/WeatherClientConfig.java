@@ -13,11 +13,13 @@ import java.time.ZoneId;
 public class WeatherClientConfig {
 
     @Bean
-    public RestClient.Builder weatherRestClientBuilder() {
+    public RestClient weatherRestClient() {
         SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
         requestFactory.setConnectTimeout(Duration.ofSeconds(3));
         requestFactory.setReadTimeout(Duration.ofSeconds(5));
-        return RestClient.builder().requestFactory(requestFactory);
+        return RestClient.builder()
+                .requestFactory(requestFactory)
+                .build();
     }
 
     @Bean

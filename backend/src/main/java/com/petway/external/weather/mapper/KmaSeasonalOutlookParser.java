@@ -42,13 +42,13 @@ public class KmaSeasonalOutlookParser {
                     document,
                     "local_ta",
                     "local_ta_name",
-                    region.getDisplayName()
+                    region
             );
             Element precipitationRegion = regionElement(
                     document,
                     "local_rn",
                     "local_rn_name",
-                    region.getDisplayName()
+                    region
             );
             OutlookProbabilities temperatures = probabilities(temperatureRegion, month, "ta");
             OutlookProbabilities precipitation = probabilities(precipitationRegion, month, "rn");
@@ -87,11 +87,20 @@ public class KmaSeasonalOutlookParser {
         return factory.newDocumentBuilder().parse(new ByteArrayInputStream(xml));
     }
 
-    private Element regionElement(Document document, String tag, String nameTag, String expectedName) {
+    private Element regionElement(
+            Document document,
+            String tag,
+            String nameTag,
+            WeatherRegion region
+    ) {
         NodeList nodes = document.getElementsByTagName(tag);
         for (int index = 0; index < nodes.getLength(); index++) {
             Element element = (Element) nodes.item(index);
-            if (normalize(text(element, nameTag)).equals(normalize(expectedName))) {
+            String actualName = normalize(text(element, nameTag));
+            boolean matches = region.getSeasonalRegionNames().stream()
+                    .map(this::normalize)
+                    .anyMatch(actualName::equals);
+            if (matches) {
                 return element;
             }
         }

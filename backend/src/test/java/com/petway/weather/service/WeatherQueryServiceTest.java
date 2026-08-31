@@ -19,6 +19,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -85,6 +86,23 @@ class WeatherQueryServiceTest {
 
         assertThat(response.forecastType()).isEqualTo(ForecastType.MID_TERM);
         verify(gateway).getMidTerm(WeatherRegion.SEOUL_INCHEON_GYEONGGI, targetDate);
+    }
+
+    @Test
+    void doesNotReplaceUnavailableDayTenWithSeasonalOutlook() {
+        LocalDate targetDate = TODAY.plusDays(10);
+        when(gateway.getMidTerm(WeatherRegion.SEOUL_INCHEON_GYEONGGI, targetDate))
+                .thenThrow(new WeatherForecastUnavailableException("중기예보가 아직 제공되지 않았습니다."));
+
+        assertThatThrownBy(() -> service.getForecast(
+                LATITUDE,
+                LONGITUDE,
+                targetDate,
+                WeatherRegion.SEOUL_INCHEON_GYEONGGI
+        )).isInstanceOf(WeatherForecastUnavailableException.class);
+
+        verify(gateway).getMidTerm(WeatherRegion.SEOUL_INCHEON_GYEONGGI, targetDate);
+        verifyNoMoreInteractions(gateway);
     }
 
     @Test

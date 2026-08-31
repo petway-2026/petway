@@ -13,14 +13,19 @@ import com.petway.weather.domain.WeatherRegion;
 import com.petway.weather.port.WeatherForecastGateway;
 import com.petway.weather.service.WeatherForecastUnavailableException;
 import com.petway.weather.service.WeatherProviderException;
+import com.petway.weather.service.WeatherProviderTimeoutException;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.URI;
 import java.net.URLDecoder;
+import java.net.SocketTimeoutException;
+import java.net.http.HttpTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.LocalDate;
@@ -56,14 +61,14 @@ public class KmaWeatherClient implements WeatherForecastGateway {
     private final Clock clock;
 
     public KmaWeatherClient(
-            RestClient.Builder builder,
+            @Qualifier("weatherRestClient") RestClient restClient,
             WeatherApiProperties properties,
             KmaGridConverter gridConverter,
             KmaWeatherMapper mapper,
             KmaSeasonalOutlookParser seasonalParser,
             Clock clock
     ) {
-        this.restClient = builder.build();
+        this.restClient = restClient;
         this.properties = properties;
         this.gridConverter = gridConverter;
         this.mapper = mapper;
@@ -105,7 +110,9 @@ public class KmaWeatherClient implements WeatherForecastGateway {
         try {
             return mapper.mapShortTerm(items, targetDate, base, region);
         } catch (IllegalStateException exception) {
-            throw new WeatherForecastUnavailableException(exception.getMessage());
+            throw new WeatherForecastUnavailableException(
+                    "요청한 여행일(" + targetDate + ")의 단기예보가 아직 제공되지 않았습니다."
+            );
         }
     }
 
@@ -116,7 +123,9 @@ public class KmaWeatherClient implements WeatherForecastGateway {
         LocalDateTime base = latestMidBaseTime();
         int forecastDay = Math.toIntExact(ChronoUnit.DAYS.between(base.toLocalDate(), targetDate));
         if (forecastDay < 4 || forecastDay > 10) {
-            throw new WeatherForecastUnavailableException("현재 발표된 중기예보에서 요청한 날짜를 조회할 수 없습니다.");
+            throw new WeatherForecastUnavailableException(
+                    "요청한 여행일(" + targetDate + ")의 중기예보가 아직 제공되지 않았습니다."
+            );
         }
 
         KmaMidLandItem land = first(getMidLand(region, base));
@@ -147,6 +156,8 @@ public class KmaWeatherClient implements WeatherForecastGateway {
             throw exception;
         } catch (IllegalStateException exception) {
             throw new WeatherForecastUnavailableException(exception.getMessage());
+        } catch (ResourceAccessException exception) {
+            throw providerAccessException("기상청 3개월 전망 호출", exception);
         } catch (RestClientException exception) {
             throw new WeatherProviderException("기상청 3개월 전망 호출에 실패했습니다.", exception);
         }
@@ -186,6 +197,8 @@ public class KmaWeatherClient implements WeatherForecastGateway {
             return response;
         } catch (WeatherProviderException exception) {
             throw exception;
+        } catch (ResourceAccessException exception) {
+            throw providerAccessException("기상청 날씨 정보 호출", exception);
         } catch (RestClientException exception) {
             throw new WeatherProviderException("기상청 날씨 정보 호출에 실패했습니다.", exception);
         }
@@ -256,5 +269,31 @@ public class KmaWeatherClient implements WeatherForecastGateway {
 
     private URI httpsUri(String url) {
         return URI.create(url.replaceFirst("^http://", "https://"));
+    }
+
+    private WeatherProviderException providerAccessException(
+            String operation,
+            ResourceAccessException exception
+    ) {
+        if (isTimeout(exception)) {
+            return new WeatherProviderTimeoutException(operation + " 시간이 초과되었습니다.", exception);
+        }
+        return new WeatherProviderException(operation + "에 실패했습니다.", exception);
+    }
+
+    private boolean isTimeout(Throwable throwable) {
+        Throwable current = throwable;
+        while (current != null) {
+            if (current instanceof SocketTimeoutException
+                    || current instanceof HttpTimeoutException) {
+                return true;
+            }
+            String message = current.getMessage();
+            if (message != null && message.toLowerCase().contains("timed out")) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
     }
 }

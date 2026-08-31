@@ -5,12 +5,15 @@ import com.petway.weather.domain.ForecastType;
 import com.petway.weather.domain.WeatherRegion;
 import com.petway.weather.dto.WeatherForecastResponse;
 import com.petway.weather.dto.WeatherDisplay;
+import com.petway.weather.service.WeatherForecastUnavailableException;
+import com.petway.weather.service.WeatherProviderTimeoutException;
 import com.petway.weather.service.WeatherQueryService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import java.net.SocketTimeoutException;
 import java.time.LocalDate;
 
 import static org.mockito.Mockito.mock;
@@ -78,5 +81,50 @@ class WeatherControllerTest {
                 targetDate,
                 WeatherRegion.SEOUL_INCHEON_GYEONGGI
         );
+    }
+
+    @Test
+    void returnsNotFoundWhenForecastForBoundaryDateIsNotPublished() throws Exception {
+        LocalDate targetDate = LocalDate.of(2026, 9, 7);
+        when(service.getForecast(
+                37.5665,
+                126.9780,
+                targetDate,
+                WeatherRegion.SEOUL_INCHEON_GYEONGGI
+        )).thenThrow(new WeatherForecastUnavailableException(
+                "요청한 여행일(2026-09-07)의 중기예보가 아직 제공되지 않았습니다."
+        ));
+
+        mockMvc.perform(get("/api/weather")
+                        .param("latitude", "37.5665")
+                        .param("longitude", "126.9780")
+                        .param("targetDate", "2026-09-07")
+                        .param("region", "SEOUL_INCHEON_GYEONGGI"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value(
+                        "요청한 여행일(2026-09-07)의 중기예보가 아직 제공되지 않았습니다."
+                ));
+    }
+
+    @Test
+    void returnsGatewayTimeoutWhenWeatherProviderTimesOut() throws Exception {
+        LocalDate targetDate = LocalDate.of(2026, 8, 29);
+        when(service.getForecast(
+                37.5665,
+                126.9780,
+                targetDate,
+                WeatherRegion.SEOUL_INCHEON_GYEONGGI
+        )).thenThrow(new WeatherProviderTimeoutException(
+                "기상청 날씨 정보 호출 시간이 초과되었습니다.",
+                new SocketTimeoutException("Read timed out")
+        ));
+
+        mockMvc.perform(get("/api/weather")
+                        .param("latitude", "37.5665")
+                        .param("longitude", "126.9780")
+                        .param("targetDate", "2026-08-29")
+                        .param("region", "SEOUL_INCHEON_GYEONGGI"))
+                .andExpect(status().isGatewayTimeout())
+                .andExpect(jsonPath("$.message").value("기상청 날씨 정보 응답 시간이 초과되었습니다."));
     }
 }
