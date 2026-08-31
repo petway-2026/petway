@@ -95,6 +95,24 @@ class WeatherQueryServiceTest {
     }
 
     @Test
+    void usesMidTermFromExactDayFourBoundary() {
+        LocalDate targetDate = TODAY.plusDays(4);
+        when(gateway.getMidTerm(WeatherRegion.SEOUL_INCHEON_GYEONGGI, targetDate))
+                .thenReturn(forecast(targetDate, ForecastType.MID_TERM));
+
+        var response = service.getForecast(
+                LATITUDE,
+                LONGITUDE,
+                targetDate,
+                WeatherRegion.SEOUL_INCHEON_GYEONGGI
+        );
+
+        assertThat(response.forecastType()).isEqualTo(ForecastType.MID_TERM);
+        verify(gateway).getMidTerm(WeatherRegion.SEOUL_INCHEON_GYEONGGI, targetDate);
+        verifyNoMoreInteractions(gateway);
+    }
+
+    @Test
     void doesNotReplaceUnavailableDayTenWithSeasonalOutlook() {
         LocalDate targetDate = TODAY.plusDays(10);
         when(gateway.getMidTerm(WeatherRegion.SEOUL_INCHEON_GYEONGGI, targetDate))
@@ -189,6 +207,19 @@ class WeatherQueryServiceTest {
 
         assertThat(response.forecastType()).isEqualTo(ForecastType.SEASONAL_OUTLOOK);
         verify(gateway).getSeasonalOutlook(WeatherRegion.JEJU, targetDate);
+    }
+
+    @Test
+    void usesSeasonalOutlookFromExactDayElevenBoundary() {
+        LocalDate targetDate = TODAY.plusDays(11);
+        when(gateway.getSeasonalOutlook(WeatherRegion.JEJU, targetDate))
+                .thenReturn(forecast(targetDate, ForecastType.SEASONAL_OUTLOOK));
+
+        var response = service.getForecast(LATITUDE, LONGITUDE, targetDate, WeatherRegion.JEJU);
+
+        assertThat(response.forecastType()).isEqualTo(ForecastType.SEASONAL_OUTLOOK);
+        verify(gateway).getSeasonalOutlook(WeatherRegion.JEJU, targetDate);
+        verifyNoMoreInteractions(gateway);
     }
 
     @Test

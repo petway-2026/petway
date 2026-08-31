@@ -107,4 +107,35 @@ class KmaSeasonalOutlookParserTest {
                 .isNotInstanceOf(SeasonalOutlookUnavailableException.class)
                 .hasMessageContaining("형식");
     }
+
+    @Test
+    void rejectsSeasonalProbabilityOutsideZeroToOneHundred() {
+        String fixture = """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <rss><channel><item><description>
+                  <header><ydate>2026년 8월 24일 11시</ydate></header>
+                  <threemonth_ta_forecast><local_ta>
+                    <local_ta_name>제주도</local_ta_name>
+                    <month1_local_ta_minVal>101</month1_local_ta_minVal>
+                    <month1_local_ta_similarVal>0</month1_local_ta_similarVal>
+                    <month1_local_ta_maxVal>0</month1_local_ta_maxVal>
+                  </local_ta></threemonth_ta_forecast>
+                  <threemonth_rn_forecast><local_rn>
+                    <local_rn_name>제주도</local_rn_name>
+                    <month1_local_rn_minVal>20</month1_local_rn_minVal>
+                    <month1_local_rn_similarVal>50</month1_local_rn_similarVal>
+                    <month1_local_rn_maxVal>30</month1_local_rn_maxVal>
+                  </local_rn></threemonth_rn_forecast>
+                </description></item></channel></rss>
+                """;
+
+        assertThatThrownBy(() -> parser.parse(
+                fixture.getBytes(StandardCharsets.UTF_8),
+                WeatherRegion.JEJU,
+                LocalDate.of(2026, 9, 15)
+        ))
+                .isInstanceOf(IllegalStateException.class)
+                .isNotInstanceOf(SeasonalOutlookUnavailableException.class)
+                .hasMessageContaining("형식");
+    }
 }

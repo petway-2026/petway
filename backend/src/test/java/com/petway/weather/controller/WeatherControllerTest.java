@@ -6,6 +6,7 @@ import com.petway.weather.domain.WeatherRegion;
 import com.petway.weather.dto.WeatherForecastResponse;
 import com.petway.weather.dto.WeatherDisplay;
 import com.petway.weather.service.WeatherForecastUnavailableException;
+import com.petway.weather.service.WeatherProviderException;
 import com.petway.weather.service.WeatherProviderTimeoutException;
 import com.petway.weather.service.WeatherQueryService;
 import org.junit.jupiter.api.BeforeEach;
@@ -126,5 +127,24 @@ class WeatherControllerTest {
                         .param("region", "SEOUL_INCHEON_GYEONGGI"))
                 .andExpect(status().isGatewayTimeout())
                 .andExpect(jsonPath("$.message").value("기상청 날씨 정보 응답 시간이 초과되었습니다."));
+    }
+
+    @Test
+    void returnsBadGatewayWhenWeatherProviderFails() throws Exception {
+        LocalDate targetDate = LocalDate.of(2026, 8, 29);
+        when(service.getForecast(
+                37.5665,
+                126.9780,
+                targetDate,
+                WeatherRegion.SEOUL_INCHEON_GYEONGGI
+        )).thenThrow(new WeatherProviderException("기상청 응답 형식 오류"));
+
+        mockMvc.perform(get("/api/weather")
+                        .param("latitude", "37.5665")
+                        .param("longitude", "126.9780")
+                        .param("targetDate", "2026-08-29")
+                        .param("region", "SEOUL_INCHEON_GYEONGGI"))
+                .andExpect(status().isBadGateway())
+                .andExpect(jsonPath("$.message").value("기상청 날씨 정보 호출에 실패했습니다."));
     }
 }
