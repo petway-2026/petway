@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
-import { getWeather } from "../../weather/api/weatherApi";
+import { getWeather, WeatherApiError } from "../../weather/api/weatherApi";
 import type {
   ForecastType,
   WeatherCondition,
@@ -11,6 +11,12 @@ import type { SelectedPlace } from "../types/place";
 interface PlaceWeatherPanelProps {
   place: SelectedPlace;
   onClose: () => void;
+}
+
+interface WeatherErrorView {
+  title: string;
+  message: string;
+  retryable: boolean;
 }
 
 const FORECAST_LABELS: Record<ForecastType, string> = {
@@ -55,6 +61,57 @@ function formatAnnouncedAt(value?: string): string | null {
   }).format(date);
 }
 
+function toWeatherErrorView(cause: unknown): WeatherErrorView {
+  if (cause instanceof WeatherApiError) {
+    if (cause.status === 400) {
+      return {
+        title: "날짜 또는 위치를 확인해 주세요.",
+        message: cause.message,
+        retryable: false,
+      };
+    }
+
+    if (cause.status === 404) {
+      return {
+        title: "아직 제공된 예보가 없어요.",
+        message: cause.message,
+        retryable: false,
+      };
+    }
+
+    if (cause.status === 504) {
+      return {
+        title: "날씨 조회 시간이 초과됐어요.",
+        message: cause.message,
+        retryable: true,
+      };
+    }
+
+    if (cause.status >= 500) {
+      return {
+        title: "기상청 정보를 불러오지 못했어요.",
+        message: cause.message,
+        retryable: true,
+      };
+    }
+
+    return {
+      title: "날씨를 불러오지 못했어요.",
+      message: cause.message,
+      retryable: false,
+    };
+  }
+
+  return {
+    title: "날씨를 불러오지 못했어요.",
+    message:
+      cause instanceof Error
+        ? cause.message
+        : "네트워크 연결을 확인한 뒤 다시 시도해 주세요.",
+    retryable: true,
+  };
+}
+
 export default function PlaceWeatherPanel({
   place,
   onClose,
@@ -64,7 +121,7 @@ export default function PlaceWeatherPanel({
     null,
   );
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState<WeatherErrorView | null>(null);
   const [retryKey, setRetryKey] = useState(0);
 
   const dateRange = useMemo(() => {
@@ -80,7 +137,7 @@ export default function PlaceWeatherPanel({
 
   useEffect(() => {
     setForecast(null);
-    setError("");
+    setError(null);
 
     if (!targetDate) {
       setLoading(false);
@@ -108,11 +165,7 @@ export default function PlaceWeatherPanel({
           return;
         }
 
-        setError(
-          requestError instanceof Error
-            ? requestError.message
-            : "날씨 정보를 가져오지 못했습니다.",
-        );
+        setError(toWeatherErrorView(requestError));
       })
       .finally(() => {
         if (!controller.signal.aborted) {
@@ -192,14 +245,16 @@ export default function PlaceWeatherPanel({
 
           {error && !loading && (
             <div className="place-weather-error" role="alert">
-              <strong>날씨를 불러오지 못했어요.</strong>
-              <span>{error}</span>
-              <button
-                type="button"
-                onClick={() => setRetryKey((current) => current + 1)}
-              >
-                다시 시도
-              </button>
+              <strong>{error.title}</strong>
+              <span>{error.message}</span>
+              {error.retryable && (
+                <button
+                  type="button"
+                  onClick={() => setRetryKey((current) => current + 1)}
+                >
+                  다시 시도
+                </button>
+              )}
             </div>
           )}
 

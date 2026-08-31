@@ -5,6 +5,16 @@ import type {
 
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8080";
 
+export class WeatherApiError extends Error {
+  readonly status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = "WeatherApiError";
+    this.status = status;
+  }
+}
+
 async function parseError(response: Response): Promise<string> {
   try {
     const data: unknown = await response.json();
@@ -42,7 +52,7 @@ export async function getWeather(
   });
 
   if (!response.ok) {
-    throw new Error(await parseError(response));
+    throw new WeatherApiError(response.status, await parseError(response));
   }
 
   return response.json();

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import {
@@ -77,14 +77,32 @@ export default function NearbyPlacesSection({
     const [mapMoved, setMapMoved] = useState(false);
     const [radiusPolicy, setRadiusPolicy] = useState(getRadiusPolicy(DEFAULT_LOCATION));
     const [places, setPlaces] = useState<PlaceSummary[]>([]);
-    const [details, setDetails] = useState<Record<string, PlacePetDetail>>({});
-    const [detailLoadingId, setDetailLoadingId] = useState<string | null>(null);
+    const [expandedPlaceId, setExpandedPlaceId] = useState<string | null>(null);
+    const [detail, setDetail] = useState<PlacePetDetail | null>(null);
+    const [detailLoading, setDetailLoading] = useState(false);
+    const [detailError, setDetailError] = useState("");
     const [selectedPlace, setSelectedPlace] = useState<SelectedPlace | null>(null);
     const [selectedType, setSelectedType] = useState("all");
     const [locationLoading, setLocationLoading] = useState(false);
     const [locationMessage, setLocationMessage] = useState(
         "위치 사용에 동의하면 가까운 반려동물 동반 장소를 보여드려요."
     );
+    const detailRequestRef = useRef<{ id: number; controller: AbortController } | null>(null);
+    const detailRequestIdRef = useRef(0);
+
+    const closePlaceExpansion = useCallback(() => {
+        detailRequestRef.current?.controller.abort();
+        detailRequestRef.current = null;
+        setExpandedPlaceId(null);
+        setDetail(null);
+        setDetailLoading(false);
+        setDetailError("");
+        setSelectedPlace(null);
+    }, []);
+
+    useEffect(() => () => {
+        detailRequestRef.current?.controller.abort();
+    }, []);
 
     const getCurrentLocation = () => {
         if (!navigator.geolocation) {
@@ -118,7 +136,7 @@ export default function NearbyPlacesSection({
                         - (distanceInMeters(location, right) ?? Number.MAX_VALUE)
                     );
                     setPlaces(sortedPlaces);
-                    setSelectedPlace(null);
+                    closePlaceExpansion();
                     setSelectedType("all");
                     setMapMoved(false);
                     setRadiusPolicy(policy);
@@ -166,7 +184,7 @@ export default function NearbyPlacesSection({
             );
             setSearchOrigin(location);
             setPlaces(sortedPlaces);
-            setSelectedPlace(null);
+            closePlaceExpansion();
             setSelectedType("all");
             setMapMoved(false);
             setRadiusPolicy(policy);
@@ -252,41 +270,60 @@ export default function NearbyPlacesSection({
 
     const handleMarkerSelect = useCallback((marker: MapMarker | null) => {
         if (!marker || marker.kind !== "place") {
-            setSelectedPlace(null);
+            closePlaceExpansion();
             return;
         }
 
         const place = places.find((candidate) => candidate.contentId === String(marker.id));
-        if (place) selectPlace(place);
-    }, [places, selectPlace]);
+        if (place) {
+            closePlaceExpansion();
+            selectPlace(place);
+        }
+    }, [closePlaceExpansion, places, selectPlace]);
 
-    const closePlaceExpansion = (contentId: string) => {
-        setDetails((current) => {
-            const next = { ...current };
-            delete next[contentId];
-            return next;
-        });
-        if (selectedPlace?.contentId === contentId) {
-            setSelectedPlace(null);
+    const loadPlaceDetail = async (place: PlaceSummary) => {
+        detailRequestRef.current?.controller.abort();
+
+        const controller = new AbortController();
+        const requestId = detailRequestIdRef.current + 1;
+        detailRequestIdRef.current = requestId;
+        detailRequestRef.current = { id: requestId, controller };
+
+        setDetail(null);
+        setDetailError("");
+        setDetailLoading(true);
+
+        try {
+            const response = await getPlacePetDetail(place.contentId, controller.signal);
+            if (detailRequestRef.current?.id === requestId) {
+                setDetail(response);
+            }
+        } catch (cause) {
+            if (controller.signal.aborted) return;
+            if (detailRequestRef.current?.id === requestId) {
+                setDetailError(
+                    cause instanceof Error
+                        ? cause.message
+                        : "반려동물 동반 상세정보를 불러오지 못했습니다."
+                );
+            }
+        } finally {
+            if (detailRequestRef.current?.id === requestId) {
+                detailRequestRef.current = null;
+                setDetailLoading(false);
+            }
         }
     };
 
-    const toggleDetail = async (place: PlaceSummary) => {
-        const { contentId } = place;
-
-        if (details[contentId]) {
-            closePlaceExpansion(contentId);
+    const toggleDetail = (place: PlaceSummary) => {
+        if (expandedPlaceId === place.contentId) {
+            closePlaceExpansion();
             return;
         }
 
-        setDetailLoadingId(contentId);
-        try {
-            const detail = await getPlacePetDetail(contentId);
-            setDetails((current) => ({ ...current, [contentId]: detail }));
-            selectPlace(place);
-        } finally {
-            setDetailLoadingId(null);
-        }
+        setExpandedPlaceId(place.contentId);
+        selectPlace(place);
+        void loadPlaceDetail(place);
     };
 
     return (
@@ -352,7 +389,7 @@ export default function NearbyPlacesSection({
                             className={selectedType === "all" ? "active" : ""}
                             onClick={() => {
                                 setSelectedType("all");
-                                setSelectedPlace(null);
+                                closePlaceExpansion();
                             }}
                         >
                             전체 <span>{places.length}</span>
@@ -364,7 +401,7 @@ export default function NearbyPlacesSection({
                                 className={selectedType === contentTypeId ? "active" : ""}
                                 onClick={() => {
                                     setSelectedType(contentTypeId);
-                                    setSelectedPlace(null);
+                                    closePlaceExpansion();
                                 }}
                             >
                                 {CONTENT_TYPE_NAMES[contentTypeId] ?? "기타"}
@@ -375,6 +412,7 @@ export default function NearbyPlacesSection({
                     <div className="nearby-place-grid">
                     {filteredPlaces.map((place) => {
                         const weatherSelected = selectedPlace?.contentId === place.contentId;
+                        const detailExpanded = expandedPlaceId === place.contentId;
 
                         return (
                             <div
@@ -400,19 +438,38 @@ export default function NearbyPlacesSection({
                                         <button
                                             type="button"
                                             className="nearby-detail-button"
-                                            onClick={() => void toggleDetail(place)}
-                                            disabled={detailLoadingId === place.contentId}
+                                            onClick={() => toggleDetail(place)}
+                                            aria-expanded={detailExpanded}
                                         >
-                                            {detailLoadingId === place.contentId
-                                                ? "불러오는 중…"
-                                                : details[place.contentId] ? "상세정보 닫기" : "동반 상세정보"}
+                                            {detailExpanded ? "상세정보 닫기" : "동반 상세정보"}
                                         </button>
-                                        {details[place.contentId] && (
+                                        {detailExpanded && detailLoading && (
+                                            <div className="nearby-pet-detail-status" role="status">
+                                                동반 상세정보를 불러오고 있어요.
+                                            </div>
+                                        )}
+                                        {detailExpanded && detailError && !detailLoading && (
+                                            <div className="nearby-pet-detail-error" role="alert">
+                                                <span>{detailError}</span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => void loadPlaceDetail(place)}
+                                                >
+                                                    다시 시도
+                                                </button>
+                                            </div>
+                                        )}
+                                        {detailExpanded && detail && !detailLoading && !detailError && (
                                             <dl className="nearby-pet-detail">
-                                                {details[place.contentId].allowedCapacity && <><dt>동반 가능 범위</dt><dd>{details[place.contentId].allowedCapacity}</dd></>}
-                                                {details[place.contentId].requiredItems && <><dt>필요사항</dt><dd>{details[place.contentId].requiredItems}</dd></>}
-                                                {details[place.contentId].additionalInformation && <><dt>이용 안내</dt><dd>{details[place.contentId].additionalInformation}</dd></>}
-                                                {details[place.contentId].safetyNotice && <><dt>안전 유의사항</dt><dd>{details[place.contentId].safetyNotice}</dd></>}
+                                                {detail.allowedCapacity && <><dt>동반 가능 범위</dt><dd>{detail.allowedCapacity}</dd></>}
+                                                {detail.requiredItems && <><dt>필요사항</dt><dd>{detail.requiredItems}</dd></>}
+                                                {detail.additionalInformation && <><dt>이용 안내</dt><dd>{detail.additionalInformation}</dd></>}
+                                                {detail.safetyNotice && <><dt>안전 유의사항</dt><dd>{detail.safetyNotice}</dd></>}
+                                                {!detail.allowedCapacity
+                                                    && !detail.requiredItems
+                                                    && !detail.additionalInformation
+                                                    && !detail.safetyNotice
+                                                    && <dd>제공된 반려동물 동반 상세정보가 없습니다.</dd>}
                                             </dl>
                                         )}
                                     </div>
@@ -420,7 +477,7 @@ export default function NearbyPlacesSection({
                                     {weatherSelected && (
                                         <PlaceWeatherPanel
                                             place={selectedPlace}
-                                            onClose={() => closePlaceExpansion(place.contentId)}
+                                            onClose={closePlaceExpansion}
                                         />
                                     )}
                                 </article>
