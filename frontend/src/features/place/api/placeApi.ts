@@ -28,6 +28,41 @@ export interface PlacePetDetail {
     safetyNotice: string | null;
 }
 
+export type CompatibilityStatus =
+    | "AVAILABLE"
+    | "CONDITIONAL"
+    | "NEED_CONFIRMATION"
+    | "UNAVAILABLE";
+
+export interface CompatibilityRequirement {
+    type: string;
+    label: string;
+    scope: "UNSPECIFIED" | "INDOOR" | "OUTDOOR";
+}
+
+export interface PlaceCompatibility {
+    contentId: string;
+    petId: number;
+    petName: string;
+    officialInformation: PlacePetDetail;
+    petwayAssessment: {
+        status: CompatibilityStatus;
+        reasons: string[];
+        requirements: CompatibilityRequirement[];
+        needsConfirmation: boolean;
+    };
+}
+
+export class PlaceCompatibilityApiError extends Error {
+    readonly status: number;
+
+    constructor(status: number, message: string) {
+        super(message);
+        this.name = "PlaceCompatibilityApiError";
+        this.status = status;
+    }
+}
+
 export async function searchPlaces(
     areaCode: string,
     size = 100
@@ -85,20 +120,6 @@ export async function searchNearbyPlaces(
     return response.json() as Promise<PlaceSearchResponse>;
 }
 
-export type CompatibilityStatus = "AVAILABLE" | "NEED_CONFIRMATION" | "UNAVAILABLE";
-
-export interface PlaceCompatibility {
-    contentId: string;
-    petId: number;
-    petName: string;
-    petwayAssessment: {
-        status: CompatibilityStatus;
-        reasons: string[];
-        requirements: Array<{ type: string; label: string; scope: string }>;
-        needsConfirmation: boolean;
-    };
-}
-
 export async function searchAllNearbyPlaces(
     latitude: number,
     longitude: number,
@@ -149,10 +170,28 @@ export async function getPlacePetDetail(
     return response.json() as Promise<PlacePetDetail>;
 }
 
-export async function getPlaceCompatibility(contentId: string): Promise<PlaceCompatibility> {
-    const response = await fetch(`${API_URL}/api/places/${contentId}/compatibility`, {
-        credentials: "include",
-    });
-    if (!response.ok) throw new Error("반려견 동반 가능 여부를 확인하지 못했습니다.");
+export async function getPlaceCompatibility(
+    contentId: string,
+    signal?: AbortSignal
+): Promise<PlaceCompatibility> {
+    const response = await fetch(
+        `${API_URL}/api/places/${contentId}/compatibility`,
+        {
+            credentials: "include",
+            signal,
+        }
+    );
+
+    if (!response.ok) {
+        let message = "내 반려견의 동반 가능 여부를 확인하지 못했습니다.";
+        try {
+            const error = await response.json() as { message?: string };
+            message = error.message ?? message;
+        } catch {
+            // JSON 오류 응답이 아니면 사용자용 기본 문구를 사용합니다.
+        }
+        throw new PlaceCompatibilityApiError(response.status, message);
+    }
+
     return response.json() as Promise<PlaceCompatibility>;
 }
