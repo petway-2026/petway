@@ -1,6 +1,10 @@
 package com.petway;
 
 import com.petway.pet.repository.PetRepository;
+import com.petway.pet.entity.Pet;
+import com.petway.pet.enums.PetSizeType;
+import com.petway.place.model.PlacePetDetail;
+import com.petway.place.port.TourPlaceGateway;
 import com.petway.user.repository.UserAuthRepository;
 import com.petway.user.repository.UserRepository;
 import com.petway.user.entity.User;
@@ -21,15 +25,18 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 import java.util.Optional;
+import java.math.BigDecimal;
 
 @AutoConfigureMockMvc
 @SpringBootTest(properties = {
@@ -56,6 +63,9 @@ class PetwayApplicationTests {
 
     @MockitoBean
     private PetRepository petRepository;
+
+    @MockitoBean
+    private TourPlaceGateway tourPlaceGateway;
 
     @MockitoBean
     private ClientRegistrationRepository clientRegistrationRepository;
@@ -86,6 +96,67 @@ class PetwayApplicationTests {
     void protectedApiStillRequiresAuthentication() throws Exception {
         mockMvc.perform(get("/api/pets"))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("사용자별 장소 동반 가능 판정 API는 인증 없이 접근할 수 없다")
+    void placeCompatibilityRequiresAuthentication() throws Exception {
+        mockMvc.perform(get("/api/places/125266/compatibility"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("기존 관광공사 반려동물 상세 API는 인증 없이 접근할 수 있다")
+    void publicPlacePetDetailPolicyRemainsUnchanged() throws Exception {
+        mockMvc.perform(get("/api/places/not-a-number/pet-detail"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("인증 사용자는 자신의 대표견으로 장소 동반 가능 판정을 받는다")
+    void authenticatedUserReceivesCompatibilityForOwnPrimaryPet() throws Exception {
+        User userEntity = User.create("owner@petway.test", "보호자");
+        Pet primaryPet = Pet.create(
+                userEntity,
+                "보리",
+                "믹스견",
+                null,
+                null,
+                null,
+                new BigDecimal("7.8"),
+                PetSizeType.SMALL,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                true
+        );
+        ReflectionTestUtils.setField(primaryPet, "id", 11L);
+
+        when(userRepository.findByEmail("owner@petway.test"))
+                .thenReturn(Optional.of(userEntity));
+        when(petRepository.findByUserAndIsPrimaryTrue(userEntity))
+                .thenReturn(Optional.of(primaryPet));
+        when(tourPlaceGateway.getPetDetail("125266"))
+                .thenReturn(new PlacePetDetail(
+                        "전구역 동반가능",
+                        "10kg 이하 동반 가능",
+                        "목줄 필수",
+                        null,
+                        null
+                ));
+
+        mockMvc.perform(get("/api/places/125266/compatibility")
+                        .with(user("owner@petway.test")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.petId").value(11))
+                .andExpect(jsonPath("$.petName").value("보리"))
+                .andExpect(jsonPath("$.petwayAssessment.status")
+                        .value("CONDITIONAL"))
+                .andExpect(jsonPath("$.petwayAssessment.requirements[0].label")
+                        .value("목줄"));
     }
 
     @Test

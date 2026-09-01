@@ -170,4 +170,67 @@ class TourPlaceMapperTest {
                 .extracting(exception -> ((TourApiException) exception).getErrorType())
                 .isEqualTo(TourApiErrorType.INVALID_RESPONSE);
     }
+
+    @Test
+    void mapsPetDetailFieldsWithoutChangingOfficialText() throws Exception {
+        TourApiResponse response = objectMapper.readValue("""
+                {
+                  "response": {
+                    "header": {"resultCode": "0000", "resultMsg": "OK"},
+                    "body": {
+                      "items": {
+                        "item": [{
+                          "acmpyTypeCd": "전구역 동반가능",
+                          "acmpyPsblCpam": "10kg 이하 동반 가능",
+                          "acmpyNeedMtr": "목줄 필수",
+                          "etcAcmpyInfo": "현장 문의",
+                          "relaAcdntRiskMtr": "맹견 입마개 필수"
+                        }]
+                      }
+                    }
+                  }
+                }
+                """, TourApiResponse.class);
+
+        var detail = mapper.toPlacePetDetail(response);
+
+        assertThat(detail.accompanimentType()).isEqualTo("전구역 동반가능");
+        assertThat(detail.allowedCapacity()).isEqualTo("10kg 이하 동반 가능");
+        assertThat(detail.requiredItems()).isEqualTo("목줄 필수");
+        assertThat(detail.additionalInformation()).isEqualTo("현장 문의");
+        assertThat(detail.safetyNotice()).isEqualTo("맹견 입마개 필수");
+    }
+
+    @Test
+    void mapsEmptyPetDetailItemsToEmptyOfficialInformation() throws Exception {
+        TourApiResponse response = objectMapper.readValue("""
+                {
+                  "response": {
+                    "header": {"resultCode": "0000", "resultMsg": "OK"},
+                    "body": {"items": ""}
+                  }
+                }
+                """, TourApiResponse.class);
+
+        var detail = mapper.toPlacePetDetail(response);
+
+        assertThat(detail).isEqualTo(com.petway.place.model.PlacePetDetail.empty());
+    }
+
+    @Test
+    void rejectsUnexpectedTextInPetDetailItems() throws Exception {
+        TourApiResponse response = objectMapper.readValue("""
+                {
+                  "response": {
+                    "header": {"resultCode": "0000", "resultMsg": "OK"},
+                    "body": {"items": "unexpected"}
+                  }
+                }
+                """, TourApiResponse.class);
+
+        assertThatThrownBy(() -> mapper.toPlacePetDetail(response))
+                .isInstanceOf(TourApiException.class)
+                .extracting(exception -> ((TourApiException) exception).getErrorType())
+                .isEqualTo(TourApiErrorType.INVALID_RESPONSE);
+    }
 }

@@ -59,9 +59,29 @@ public class TourPlaceMapper {
         if (response.header() == null || !SUCCESS_RESULT_CODE.equals(response.header().resultCode())) {
             throw new TourApiException(TourApiErrorType.API_ERROR, "반려동물 동반 상세정보를 불러오지 못했습니다.");
         }
-        JsonNode items = response.body() == null ? null : response.body().items();
-        JsonNode item = items == null ? null : items.get("item");
-        if (item != null && item.isArray()) item = item.path(0);
+        if (response.body() == null) {
+            throw invalidResponse();
+        }
+
+        JsonNode items = response.body().items();
+        if (items == null || items.isNull()) {
+            return PlacePetDetail.empty();
+        }
+        if (items.isTextual()) {
+            if (items.textValue().isBlank()) {
+                return PlacePetDetail.empty();
+            }
+            throw invalidResponse();
+        }
+        if (!items.isObject()) {
+            throw invalidResponse();
+        }
+
+        JsonNode item = items.get("item");
+        if (item == null || item.isNull() || (item.isArray() && item.isEmpty())) {
+            return PlacePetDetail.empty();
+        }
+        if (item.isArray()) item = item.path(0);
         if (item == null || !item.isObject()) throw invalidResponse();
 
         return new PlacePetDetail(

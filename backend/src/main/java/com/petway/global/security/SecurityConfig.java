@@ -77,6 +77,11 @@ public class SecurityConfig {
                         auth -> auth
 
                                 .requestMatchers(
+                                        "/api/places/*/compatibility"
+                                )
+                                .authenticated()
+
+                                .requestMatchers(
                                         "/api/auth/signup",
                                         "/api/auth/login",
                                         "/api/auth/oauth/kakao/link",
