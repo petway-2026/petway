@@ -15,6 +15,7 @@ import PetListPage from "../features/pet/pages/PetListPage";
 import PetCreatePage from "../features/pet/pages/PetCreatePage";
 import PetEditPage from "../features/pet/pages/PetEditPage";
 import HospitalPage from "../features/hospital/pages/HospitalPage";
+import TravelCoursePage from "../features/course/pages/TravelCoursePage";
 
 import HomePage from "../pages/HomePage";
 import MyPage from "../pages/MyPage";
@@ -60,6 +61,10 @@ function AppLayout() {
                         <Route
                             path="/hospitals"
                             element={<HospitalPage />}
+                        />
+                        <Route
+                            path="/courses"
+                            element={<TravelCoursePage />}
                         />
                         <Route
                             path="/mypage"

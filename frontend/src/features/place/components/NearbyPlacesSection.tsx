@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 
 import {
     getPlacePetDetail,
-    searchNearbyPlaces,
+    searchAllNearbyPlaces,
     type PlacePetDetail,
     type PlaceSummary,
 } from "../api/placeApi";
@@ -85,6 +85,7 @@ export default function NearbyPlacesSection({
     const [detailLoading, setDetailLoading] = useState(false);
     const [detailError, setDetailError] = useState("");
     const [selectedPlace, setSelectedPlace] = useState<SelectedPlace | null>(null);
+    const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null);
     const [selectedType, setSelectedType] = useState("all");
     const [locationLoading, setLocationLoading] = useState(false);
     const [locationMessage, setLocationMessage] = useState(INITIAL_LOCATION_MESSAGE);
@@ -118,6 +119,7 @@ export default function NearbyPlacesSection({
         setDetailLoading(false);
         setDetailError("");
         setSelectedPlace(null);
+        setSelectedPlaceId(null);
         restoreLocationMessage();
     }, [restoreLocationMessage]);
 
@@ -147,7 +149,7 @@ export default function NearbyPlacesSection({
 
                 try {
                     const policy = getRadiusPolicy(location);
-                    const response = await searchNearbyPlaces(
+                    const response = await searchAllNearbyPlaces(
                         location.latitude,
                         location.longitude,
                         policy.radius
@@ -194,7 +196,7 @@ export default function NearbyPlacesSection({
         updateLocationMessage("선택한 지도 영역의 장소를 찾고 있어요.");
         try {
             const policy = getRadiusPolicy(location);
-            const response = await searchNearbyPlaces(
+            const response = await searchAllNearbyPlaces(
                 location.latitude,
                 location.longitude,
                 policy.radius
@@ -240,6 +242,14 @@ export default function NearbyPlacesSection({
             : places.filter((place) => place.contentTypeId === selectedType),
         [places, selectedType]
     );
+
+    const orderedPlaces = useMemo(() => {
+        if (selectedPlaceId === null) return filteredPlaces;
+        const selected = filteredPlaces.find((place) => place.contentId === selectedPlaceId);
+        return selected
+            ? [selected, ...filteredPlaces.filter((place) => place.contentId !== selectedPlaceId)]
+            : filteredPlaces;
+    }, [filteredPlaces, selectedPlaceId]);
 
     const markers = useMemo<MapMarker[]>(() => [
         ...filteredPlaces
@@ -300,7 +310,14 @@ export default function NearbyPlacesSection({
         const place = places.find((candidate) => candidate.contentId === String(marker.id));
         if (place) {
             closePlaceExpansion();
+            setSelectedPlaceId(place.contentId);
             selectPlace(place);
+            window.requestAnimationFrame(() => {
+                document.getElementById(`nearby-place-${place.contentId}`)?.scrollIntoView({
+                    behavior: "smooth",
+                    block: "start",
+                });
+            });
         }
     }, [closePlaceExpansion, places, selectPlace]);
 
@@ -372,8 +389,8 @@ export default function NearbyPlacesSection({
                         center={currentLocation}
                         markers={markers}
                         level={7}
-                        selectedMarkerId={selectedPlace?.id ?? null}
-                        onMarkerSelect={enableWeatherSelection ? handleMarkerSelect : undefined}
+                        selectedMarkerId={selectedPlaceId}
+                        onMarkerSelect={handleMarkerSelect}
                         onCenterChange={handleMapCenterChange}
                     />
                     {mapMoved && (
@@ -389,7 +406,9 @@ export default function NearbyPlacesSection({
                 </div>
                 <div className="nearby-map-status">
                     <div className="nearby-status-left">
-                        <span className={locationLoading ? "nearby-location-dot loading" : "nearby-location-dot"} />
+                        <span className="nearby-status-label">
+                            {locationLoading ? "위치 검색 중" : "검색 안내"}
+                        </span>
                         <span>{locationMessage}</span>
                     </div>
                     <button
@@ -433,7 +452,8 @@ export default function NearbyPlacesSection({
                         ))}
                     </div>
                     <div className="nearby-place-grid">
-                    {filteredPlaces.map((place) => {
+                    {orderedPlaces.map((place) => {
+                        const isSelected = selectedPlaceId === place.contentId;
                         const weatherSelected = selectedPlace?.contentId === place.contentId;
                         const detailExpanded = expandedPlaceId === place.contentId;
                         const hasPetDetail = detail !== null && Boolean(
@@ -448,8 +468,9 @@ export default function NearbyPlacesSection({
                             <div
                                 className="nearby-place-row"
                                 key={place.contentId}
+                                id={`nearby-place-${place.contentId}`}
                             >
-                                <article className={weatherSelected ? "nearby-place-card has-weather" : "nearby-place-card"}>
+                                <article className={`nearby-place-card${weatherSelected ? " has-weather" : ""}${isSelected ? " is-selected" : ""}`}>
                                     <div className="nearby-place-image">
                                         {place.thumbnailUrl ? (
                                             <img src={place.thumbnailUrl} alt="" loading="lazy" />

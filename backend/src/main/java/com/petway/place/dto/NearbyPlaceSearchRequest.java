@@ -28,6 +28,9 @@ public class NearbyPlaceSearchRequest {
     @Max(value = 30000, message = "검색 반경은 30km 이하여야 합니다.")
     private int radius = 20000;
 
+    @Min(value = 1, message = "페이지 번호는 1 이상이어야 합니다.")
+    private int page = 1;
+
     @Min(value = 1, message = "조회 개수는 1개 이상이어야 합니다.")
     @Max(value = 100, message = "조회 개수는 100개 이하여야 합니다.")
     private int size = 20;

@@ -28,6 +28,10 @@ export default function Header() {
                     <NavLink to="/">홈</NavLink>
                     <NavLink to="/pets">마이펫</NavLink>
 
+                    <NavLink to="/courses">
+                        여행코스
+                    </NavLink>
+
                     <NavLink to="/places">
                         장소찾기
                     </NavLink>
@@ -35,10 +39,6 @@ export default function Header() {
                     <NavLink to="/hospitals">
                         동물병원
                     </NavLink>
-
-                    <span className="site-nav-disabled">
-            여행코스
-          </span>
                 </nav>
 
                 <div className="site-header-actions">

@@ -1,12 +1,14 @@
 import {
     type FormEvent,
+    useCallback,
     useEffect,
     useMemo,
+    useRef,
     useState,
 } from "react";
 
 import KakaoMap from "../../place/components/KakaoMap";
-import type { MapCenter, MapMarker } from "../../place/types/map";
+import type { MapBounds, MapCenter, MapMarker } from "../../place/types/map";
 import { getHospitals } from "../api/hospitalApi";
 import type { Hospital } from "../types/hospital";
 
@@ -36,6 +38,12 @@ export default function HospitalPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [locationMessage, setLocationMessage] = useState<string | null>(null);
+    const [currentLocation, setCurrentLocation] = useState<MapCenter | null>(null);
+    const [draftBounds, setDraftBounds] = useState<MapBounds | null>(null);
+    const [appliedBounds, setAppliedBounds] = useState<MapBounds | null>(null);
+    const [mapMoved, setMapMoved] = useState(false);
+    const [selectedHospitalId, setSelectedHospitalId] = useState<string | null>(null);
+    const applyNextBoundsRef = useRef(true);
 
     useEffect(() => {
         let active = true;
@@ -82,8 +90,31 @@ export default function HospitalPage() {
         };
     }, [region, hospitalName]);
 
+    const displayedHospitals = useMemo(
+        () => appliedBounds === null
+            ? hospitals
+            : hospitals.filter((hospital) =>
+                hospital.latitude !== null &&
+                hospital.longitude !== null &&
+                hospital.latitude >= appliedBounds.south &&
+                hospital.latitude <= appliedBounds.north &&
+                hospital.longitude >= appliedBounds.west &&
+                hospital.longitude <= appliedBounds.east
+            ),
+        [appliedBounds, hospitals]
+    );
+
+    const orderedHospitals = useMemo(() => {
+        if (selectedHospitalId === null) return displayedHospitals;
+        const selected = displayedHospitals.find((hospital) => hospital.id === selectedHospitalId);
+        return selected
+            ? [selected, ...displayedHospitals.filter((hospital) => hospital.id !== selectedHospitalId)]
+            : displayedHospitals;
+    }, [displayedHospitals, selectedHospitalId]);
+
     const markers = useMemo<MapMarker[]>(
-        () => hospitals
+        () => [
+            ...displayedHospitals
             .filter((hospital) =>
                 hospital.latitude !== null &&
                 hospital.longitude !== null
@@ -93,11 +124,32 @@ export default function HospitalPage() {
                 title: hospital.name,
                 latitude: hospital.latitude as number,
                 longitude: hospital.longitude as number,
+                kind: "hospital" as const,
             })),
-        [hospitals]
+            ...(currentLocation ? [{
+                id: "current-location",
+                title: "현재 위치",
+                latitude: currentLocation.latitude,
+                longitude: currentLocation.longitude,
+                kind: "current-location" as const,
+            }] : []),
+        ],
+        [currentLocation, displayedHospitals]
     );
 
+    const handleBoundsChange = useCallback((bounds: MapBounds) => {
+        setDraftBounds(bounds);
+        if (applyNextBoundsRef.current) {
+            setAppliedBounds(bounds);
+            setMapMoved(false);
+            applyNextBoundsRef.current = false;
+            return;
+        }
+        setMapMoved(true);
+    }, []);
+
     const selectRegion = (selectedRegion: typeof REGIONS[number]) => {
+        applyNextBoundsRef.current = true;
         setRegion(selectedRegion.value);
         setCenter(selectedRegion.center);
         setMapLevel(selectedRegion.level);
@@ -114,12 +166,32 @@ export default function HospitalPage() {
             return;
         }
 
+        setSelectedHospitalId(hospital.id);
+        applyNextBoundsRef.current = true;
         setCenter({
             latitude: hospital.latitude,
             longitude: hospital.longitude,
         });
         setMapLevel(4);
     };
+
+    const handleHospitalMarkerSelect = useCallback((marker: MapMarker | null) => {
+        if (!marker || marker.kind !== "hospital") {
+            setSelectedHospitalId(null);
+            return;
+        }
+
+        const hospital = hospitals.find((candidate) => candidate.id === String(marker.id));
+        if (!hospital) return;
+
+        setSelectedHospitalId(hospital.id);
+        window.requestAnimationFrame(() => {
+            document.getElementById(`hospital-${hospital.id}`)?.scrollIntoView({
+                behavior: "smooth",
+                block: "start",
+            });
+        });
+    }, [hospitals]);
 
     const moveToCurrentLocation = () => {
         if (!navigator.geolocation) {
@@ -133,10 +205,13 @@ export default function HospitalPage() {
             (position) => {
                 // GPS stays in the browser. It is used only as the map center
                 // and is never included in the hospital API request.
-                setCenter({
+                const location = {
                     latitude: position.coords.latitude,
                     longitude: position.coords.longitude,
-                });
+                };
+                applyNextBoundsRef.current = true;
+                setCurrentLocation(location);
+                setCenter(location);
                 setMapLevel(5);
                 setLocationMessage("현재 위치를 지도 중심으로 표시했습니다.");
             },
@@ -210,11 +285,26 @@ export default function HospitalPage() {
                             center={center}
                             level={mapLevel}
                             markers={markers}
+                            selectedMarkerId={selectedHospitalId}
+                            onMarkerSelect={handleHospitalMarkerSelect}
+                            onBoundsChange={handleBoundsChange}
                         />
+                        {mapMoved && draftBounds && (
+                            <button
+                                type="button"
+                                className="hospital-search-area-button"
+                                onClick={() => {
+                                    setAppliedBounds(draftBounds);
+                                    setMapMoved(false);
+                                }}
+                            >
+                                이 지도 영역 병원 보기
+                            </button>
+                        )}
                     </div>
 
                     <div className="hospital-map-summary">
-                        지도 표시 {markers.length}곳 · 검색 결과 {totalCount.toLocaleString()}곳
+                        지도 영역 {displayedHospitals.length.toLocaleString()}곳 · 검색 결과 {totalCount.toLocaleString()}곳
                     </div>
                 </section>
 
@@ -236,15 +326,16 @@ export default function HospitalPage() {
                             <div className="hospital-state error">{error}</div>
                         )}
 
-                        {!loading && !error && hospitals.length === 0 && (
-                            <div className="hospital-state">검색 조건에 맞는 병원이 없습니다.</div>
+                        {!loading && !error && displayedHospitals.length === 0 && (
+                            <div className="hospital-state">현재 지도 영역에 표시할 병원이 없습니다.</div>
                         )}
 
-                        {!loading && !error && hospitals.map((hospital) => (
+                        {!loading && !error && orderedHospitals.map((hospital) => (
                             <button
                                 key={hospital.id}
                                 type="button"
-                                className="hospital-card"
+                                id={`hospital-${hospital.id}`}
+                                className={`hospital-card${selectedHospitalId === hospital.id ? " is-selected" : ""}`}
                                 onClick={() => moveToHospital(hospital)}
                                 disabled={hospital.latitude === null || hospital.longitude === null}
                             >

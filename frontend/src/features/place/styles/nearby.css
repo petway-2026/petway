@@ -230,6 +230,7 @@
     justify-content: space-between;
 
     gap: 20px;
+    flex-wrap: nowrap;
 
     padding: 16px 20px;
 
@@ -254,6 +255,7 @@
     gap: 9px;
 
     min-width: 0;
+    overflow: hidden;
 
     font-size: 13px;
 
@@ -265,47 +267,20 @@
 }
 
 
-.nearby-location-dot {
+.nearby-status-label {
     flex-shrink: 0;
-
-    width: 8px;
-    height: 8px;
-
-    border-radius: 50%;
-
-    background:
-            var(
-                    --pw-green,
-                    #526f5d
-            );
+    padding: 5px 8px;
+    border-radius: 999px;
+    background: rgba(82, 111, 93, 0.1);
+    color: var(--pw-green, #526f5d);
+    font-size: 11px;
+    font-weight: 800;
 }
 
-
-.nearby-location-dot.loading {
-    animation:
-            nearbyPulse
-            1.2s
-            infinite;
-}
-
-
-@keyframes nearbyPulse {
-
-    0% {
-        opacity: 1;
-        transform: scale(1);
-    }
-
-    50% {
-        opacity: 0.35;
-        transform: scale(1.5);
-    }
-
-    100% {
-        opacity: 1;
-        transform: scale(1);
-    }
-
+.nearby-status-left > span:last-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 
@@ -316,27 +291,26 @@
 .nearby-location-refresh {
     flex-shrink: 0;
 
-    padding: 8px 12px;
+    min-height: 36px;
+    padding: 0 14px;
 
-    border: none;
+    border: 1px solid var(--pw-green, #526f5d);
+    border-radius: 999px;
 
-    background: transparent;
+    background: var(--pw-green, #526f5d);
 
-    color:
-            var(
-                    --pw-green,
-                    #526f5d
-            );
+    color: #fff;
 
     font-size: 12px;
     font-weight: 700;
+    white-space: nowrap;
 
     cursor: pointer;
 }
 
 
 .nearby-location-refresh:hover {
-    text-decoration: underline;
+    filter: brightness(0.94);
 }
 
 .nearby-location-refresh:disabled { cursor: wait; opacity: 0.55; }
@@ -356,6 +330,15 @@
     border-radius: 18px;
     background: var(--pw-white, #fffdfa);
     box-shadow: 0 12px 32px rgba(23, 29, 25, 0.06);
+}
+
+.nearby-place-row {
+    scroll-margin-top: 96px;
+}
+
+.nearby-place-card.is-selected {
+    border-color: var(--pw-green, #526f5d);
+    box-shadow: 0 0 0 3px rgba(82, 111, 93, 0.12), 0 16px 36px rgba(23, 29, 25, 0.1);
 }
 
 .nearby-place-image {
@@ -551,19 +534,13 @@ max-width: 768px
 
 
     .nearby-map-status {
-        align-items:
-                flex-start;
-
-        flex-direction:
-                column;
-
-        gap: 8px;
+        align-items: center;
+        flex-direction: row;
+        gap: 10px;
     }
 
 
-    .nearby-location-refresh {
-        padding-left: 17px;
-    }
+    .nearby-location-refresh { padding: 0 12px; }
 
 }
 

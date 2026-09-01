@@ -116,7 +116,7 @@ public class TourApiClient implements TourPlaceGateway {
                             .queryParam("MobileApp", properties.mobileApp())
                             .queryParam("_type", "json")
                             .queryParam("numOfRows", condition.size())
-                            .queryParam("pageNo", 1)
+                            .queryParam("pageNo", condition.page())
                             .queryParam("arrange", "E")
                             .queryParam("mapX", condition.longitude())
                             .queryParam("mapY", condition.latitude())

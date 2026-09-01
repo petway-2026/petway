@@ -59,12 +59,14 @@ export async function searchNearbyPlaces(
     latitude: number,
     longitude: number,
     radius = 20000,
-    size = 12
+    page = 1,
+    size = 100
 ): Promise<PlaceSearchResponse> {
     const query = new URLSearchParams({
         latitude: String(latitude),
         longitude: String(longitude),
         radius: String(radius),
+        page: String(page),
         size: String(size),
     });
     const response = await fetch(`${API_URL}/api/places/nearby?${query}`);
@@ -83,6 +85,59 @@ export async function searchNearbyPlaces(
     return response.json() as Promise<PlaceSearchResponse>;
 }
 
+export type CompatibilityStatus = "AVAILABLE" | "NEED_CONFIRMATION" | "UNAVAILABLE";
+
+export interface PlaceCompatibility {
+    contentId: string;
+    petId: number;
+    petName: string;
+    petwayAssessment: {
+        status: CompatibilityStatus;
+        reasons: string[];
+        requirements: Array<{ type: string; label: string; scope: string }>;
+        needsConfirmation: boolean;
+    };
+}
+
+export async function searchAllNearbyPlaces(
+    latitude: number,
+    longitude: number,
+    radius = 20000
+): Promise<PlaceSearchResponse> {
+    const pageSize = 100;
+    const firstPage = await searchNearbyPlaces(
+        latitude,
+        longitude,
+        radius,
+        1,
+        pageSize
+    );
+    const pageCount = Math.min(Math.ceil(firstPage.totalCount / pageSize), 50);
+    const items = [...firstPage.items];
+
+    for (let page = 2; page <= pageCount; page += 1) {
+        const response = await searchNearbyPlaces(
+            latitude,
+            longitude,
+            radius,
+            page,
+            pageSize
+        );
+        items.push(...response.items);
+    }
+
+    const uniqueItems = Array.from(
+        new Map(items.map((place) => [place.contentId, place])).values()
+    );
+
+    return {
+        page: 1,
+        size: uniqueItems.length,
+        totalCount: firstPage.totalCount,
+        items: uniqueItems,
+    };
+}
+
 export async function getPlacePetDetail(
     contentId: string,
     signal?: AbortSignal
@@ -92,4 +147,12 @@ export async function getPlacePetDetail(
     });
     if (!response.ok) throw new Error("반려동물 동반 상세정보를 불러오지 못했습니다.");
     return response.json() as Promise<PlacePetDetail>;
+}
+
+export async function getPlaceCompatibility(contentId: string): Promise<PlaceCompatibility> {
+    const response = await fetch(`${API_URL}/api/places/${contentId}/compatibility`, {
+        credentials: "include",
+    });
+    if (!response.ok) throw new Error("반려견 동반 가능 여부를 확인하지 못했습니다.");
+    return response.json() as Promise<PlaceCompatibility>;
 }

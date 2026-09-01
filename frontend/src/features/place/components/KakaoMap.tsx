@@ -13,6 +13,7 @@ import currentLocationMarkerUrl
 
 import type {
     MapCenter,
+    MapBounds,
     MapMarker,
 } from "../types/map";
 
@@ -26,6 +27,7 @@ interface KakaoMapProps {
     selectedMarkerId?: MapMarker["id"] | null;
     onMarkerSelect?: (marker: MapMarker | null) => void;
     onCenterChange?: (center: MapCenter) => void;
+    onBoundsChange?: (bounds: MapBounds) => void;
 }
 
 
@@ -36,6 +38,7 @@ export default function KakaoMap({
                                      selectedMarkerId = null,
                                      onMarkerSelect,
                                      onCenterChange,
+                                     onBoundsChange,
                                  }: KakaoMapProps) {
 
     const mapContainerRef =
@@ -207,22 +210,33 @@ export default function KakaoMap({
     }, [mapReady, level]);
 
     useEffect(() => {
-        if (!mapRef.current || !window.kakao || !onCenterChange) return;
+        if (!mapRef.current || !window.kakao || (!onCenterChange && !onBoundsChange)) return;
 
         const map = mapRef.current;
         const handleIdle = () => {
             const nextCenter = map.getCenter();
-            onCenterChange({
+            onCenterChange?.({
                 latitude: nextCenter.getLat(),
                 longitude: nextCenter.getLng(),
             });
+            if (onBoundsChange) {
+                const bounds = map.getBounds();
+                const southWest = bounds.getSouthWest();
+                const northEast = bounds.getNorthEast();
+                onBoundsChange({
+                    south: southWest.getLat(),
+                    west: southWest.getLng(),
+                    north: northEast.getLat(),
+                    east: northEast.getLng(),
+                });
+            }
         };
 
         window.kakao.maps.event.addListener(map, "idle", handleIdle);
         return () => {
             window.kakao.maps.event.removeListener(map, "idle", handleIdle);
         };
-    }, [mapReady, onCenterChange]);
+    }, [mapReady, onBoundsChange, onCenterChange]);
 
 
     /*
