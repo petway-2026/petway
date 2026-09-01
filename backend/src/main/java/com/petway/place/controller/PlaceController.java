@@ -4,6 +4,8 @@ import com.petway.place.dto.PlaceSearchRequest;
 import com.petway.place.dto.PlaceSearchResponse;
 import com.petway.place.dto.NearbyPlaceSearchRequest;
 import com.petway.place.dto.PlacePetDetailResponse;
+import com.petway.place.dto.PlaceCompatibilityResponse;
+import com.petway.place.service.PlaceCompatibilityService;
 import com.petway.place.service.PlaceQueryService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -13,6 +15,7 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.security.core.Authentication;
 
 @RestController
 @RequestMapping("/api/places")
@@ -20,6 +23,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 public class PlaceController {
 
     private final PlaceQueryService placeQueryService;
+    private final PlaceCompatibilityService placeCompatibilityService;
 
     @GetMapping
     public PlaceSearchResponse searchPlaces(
@@ -37,9 +41,25 @@ public class PlaceController {
 
     @GetMapping("/{contentId}/pet-detail")
     public PlacePetDetailResponse getPetDetail(@PathVariable String contentId) {
+        validateContentId(contentId);
+        return placeQueryService.getPetDetail(contentId);
+    }
+
+    @GetMapping("/{contentId}/compatibility")
+    public PlaceCompatibilityResponse getCompatibility(
+            @PathVariable String contentId,
+            Authentication authentication
+    ) {
+        validateContentId(contentId);
+        return placeCompatibilityService.getCompatibility(
+                authentication.getName(),
+                contentId
+        );
+    }
+
+    private void validateContentId(String contentId) {
         if (!contentId.matches("\\d+")) {
             throw new IllegalArgumentException("콘텐츠 ID 형식을 확인해 주세요.");
         }
-        return placeQueryService.getPetDetail(contentId);
     }
 }

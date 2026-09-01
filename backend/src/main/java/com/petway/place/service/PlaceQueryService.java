@@ -43,13 +43,7 @@ public class PlaceQueryService {
 
     public PlacePetDetailResponse getPetDetail(String contentId) {
         var detail = tourPlaceGateway.getPetDetail(contentId);
-        return new PlacePetDetailResponse(
-                detail.accompanimentType(),
-                detail.allowedCapacity(),
-                detail.requiredItems(),
-                detail.additionalInformation(),
-                detail.safetyNotice()
-        );
+        return PlacePetDetailResponse.from(detail);
     }
 
     private PlaceSearchResponse toResponse(PlaceSearchResult result) {

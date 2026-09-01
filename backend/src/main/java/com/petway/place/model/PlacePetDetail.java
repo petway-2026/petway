@@ -7,4 +7,7 @@ public record PlacePetDetail(
         String additionalInformation,
         String safetyNotice
 ) {
+    public static PlacePetDetail empty() {
+        return new PlacePetDetail(null, null, null, null, null);
+    }
 }
