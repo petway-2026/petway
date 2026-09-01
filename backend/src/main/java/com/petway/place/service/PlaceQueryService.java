@@ -39,7 +39,11 @@ public class PlaceQueryService {
                 request.getSize()
         );
 
-        return toResponse(tourPlaceGateway.searchNearby(condition));
+        return toResponse(findNearby(condition));
+    }
+
+    public PlaceSearchResult findNearby(NearbyPlaceSearchCondition condition) {
+        return tourPlaceGateway.searchNearby(condition);
     }
 
     public PlacePetDetailResponse getPetDetail(String contentId) {

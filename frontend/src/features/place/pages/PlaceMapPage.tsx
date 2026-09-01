@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 
 import { getPets } from "../../pet/api/petApi";
 import NearbyPlacesSection from "../components/NearbyPlacesSection";
+import WalkFitRecommendationsSection from "../../walk/components/WalkFitRecommendationsSection";
 
 type PetRegistrationStatus =
     | "LOADING"
@@ -53,6 +54,8 @@ export default function PlaceMapPage() {
                     </Link>
                 </aside>
             )}
+
+            <WalkFitRecommendationsSection />
 
             <NearbyPlacesSection
                 showFullMapButton={false}

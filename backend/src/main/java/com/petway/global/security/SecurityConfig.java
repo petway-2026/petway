@@ -77,7 +77,8 @@ public class SecurityConfig {
                         auth -> auth
 
                                 .requestMatchers(
-                                        "/api/places/*/compatibility"
+                                        "/api/places/*/compatibility",
+                                        "/api/walk/**"
                                 )
                                 .authenticated()
 

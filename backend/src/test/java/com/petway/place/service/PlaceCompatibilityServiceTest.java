@@ -5,6 +5,7 @@ import com.petway.compatibility.CompatibilityStatus;
 import com.petway.pet.entity.Pet;
 import com.petway.pet.enums.PetSizeType;
 import com.petway.pet.repository.PetRepository;
+import com.petway.pet.service.PrimaryPetQueryService;
 import com.petway.petrule.PetRule.RequirementType;
 import com.petway.petrule.PetRuleParser;
 import com.petway.place.dto.PlaceCompatibilityResponse;
@@ -50,8 +51,7 @@ class PlaceCompatibilityServiceTest {
                 new PlacePetRuleSourceAdapter(),
                 new PetRuleParser(),
                 new CompatibilityEvaluator(),
-                userRepository,
-                petRepository
+                new PrimaryPetQueryService(userRepository, petRepository)
         );
         owner = User.create("owner@petway.test", "보호자");
     }

@@ -5,6 +5,8 @@ import com.petway.external.tour.exception.TourApiException;
 import com.petway.weather.service.WeatherForecastUnavailableException;
 import com.petway.weather.service.WeatherProviderException;
 import com.petway.weather.service.WeatherProviderTimeoutException;
+import com.petway.walk.service.WalkFitRecommendationException;
+import com.petway.walk.service.WalkFitRateLimitedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -24,6 +26,23 @@ import java.util.Map;
 public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    @ExceptionHandler(WalkFitRateLimitedException.class)
+    public ResponseEntity<?> handleWalkFitRateLimited(WalkFitRateLimitedException e) {
+        return ResponseEntity
+                .status(HttpStatus.BAD_GATEWAY)
+                .body(Map.of(
+                        "code", "WALK_FIT_PROVIDER_RATE_LIMITED",
+                        "message", e.getMessage()
+                ));
+    }
+
+    @ExceptionHandler(WalkFitRecommendationException.class)
+    public ResponseEntity<?> handleWalkFitRecommendation(WalkFitRecommendationException e) {
+        return ResponseEntity
+                .status(HttpStatus.BAD_GATEWAY)
+                .body(Map.of("message", e.getMessage()));
+    }
 
     @ExceptionHandler(WeatherForecastUnavailableException.class)
     public ResponseEntity<?> handleWeatherUnavailable(WeatherForecastUnavailableException e) {
@@ -55,7 +74,7 @@ public class GlobalExceptionHandler {
         HttpStatus status = switch (e.getErrorType()) {
             case CONFIGURATION -> HttpStatus.SERVICE_UNAVAILABLE;
             case TIMEOUT -> HttpStatus.GATEWAY_TIMEOUT;
-            case CONNECTION, HTTP_ERROR, API_ERROR -> HttpStatus.BAD_GATEWAY;
+            case CONNECTION, RATE_LIMITED, HTTP_ERROR, API_ERROR -> HttpStatus.BAD_GATEWAY;
             case INVALID_RESPONSE -> HttpStatus.BAD_GATEWAY;
         };
 

@@ -30,15 +30,18 @@ public class TourApiClient implements TourPlaceGateway {
     private final RestClient tourApiRestClient;
     private final TourApiProperties properties;
     private final TourPlaceMapper tourPlaceMapper;
+    private final TourPetDetailCache petDetailCache;
 
     public TourApiClient(
             @Qualifier("tourApiRestClient") RestClient tourApiRestClient,
             TourApiProperties properties,
-            TourPlaceMapper tourPlaceMapper
+            TourPlaceMapper tourPlaceMapper,
+            TourPetDetailCache petDetailCache
     ) {
         this.tourApiRestClient = tourApiRestClient;
         this.properties = properties;
         this.tourPlaceMapper = tourPlaceMapper;
+        this.petDetailCache = petDetailCache;
     }
 
     @Override
@@ -160,6 +163,10 @@ public class TourApiClient implements TourPlaceGateway {
     @Override
     public PlacePetDetail getPetDetail(String contentId) {
         validateConfiguration();
+        PlacePetDetail cached = petDetailCache.get(contentId).orElse(null);
+        if (cached != null) {
+            return cached;
+        }
         try {
             TourApiResponse response = tourApiRestClient.get()
                     .uri(uriBuilder -> uriBuilder
@@ -172,10 +179,20 @@ public class TourApiClient implements TourPlaceGateway {
                             .build(properties.serviceKey()))
                     .retrieve()
                     .body(TourApiResponse.class);
-            return tourPlaceMapper.toPlacePetDetail(response);
+            PlacePetDetail detail = tourPlaceMapper.toPlacePetDetail(response);
+            petDetailCache.put(contentId, detail);
+            return detail;
         } catch (TourApiException e) {
             throw e;
         } catch (RestClientResponseException e) {
+            if (e.getStatusCode().value() == 429) {
+                log.warn("Tour API pet detail rate limited: contentId={}", contentId);
+                throw new TourApiException(
+                        TourApiErrorType.RATE_LIMITED,
+                        "관광정보 제공기관의 일시적인 요청 한도로 정보를 불러오지 못했습니다.",
+                        e
+                );
+            }
             throw new TourApiException(TourApiErrorType.HTTP_ERROR, "반려동물 동반 상세정보 조회에 실패했습니다.", e);
         } catch (ResourceAccessException e) {
             throw new TourApiException(TourApiErrorType.CONNECTION, "반려동물 관광정보 제공기관에 연결할 수 없습니다.", e);

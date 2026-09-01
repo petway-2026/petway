@@ -106,6 +106,16 @@ class PetwayApplicationTests {
     }
 
     @Test
+    @DisplayName("WalkFit 산책 추천 API는 인증 없이 접근할 수 없다")
+    void walkFitRecommendationsRequireAuthentication() throws Exception {
+        mockMvc.perform(get("/api/walk/recommendations")
+                        .param("latitude", "37.5665")
+                        .param("longitude", "126.9780")
+                        .param("targetDate", "2026-09-01"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     @DisplayName("기존 관광공사 반려동물 상세 API는 인증 없이 접근할 수 있다")
     void publicPlacePetDetailPolicyRemainsUnchanged() throws Exception {
         mockMvc.perform(get("/api/places/not-a-number/pet-detail"))

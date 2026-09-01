@@ -16,6 +16,7 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.SocketTimeoutException;
+import java.time.Clock;
 import java.time.Duration;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -175,8 +176,30 @@ class TourApiClientTest {
         return new TourApiClient(
                 restClient,
                 properties,
-                new TourPlaceMapper(new ObjectMapper())
+                new TourPlaceMapper(new ObjectMapper()),
+                new TourPetDetailCache(Clock.systemUTC())
         );
+    }
+
+    private void assertPetDetailFailure(TourApiClient client, TourApiErrorType errorType) {
+        assertThatThrownBy(() -> client.getPetDetail("100"))
+                .isInstanceOf(TourApiException.class)
+                .extracting(exception -> ((TourApiException) exception).getErrorType())
+                .isEqualTo(errorType);
+    }
+
+    private String petDetailResponse(boolean empty) {
+        String items = empty
+                ? "{\"item\": []}"
+                : "{\"item\": [{\"contentid\": \"100\", \"acmpyNeedMtr\": \"목줄\"}]}";
+        return """
+                {
+                  "response": {
+                    "header": {"resultCode": "0000", "resultMsg": "OK"},
+                    "body": {"items": %s}
+                  }
+                }
+                """.formatted(items);
     }
 
     private String successResponse() {
@@ -208,5 +231,65 @@ class TourApiClientTest {
                   }
                 }
                 """;
+    }
+
+    @Test
+    void cachesSuccessfulPetDetailByContentId() {
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        TourApiClient client = createClient(builder.baseUrl(BASE_URL).build(), "test-key");
+
+        server.expect(request -> assertThat(request.getURI().getPath())
+                        .endsWith("/detailPetTour2"))
+                .andRespond(withSuccess(petDetailResponse(false), MediaType.APPLICATION_JSON));
+
+        assertThat(client.getPetDetail("100").requiredItems()).isEqualTo("목줄");
+        assertThat(client.getPetDetail("100").requiredItems()).isEqualTo("목줄");
+
+        server.verify();
+    }
+
+    @Test
+    void cachesSuccessfulEmptyPetDetail() {
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        TourApiClient client = createClient(builder.baseUrl(BASE_URL).build(), "test-key");
+
+        server.expect(request -> assertThat(request.getURI().getPath())
+                        .endsWith("/detailPetTour2"))
+                .andRespond(withSuccess(petDetailResponse(true), MediaType.APPLICATION_JSON));
+
+        assertThat(client.getPetDetail("100")).isEqualTo(com.petway.place.model.PlacePetDetail.empty());
+        assertThat(client.getPetDetail("100")).isEqualTo(com.petway.place.model.PlacePetDetail.empty());
+
+        server.verify();
+    }
+
+    @Test
+    void distinguishesRateLimitAndDoesNotCacheIt() {
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        TourApiClient client = createClient(builder.baseUrl(BASE_URL).build(), "test-key");
+
+        server.expect(request -> { }).andRespond(withStatus(HttpStatus.TOO_MANY_REQUESTS));
+        server.expect(request -> { }).andRespond(withStatus(HttpStatus.TOO_MANY_REQUESTS));
+
+        assertPetDetailFailure(client, TourApiErrorType.RATE_LIMITED);
+        assertPetDetailFailure(client, TourApiErrorType.RATE_LIMITED);
+        server.verify();
+    }
+
+    @Test
+    void doesNotCacheServerFailure() {
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        TourApiClient client = createClient(builder.baseUrl(BASE_URL).build(), "test-key");
+
+        server.expect(request -> { }).andRespond(withStatus(HttpStatus.INTERNAL_SERVER_ERROR));
+        server.expect(request -> { }).andRespond(withStatus(HttpStatus.INTERNAL_SERVER_ERROR));
+
+        assertPetDetailFailure(client, TourApiErrorType.HTTP_ERROR);
+        assertPetDetailFailure(client, TourApiErrorType.HTTP_ERROR);
+        server.verify();
     }
 }

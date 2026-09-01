@@ -29,22 +29,10 @@ public class WeatherQueryService {
             WeatherRegion region
     ) {
         validateCoordinates(latitude, longitude);
-        if (targetDate == null) {
-            throw new IllegalArgumentException("여행일은 필수입니다.");
-        }
+        ForecastType forecastType = resolveForecastType(targetDate);
         if (region == null) {
             throw new IllegalArgumentException("날씨 조회에는 region이 필요합니다.");
         }
-
-        LocalDate today = LocalDate.now(weatherClock);
-        long days = ChronoUnit.DAYS.between(today, targetDate);
-        if (days < 0) {
-            throw new IllegalArgumentException("지난 날짜의 예보는 조회할 수 없습니다.");
-        }
-        if (days > MAX_FORECAST_DAYS) {
-            throw new IllegalArgumentException("날씨 전망은 오늘부터 90일 이내만 조회할 수 있습니다.");
-        }
-        ForecastType forecastType = forecastType(days);
 
         WeatherForecastResponse cached = weatherForecastCache.get(
                 latitude,
@@ -68,6 +56,21 @@ public class WeatherQueryService {
         WeatherForecastResponse response = WeatherForecastResponse.from(forecast);
         weatherForecastCache.put(latitude, longitude, targetDate, region, forecastType, response);
         return response;
+    }
+
+    public ForecastType resolveForecastType(LocalDate targetDate) {
+        if (targetDate == null) {
+            throw new IllegalArgumentException("여행일은 필수입니다.");
+        }
+        LocalDate today = LocalDate.now(weatherClock);
+        long days = ChronoUnit.DAYS.between(today, targetDate);
+        if (days < 0) {
+            throw new IllegalArgumentException("지난 날짜의 예보는 조회할 수 없습니다.");
+        }
+        if (days > MAX_FORECAST_DAYS) {
+            throw new IllegalArgumentException("날씨 전망은 오늘부터 90일 이내만 조회할 수 있습니다.");
+        }
+        return forecastType(days);
     }
 
     private ForecastType forecastType(long days) {
