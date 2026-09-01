@@ -6,6 +6,7 @@ public record NearbyPlaceSearchCondition(
         BigDecimal latitude,
         BigDecimal longitude,
         int radius,
+        int page,
         int size
 ) {
 }

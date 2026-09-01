@@ -35,6 +35,7 @@ public class PlaceQueryService {
                 request.getLatitude(),
                 request.getLongitude(),
                 request.getRadius(),
+                request.getPage(),
                 request.getSize()
         );
 
