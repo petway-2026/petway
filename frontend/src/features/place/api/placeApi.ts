@@ -65,11 +65,12 @@ export class PlaceCompatibilityApiError extends Error {
 
 export async function searchPlaces(
     areaCode: string,
-    size = 100
+    size = 100,
+    page = 1,
 ): Promise<PlaceSearchResponse> {
     const query = new URLSearchParams({
         areaCode,
-        page: "1",
+        page: String(page),
         size: String(size),
     });
     const response = await fetch(`${API_URL}/api/places?${query}`);
@@ -88,6 +89,29 @@ export async function searchPlaces(
     }
 
     return response.json() as Promise<PlaceSearchResponse>;
+}
+
+export async function searchAllPlaces(areaCode: string): Promise<PlaceSearchResponse> {
+    const pageSize = 100;
+    const firstPage = await searchPlaces(areaCode, pageSize, 1);
+    const pageCount = Math.min(Math.ceil(firstPage.totalCount / pageSize), 50);
+    const items = [...firstPage.items];
+
+    for (let page = 2; page <= pageCount; page += 1) {
+        const response = await searchPlaces(areaCode, pageSize, page);
+        items.push(...response.items);
+    }
+
+    const uniqueItems = Array.from(
+        new Map(items.map((place) => [place.contentId, place])).values()
+    );
+
+    return {
+        page: 1,
+        size: uniqueItems.length,
+        totalCount: firstPage.totalCount,
+        items: uniqueItems,
+    };
 }
 
 export async function searchNearbyPlaces(

@@ -5,7 +5,7 @@ import { getPets } from "../../pet/api/petApi";
 import type { Pet } from "../../pet/types/pet";
 import {
     getPlaceCompatibility,
-    searchPlaces,
+    searchAllPlaces,
     type CompatibilityStatus,
     type PlaceCompatibility,
     type PlaceSummary,
@@ -91,6 +91,7 @@ export default function TravelCoursePage() {
     const [selectedDay, setSelectedDay] = useState(0);
     const [origin, setOrigin] = useState<MapCenter>(SEOUL_CENTER);
     const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
+    const [regionPlaceCount, setRegionPlaceCount] = useState(0);
     const [courses, setCourses] = useState<Recommendation[][]>(() => {
         try {
             const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "[]") as Recommendation[] | Recommendation[][];
@@ -122,25 +123,36 @@ export default function TravelCoursePage() {
 
     const loadRecommendations = async (areaCode: string, center: MapCenter, locationLabel: string) => {
         setLoading(true);
+        setRecommendations([]);
+        setRegionPlaceCount(0);
         setMessage(`${locationLabel} 주변에서 반려견 동반 장소를 찾고 있어요.`);
         try {
-            const response = await searchPlaces(areaCode, 100);
+            const response = await searchAllPlaces(areaCode);
+            setRegionPlaceCount(response.items.length);
             const nearby = response.items
                 .filter((place) => place.latitude !== null && place.longitude !== null)
                 .sort((left, right) => {
                     const leftDistance = distanceKm(center, { latitude: left.latitude!, longitude: left.longitude! });
                     const rightDistance = distanceKm(center, { latitude: right.latitude!, longitude: right.longitude! });
                     return leftDistance - rightDistance;
-                })
-                .slice(0, 18);
+                });
 
-            const assessed: Recommendation[] = await Promise.all(nearby.map(async (place): Promise<Recommendation> => {
-                try { return { ...place, compatibility: await getPlaceCompatibility(place.contentId) }; }
-                catch { return { ...place, compatibility: undefined }; }
-            }));
+            const assessed: Recommendation[] = [];
+            const compatibilityBatchSize = 6;
+            for (let index = 0; index < nearby.length; index += compatibilityBatchSize) {
+                const batch = nearby.slice(index, index + compatibilityBatchSize);
+                const batchResult = await Promise.all(batch.map(async (place): Promise<Recommendation> => {
+                    try { return { ...place, compatibility: await getPlaceCompatibility(place.contentId) }; }
+                    catch { return { ...place, compatibility: undefined }; }
+                }));
+                assessed.push(...batchResult);
+                const eligibleSoFar = assessed.filter((place) => place.compatibility?.petwayAssessment.status !== "UNAVAILABLE");
+                setRecommendations(eligibleSoFar);
+                setMessage(`${locationLabel} 전체 ${nearby.length}곳 중 ${Math.min(index + compatibilityBatchSize, nearby.length)}곳의 동반 조건을 확인했어요.`);
+            }
             const eligible = assessed.filter((place) => place.compatibility?.petwayAssessment.status !== "UNAVAILABLE");
             setRecommendations(eligible);
-            setMessage(`${locationLabel} 주변에서 ${eligible.length}곳을 추천했어요.`);
+            setMessage(`${locationLabel} 전체 ${response.items.length}곳을 확인해 ${eligible.length}곳을 추천했어요.`);
         } catch (error) {
             setRecommendations([]);
             setMessage(error instanceof Error ? error.message : "추천 장소를 불러오지 못했습니다.");
@@ -250,7 +262,7 @@ export default function TravelCoursePage() {
 
                 <div className="course-workspace">
                     <section className="course-recommendations">
-                        <header><div><span>RECOMMENDATIONS</span><h2>{primaryPet ? `${primaryPet.petName}와 갈 만한 곳` : "주변 추천 장소"}</h2></div><strong>{filteredRecommendations.length}곳</strong></header>
+                        <header><div><span>RECOMMENDATIONS</span><h2>{primaryPet ? `${primaryPet.petName}와 갈 만한 곳` : "지역 추천 장소"}</h2></div><strong>{filteredRecommendations.length} / 전체 {regionPlaceCount}곳</strong></header>
                         <div className="course-type-filters">
                             <button type="button" className={selectedType === "all" ? "active" : ""} onClick={() => setSelectedType("all")}>전체</button>
                             {availableTypes.map((type) => <button type="button" key={type} className={selectedType === type ? "active" : ""} onClick={() => setSelectedType(type)}>{TYPE_LABELS[type] ?? "기타"}</button>)}
@@ -268,7 +280,9 @@ export default function TravelCoursePage() {
                                         <span className={`course-compatibility ${status.className}`}>{status.label}</span>
                                         {place.compatibility?.petwayAssessment.reasons[0] && <small>{place.compatibility.petwayAssessment.reasons[0]}</small>}
                                     </div>
-                                    <button type="button" className="course-add-button" disabled={added || course.length >= maxStops} onClick={() => addPlace(place)} aria-label={`${place.title} 코스에 추가`}>{added ? "완료" : "+"}</button>
+                                    <button type="button" className="course-add-button" disabled={added || course.length >= maxStops} onClick={() => addPlace(place)} aria-label={`${place.title} 코스에 추가`}>
+                                        <span aria-hidden="true">{added ? "✓" : "+"}</span>{added ? "담았어요" : "코스에 담기"}
+                                    </button>
                                 </article>;
                             })}
                         </div>
@@ -284,7 +298,7 @@ export default function TravelCoursePage() {
                             {routeInfo.map(({ place, travel, stay }, index) => <li key={place.contentId}>
                                 {travel !== null && <div className="course-travel-time">차량 이동 약 {travel}분</div>}
                                 <div className="course-stop-number">{index + 1}</div><div className="course-stop-copy"><strong>{place.title}</strong><span>{TYPE_LABELS[place.contentTypeId] ?? "동반 장소"} · 약 {stay}분 머물기</span></div>
-                                <div className="course-stop-actions"><button type="button" onClick={() => moveCourseItem(index, -1)} disabled={index === 0} aria-label="위로 이동">↑</button><button type="button" onClick={() => moveCourseItem(index, 1)} disabled={index === course.length - 1} aria-label="아래로 이동">↓</button><button type="button" onClick={() => updateCourse((current) => current.filter((item) => item.contentId !== place.contentId))} aria-label="코스에서 삭제">×</button></div>
+                                <div className="course-stop-actions"><button type="button" onClick={() => moveCourseItem(index, -1)} disabled={index === 0}>앞으로</button><button type="button" onClick={() => moveCourseItem(index, 1)} disabled={index === course.length - 1}>뒤로</button><button type="button" className="remove" onClick={() => updateCourse((current) => current.filter((item) => item.contentId !== place.contentId))}>삭제</button></div>
                             </li>)}
                         </ol>}
                         <footer className="course-summary"><div><span>{selectedDay + 1}일차 예상 일정</span><strong>{startTime} - {finishTime}</strong></div><div><span>전체 장소</span><strong>{courses.reduce((sum, day) => sum + day.length, 0)}곳</strong></div><small>날짜 탭을 선택해 일자별 코스를 편집하세요. 이동 시간은 좌표 간 거리로 계산한 참고값이에요.</small></footer>
