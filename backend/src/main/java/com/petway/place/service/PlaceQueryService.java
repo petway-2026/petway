@@ -9,14 +9,26 @@ import com.petway.place.dto.PlacePetDetailResponse;
 import com.petway.place.model.PlaceSearchCondition;
 import com.petway.place.model.PlaceSearchResult;
 import com.petway.place.port.TourPlaceGateway;
-import lombok.RequiredArgsConstructor;
+import com.petway.facility.PetFacility;
+import com.petway.facility.PetFacilityCatalog;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
-@RequiredArgsConstructor
 public class PlaceQueryService {
 
     private final TourPlaceGateway tourPlaceGateway;
+    private final PetFacilityCatalog facilityCatalog;
+
+    @Autowired
+    public PlaceQueryService(TourPlaceGateway tourPlaceGateway, PetFacilityCatalog facilityCatalog) {
+        this.tourPlaceGateway = tourPlaceGateway;
+        this.facilityCatalog = facilityCatalog;
+    }
+
+    public PlaceQueryService(TourPlaceGateway tourPlaceGateway) {
+        this(tourPlaceGateway, new PetFacilityCatalog());
+    }
 
     public PlaceSearchResponse searchByArea(PlaceSearchRequest request) {
         PlaceSearchCondition condition = new PlaceSearchCondition(
@@ -27,7 +39,8 @@ public class PlaceQueryService {
                 request.getSize()
         );
 
-        return toResponse(tourPlaceGateway.searchByArea(condition));
+        return toResponse(tourPlaceGateway.searchByArea(condition),
+                catalog().placesByArea(condition.areaCode(), condition.contentTypeId()), condition.page(), condition.size());
     }
 
     public PlaceSearchResponse searchNearby(NearbyPlaceSearchRequest request) {
@@ -39,7 +52,8 @@ public class PlaceQueryService {
                 request.getSize()
         );
 
-        return toResponse(findNearby(condition));
+        return toResponse(findNearby(condition),
+                catalog().placesNearby(condition.latitude(), condition.longitude(), condition.radius()), condition.page(), condition.size());
     }
 
     public PlaceSearchResult findNearby(NearbyPlaceSearchCondition condition) {
@@ -47,29 +61,48 @@ public class PlaceQueryService {
     }
 
     public PlacePetDetailResponse getPetDetail(String contentId) {
+        var csv = catalog().byId(contentId);
+        if (csv.isPresent()) {
+            PetFacility f = csv.get();
+            return PlacePetDetailResponse.from(new com.petway.place.model.PlacePetDetail(
+                    f.petOnly(), f.allowedPetSize(), f.restrictions(), f.description(), null));
+        }
         var detail = tourPlaceGateway.getPetDetail(contentId);
         return PlacePetDetailResponse.from(detail);
     }
 
-    private PlaceSearchResponse toResponse(PlaceSearchResult result) {
-
+    private PlaceSearchResponse toResponse(PlaceSearchResult result, java.util.List<PetFacility> localFacilities, int page, int size) {
+        var matchedLocalIds = new java.util.HashSet<String>();
+        var external = result.items().stream().map(place -> {
+            PetFacility metadata = catalog().matching(place.title(), place.address(), place.latitude(), place.longitude()).orElse(null);
+            if (metadata != null) matchedLocalIds.add(metadata.id());
+            return response(place.contentId(), place.contentTypeId(), place.areaCode(), place.sigunguCode(), place.title(), place.address(),
+                    place.latitude(), place.longitude(), place.thumbnailUrl(), metadata, "한국관광공사");
+        }).toList();
+        int from = Math.min((page - 1) * size, localFacilities.size());
+        int to = Math.min(from + size, localFacilities.size());
+        var local = localFacilities.subList(from, to).stream()
+                .filter(f -> !matchedLocalIds.contains(f.id()))
+                .map(f -> response(f.id(), f.contentTypeId(), null, null, f.name(), f.address(), f.latitude(), f.longitude(), null, f, "한국문화정보원"))
+                .toList();
+        var items = new java.util.ArrayList<PlaceSummaryResponse>(external);
+        items.addAll(local);
         return new PlaceSearchResponse(
                 result.page(),
                 result.size(),
-                result.totalCount(),
-                result.items().stream()
-                        .map(place -> new PlaceSummaryResponse(
-                                place.contentId(),
-                                place.contentTypeId(),
-                                place.areaCode(),
-                                place.sigunguCode(),
-                                place.title(),
-                                place.address(),
-                                place.latitude(),
-                                place.longitude(),
-                                place.thumbnailUrl()
-                        ))
-                        .toList()
+                result.totalCount() + localFacilities.size(),
+                items
         );
     }
+
+    private PlaceSummaryResponse response(String id, String type, String area, String district, String title, String address,
+                                          java.math.BigDecimal latitude, java.math.BigDecimal longitude, String image,
+                                          PetFacility f, String source) {
+        return new PlaceSummaryResponse(id, type, area, district, title, address, latitude, longitude, image,
+                f == null ? null : f.telephone(), f == null ? null : f.homepage(), f == null ? null : f.operatingHours(),
+                f == null ? null : f.closedDays(), f == null ? null : f.parking(), f == null ? null : f.price(),
+                f == null ? null : f.indoor(), f == null ? null : f.outdoor(), f == null ? null : f.description(), source);
+    }
+
+    private PetFacilityCatalog catalog() { return facilityCatalog == null ? new PetFacilityCatalog() : facilityCatalog; }
 }

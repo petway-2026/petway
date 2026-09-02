@@ -5,7 +5,7 @@ import { getPets } from "../../pet/api/petApi";
 import type { Pet } from "../../pet/types/pet";
 import {
     getPlaceCompatibility,
-    searchAllPlaces,
+    searchAllNearbyPlaces,
     type CompatibilityStatus,
     type PlaceCompatibility,
     type PlaceSummary,
@@ -15,6 +15,8 @@ import type { MapCenter, MapMarker } from "../../place/types/map";
 import { getWeather } from "../../weather/api/weatherApi";
 import type { WeatherForecastResponse, WeatherRegion } from "../../weather/types/weather";
 import { createAiCourse, type AiCourseCandidate } from "../api/courseApi";
+import { getDrivingRoute, getTransitRoute, type DrivingRoute, type TransitRoute } from "../api/routeApi";
+import { saveTrip } from "../api/savedTripApi";
 
 import "../styles/travel-course.css";
 
@@ -59,6 +61,7 @@ const PROMPT_SUGGESTIONS = [
 ];
 
 type CourseStyle = "RELAXED" | "BALANCED" | "ACTIVE";
+type TransportMode = "DRIVING" | "TRANSIT";
 
 const WEATHER_ICONS: Record<string, string> = {
     CLEAR: "☀️", PARTLY_CLOUDY: "🌤️", CLOUDY: "☁️", RAIN: "🌧️",
@@ -150,11 +153,17 @@ export default function TravelCoursePage() {
     const [style, setStyle] = useState<CourseStyle>("BALANCED");
     const [includeLodging, setIncludeLodging] = useState(false);
     const [selectedType, setSelectedType] = useState("all");
+    const [recommendationPage, setRecommendationPage] = useState(1);
     const [startTime, setStartTime] = useState("10:00");
     const [loading, setLoading] = useState(true);
     const [aiLoading, setAiLoading] = useState(false);
     const [aiSummary, setAiSummary] = useState<string | null>(null);
     const [travelPrompt, setTravelPrompt] = useState("");
+    const [drivingRoute, setDrivingRoute] = useState<DrivingRoute | null>(null);
+    const [transitRoute, setTransitRoute] = useState<TransitRoute | null>(null);
+    const [transportMode, setTransportMode] = useState<TransportMode>("DRIVING");
+    const [routeLoading, setRouteLoading] = useState(false);
+    const [saveLoading, setSaveLoading] = useState(false);
     const [weatherByDay, setWeatherByDay] = useState<Record<number, WeatherForecastResponse>>({});
     const [weatherLoading, setWeatherLoading] = useState(false);
     const [message, setMessage] = useState("서울 중심으로 추천 장소를 준비하고 있어요.");
@@ -178,13 +187,23 @@ export default function TravelCoursePage() {
         getPets().then(setPets).catch(() => setPets([]));
     }, []);
 
-    const loadRecommendations = async (areaCode: string, center: MapCenter, locationLabel: string) => {
+    const loadRecommendations = async (_areaCode: string, center: MapCenter, locationLabel: string) => {
+        setRecommendationPage(1);
         setLoading(true);
         setRecommendations([]);
         setRegionPlaceCount(0);
         setMessage(`${locationLabel} 주변에서 반려견 동반 장소를 찾고 있어요.`);
         try {
-            const response = await searchAllPlaces(areaCode);
+            const response = await searchAllNearbyPlaces(center.latitude, center.longitude, 30000, (partial) => {
+                const partialNearby = partial.items
+                    .filter((place) => place.latitude !== null && place.longitude !== null)
+                    .sort((left, right) => distanceKm(center, { latitude: left.latitude!, longitude: left.longitude! })
+                        - distanceKm(center, { latitude: right.latitude!, longitude: right.longitude! }));
+                setRegionPlaceCount(partialNearby.length);
+                setRecommendations(partialNearby);
+                setLoading(false);
+                setMessage(`${locationLabel} 주변 장소 ${partialNearby.length}곳을 먼저 보여드리고 있어요.`);
+            });
             setRegionPlaceCount(response.items.length);
             const nearby = response.items
                 .filter((place) => place.latitude !== null && place.longitude !== null)
@@ -194,20 +213,22 @@ export default function TravelCoursePage() {
                     return leftDistance - rightDistance;
                 });
 
-            const assessed: Recommendation[] = [];
+            const assessed = new Map<string, Recommendation>();
             const compatibilityBatchSize = 6;
-            for (let index = 0; index < nearby.length; index += compatibilityBatchSize) {
-                const batch = nearby.slice(index, index + compatibilityBatchSize);
+            const assessmentTargets = nearby.slice(0, 120);
+            for (let index = 0; index < assessmentTargets.length; index += compatibilityBatchSize) {
+                const batch = assessmentTargets.slice(index, index + compatibilityBatchSize);
                 const batchResult = await Promise.all(batch.map(async (place): Promise<Recommendation> => {
                     try { return { ...place, compatibility: await getPlaceCompatibility(place.contentId) }; }
                     catch { return { ...place, compatibility: undefined }; }
                 }));
-                assessed.push(...batchResult);
-                const eligibleSoFar = assessed.filter((place) => place.compatibility?.petwayAssessment.status !== "UNAVAILABLE");
-                setRecommendations(eligibleSoFar);
-                setMessage(`${locationLabel} 전체 ${nearby.length}곳 중 ${Math.min(index + compatibilityBatchSize, nearby.length)}곳의 동반 조건을 확인했어요.`);
+                batchResult.forEach((place) => assessed.set(place.contentId, place));
+                setRecommendations(nearby.map((place): Recommendation => assessed.get(place.contentId) ?? { ...place, compatibility: undefined })
+                    .filter((place) => place.compatibility?.petwayAssessment.status !== "UNAVAILABLE"));
+                setMessage(`${locationLabel} 전체 ${nearby.length}곳 중 가까운 장소의 동반 조건을 확인하고 있어요.`);
             }
-            const eligible = assessed.filter((place) => place.compatibility?.petwayAssessment.status !== "UNAVAILABLE");
+            const eligible = nearby.map((place): Recommendation => assessed.get(place.contentId) ?? { ...place, compatibility: undefined })
+                .filter((place) => place.compatibility?.petwayAssessment.status !== "UNAVAILABLE");
             setRecommendations(eligible);
             setMessage(`${locationLabel} 전체 ${response.items.length}곳을 확인해 ${eligible.length}곳을 추천했어요.`);
         } catch (error) {
@@ -268,16 +289,88 @@ export default function TravelCoursePage() {
         (includeLodging || place.contentTypeId !== "32")
         && (selectedType === "all" || place.contentTypeId === selectedType)
     ), [includeLodging, recommendations, selectedType]);
+    const recommendationPageSize = 10;
+    const recommendationTotalPages = Math.max(1, Math.ceil(filteredRecommendations.length / recommendationPageSize));
+    const pagedRecommendations = useMemo(() => filteredRecommendations.slice(
+        (recommendationPage - 1) * recommendationPageSize, recommendationPage * recommendationPageSize
+    ), [filteredRecommendations, recommendationPage]);
+    useEffect(() => { setRecommendationPage(1); }, [selectedType, includeLodging]);
 
     const availableTypes = useMemo(() => Array.from(new Set(recommendations
         .filter((place) => includeLodging || place.contentTypeId !== "32")
         .map((place) => place.contentTypeId))), [includeLodging, recommendations]);
 
+    useEffect(() => {
+        const validStops = course.filter((place) => place.latitude !== null && place.longitude !== null);
+        if (validStops.length < 2) {
+            setDrivingRoute(null);
+            setRouteLoading(false);
+            return;
+        }
+
+        const controller = new AbortController();
+        setRouteLoading(true);
+        getDrivingRoute(validStops.map((place) => ({
+            id: place.contentId,
+            name: place.title,
+            latitude: place.latitude!,
+            longitude: place.longitude!,
+        })), controller.signal)
+            .then(setDrivingRoute)
+            .catch((error: unknown) => {
+                if (!(error instanceof DOMException && error.name === "AbortError")) setDrivingRoute(null);
+            })
+            .finally(() => {
+                if (!controller.signal.aborted) setRouteLoading(false);
+            });
+        return () => controller.abort();
+    }, [course]);
+
+    useEffect(() => {
+        const validStops = course.filter((place) => place.latitude !== null && place.longitude !== null);
+        if (transportMode !== "TRANSIT" || validStops.length < 2) {
+            setTransitRoute(null);
+            return;
+        }
+
+        const controller = new AbortController();
+        setRouteLoading(true);
+        getTransitRoute(validStops.map((place) => ({
+            id: place.contentId,
+            name: place.title,
+            latitude: place.latitude!,
+            longitude: place.longitude!,
+        })), controller.signal)
+            .then(setTransitRoute)
+            .catch((error: unknown) => {
+                if (!(error instanceof DOMException && error.name === "AbortError")) setTransitRoute(null);
+            })
+            .finally(() => {
+                if (!controller.signal.aborted) setRouteLoading(false);
+            });
+        return () => controller.abort();
+    }, [course, transportMode]);
+
     const routeInfo = useMemo(() => course.map((place, index) => ({
         place,
-        travel: index === 0 ? null : travelMinutes(course[index - 1], place),
+        travel: index === 0 ? null
+            : transportMode === "TRANSIT" && transitRoute?.legs[index - 1]
+                ? transitRoute.legs[index - 1].durationMinutes
+                : drivingRoute?.legs[index - 1]
+                    ? Math.max(1, Math.ceil(drivingRoute.legs[index - 1].durationSeconds / 60))
+                    : travelMinutes(course[index - 1], place),
+        distance: index === 0 || place.latitude === null || place.longitude === null
+            || course[index - 1].latitude === null || course[index - 1].longitude === null
+            ? null
+            : drivingRoute?.legs[index - 1]
+                ? drivingRoute.legs[index - 1].distanceMeters / 1000
+                : distanceKm(
+                { latitude: course[index - 1].latitude!, longitude: course[index - 1].longitude! },
+                { latitude: place.latitude, longitude: place.longitude },
+            ),
         stay: STAY_MINUTES[place.contentTypeId] ?? 75,
-    })), [course]);
+        transitLeg: index === 0 ? null : transitRoute?.legs[index - 1] ?? null,
+    })), [course, drivingRoute, transitRoute, transportMode]);
 
     const totalMinutes = routeInfo.reduce((sum, item) => sum + item.stay + (item.travel ?? 0), 0);
     const finishTime = useMemo(() => {
@@ -292,7 +385,13 @@ export default function TravelCoursePage() {
         latitude: place.latitude!,
         longitude: place.longitude!,
         kind: "place",
+        label: String(index + 1),
     })), [course]);
+
+    const routePath = useMemo<MapCenter[]>(() => transportMode === "DRIVING" && drivingRoute?.path.length
+        ? drivingRoute.path
+        : course.filter((place) => place.latitude !== null && place.longitude !== null)
+            .map((place) => ({ latitude: place.latitude!, longitude: place.longitude! })), [course, drivingRoute, transportMode]);
 
     const addPlace = (place: Recommendation) => {
         if (course.some((item) => item.contentId === place.contentId) || course.length >= maxStops) return;
@@ -318,6 +417,42 @@ export default function TravelCoursePage() {
             [next[index], next[target]] = [next[target], next[index]];
             return next;
         });
+    };
+
+    const saveCurrentTrip = async () => {
+        if (!courses.some((day) => day.length > 0)) return;
+        const suggestedTitle = `${selectedRegion.name} ${tripDays}일 여행`;
+        const title = window.prompt("저장할 여행 제목을 입력해 주세요.", suggestedTitle)?.trim();
+        if (!title) return;
+        setSaveLoading(true);
+        try {
+            await saveTrip({
+                title,
+                regionName: selectedRegion.name,
+                startDate,
+                endDate,
+                transportMode,
+                itinerary: {
+                    days: dayDates.map((date, index) => ({
+                        date,
+                        places: (courses[index] ?? []).map((place) => ({
+                            contentId: place.contentId,
+                            contentTypeId: place.contentTypeId,
+                            title: place.title,
+                            address: place.address,
+                            latitude: place.latitude,
+                            longitude: place.longitude,
+                            thumbnailUrl: place.thumbnailUrl,
+                        })),
+                    })),
+                },
+            });
+            window.alert("모든 날짜의 여행일정을 하나의 일정으로 저장했어요.");
+        } catch (error) {
+            window.alert(error instanceof Error ? error.message : "여행일정을 저장하지 못했습니다.");
+        } finally {
+            setSaveLoading(false);
+        }
     };
 
     const changeRegion = (code: string) => {
@@ -481,6 +616,17 @@ export default function TravelCoursePage() {
                     <div className="course-ai-actions"><label className="course-lodging-option"><input type="checkbox" checked={includeLodging} onChange={(event) => toggleLodging(event.target.checked)} /><span><strong>숙박도 추천받기</strong><small>숙박일의 마지막 장소로만 추가돼요.</small></span></label><button type="button" className="course-ai-generate" onClick={() => void generateAiCourse()} disabled={aiLoading || loading || recommendations.length === 0 || !primaryPet}>{aiLoading ? "코스 만드는 중…" : courses.some((day) => day.length > 0) ? "AI로 다시 짜기" : "AI가 코스 짜기"}</button></div>
                 </section>
 
+                <section className="course-trip-save" aria-label="전체 여행일정 저장">
+                    <div>
+                        <span>MY TRIP</span>
+                        <strong>{tripDays}일 전체 여행일정을 하나로 저장</strong>
+                        <small>DAY 1부터 마지막 날까지의 장소와 이동 정보를 한 번에 저장해요.</small>
+                    </div>
+                    <button type="button" onClick={() => void saveCurrentTrip()} disabled={saveLoading || !courses.some((day) => day.length > 0)}>
+                        {saveLoading ? "전체 일정 저장 중…" : "전체 여행일정 저장"}
+                    </button>
+                </section>
+
                 <div className="course-workspace">
                     <section className="course-recommendations">
                         <header><div><span>RECOMMENDATIONS</span><h2>{primaryPet ? `${primaryPet.petName}와 갈 만한 곳` : "지역 추천 장소"}</h2></div><strong>{filteredRecommendations.length} / 전체 {regionPlaceCount}곳</strong></header>
@@ -489,8 +635,8 @@ export default function TravelCoursePage() {
                             {availableTypes.map((type) => <button type="button" key={type} className={selectedType === type ? "active" : ""} onClick={() => setSelectedType(type)}>{TYPE_LABELS[type] ?? "기타"}</button>)}
                         </div>
                         <div className="course-card-list">
-                            {loading && <div className="course-empty">장소를 확인하고 있어요.</div>}
-                            {!loading && filteredRecommendations.map((place) => {
+                            {loading && <div className="course-empty paw-loading"><span aria-hidden="true">🐾</span><strong>가까운 동반 장소를 찾고 있어요.</strong></div>}
+                            {!loading && pagedRecommendations.map((place) => {
                                 const status = statusCopy(place.compatibility?.petwayAssessment.status);
                                 const added = course.some((item) => item.contentId === place.contentId);
                                 const lodgingUnavailable = place.contentTypeId === "32"
@@ -500,6 +646,8 @@ export default function TravelCoursePage() {
                                     <div className="course-place-copy">
                                         <div className="course-place-meta"><span>{TYPE_LABELS[place.contentTypeId] ?? "동반 장소"}</span><strong>{formatDistance(origin, place)}</strong></div>
                                         <h3>{place.title}</h3><p>{place.address ?? "주소 정보가 없습니다."}</p>
+                                        {place.operatingHours && <small>운영시간 · {place.operatingHours}</small>}
+                                        {place.closedDays && <small>휴무일 · {place.closedDays}</small>}
                                         <span className={`course-compatibility ${status.className}`}>{status.label}</span>
                                         {place.compatibility?.petwayAssessment.reasons[0] && <small>{place.compatibility.petwayAssessment.reasons[0]}</small>}
                                         {place.contentTypeId === "32" && <small className="course-lodging-notice">숙박일의 마지막 코스로 추가되며 예약은 해당 업체에서 확인해 주세요.</small>}
@@ -510,6 +658,11 @@ export default function TravelCoursePage() {
                                 </article>;
                             })}
                         </div>
+                        {!loading && recommendationTotalPages > 1 && <nav className="facility-pagination" aria-label="추천 장소 페이지">
+                            <button type="button" onClick={() => setRecommendationPage((value) => Math.max(1, value - 1))} disabled={recommendationPage === 1}>이전</button>
+                            <span>{recommendationPage} / {recommendationTotalPages}</span>
+                            <button type="button" onClick={() => setRecommendationPage((value) => Math.min(recommendationTotalPages, value + 1))} disabled={recommendationPage === recommendationTotalPages}>다음</button>
+                        </nav>}
                     </section>
 
                     <aside className="course-builder">
@@ -520,15 +673,16 @@ export default function TravelCoursePage() {
                         <div className="course-day-weather">
                             {weatherLoading ? <span>기상청 예보를 확인하고 있어요.</span> : weatherByDay[selectedDay] ? <><span className="course-day-weather-icon">{WEATHER_ICONS[weatherByDay[selectedDay].weatherCondition ?? "UNKNOWN"]}</span><div><strong>{dayDates[selectedDay]} · {weatherByDay[selectedDay].display.weather}</strong><p>{weatherByDay[selectedDay].display.temperature} · 강수 {weatherByDay[selectedDay].display.precipitation}</p><small>{weatherByDay[selectedDay].forecastType === "SEASONAL_OUTLOOK" ? "장기 일정은 일별 예보가 아닌 월별 기후 전망이에요." : weatherByDay[selectedDay].display.summary}</small></div></> : <span>이 날짜에 제공된 기상청 예보가 아직 없어요.</span>}
                         </div>
-                        {course.length > 0 && <div className="course-route-map"><KakaoMap center={{ latitude: course[0].latitude!, longitude: course[0].longitude! }} markers={markers} level={8} /></div>}
+                        <div className="course-transport-tabs" aria-label="이동수단 선택"><button type="button" className={transportMode === "DRIVING" ? "active" : ""} onClick={() => setTransportMode("DRIVING")}>🚗 자동차</button><button type="button" className={transportMode === "TRANSIT" ? "active" : ""} onClick={() => setTransportMode("TRANSIT")}>🚌 대중교통</button></div>
+                        {course.length > 0 && <div className="course-route-map"><KakaoMap center={{ latitude: course[0].latitude!, longitude: course[0].longitude! }} markers={markers} routePath={routePath} level={8} /><small className="course-route-source">{routeLoading ? "경로를 찾고 있어요…" : transportMode === "TRANSIT" && transitRoute ? "ODsay 추천 대중교통 경로" : drivingRoute ? "카카오모빌리티 실제 자동차 경로" : "직선거리 기반 예상 경로"}</small></div>}
                         {course.length === 0 ? <div className="course-empty course-empty-builder"><strong>아직 정한 장소가 없어요</strong><span>추천 카드의 + 버튼으로 최대 {maxStops}곳을 담아보세요.</span></div> : <ol className="course-timeline">
-                            {routeInfo.map(({ place, travel, stay }, index) => <li key={place.contentId}>
-                                {travel !== null && <div className="course-travel-time">차량 이동 약 {travel}분</div>}
+                            {routeInfo.map(({ place, travel, distance, stay, transitLeg }, index) => <li key={place.contentId}>
+                                {travel !== null && <div className="course-travel-time">{index} → {index + 1} 이동 · {transportMode === "TRANSIT" && transitLeg ? `대중교통 약 ${travel}분 · 환승 ${transitLeg.transfers}회 · ${transitLeg.fare.toLocaleString()}원` : `차량 약 ${travel}분${distance !== null ? ` · 약 ${distance.toFixed(1)}km` : ""}`}{transportMode === "TRANSIT" && transitLeg && <span className="course-transit-steps">{transitLeg.steps.map((step) => `${step.type === "WALK" ? "도보" : step.type === "BUS" ? "버스" : "지하철"} ${step.durationMinutes}분${step.description ? ` (${step.description})` : ""}`).join(" → ")}</span>}</div>}
                                 <div className="course-stop-number">{index + 1}</div><div className="course-stop-copy"><strong>{place.title}</strong><span>{TYPE_LABELS[place.contentTypeId] ?? "동반 장소"} · 약 {stay}분 머물기</span></div>
                                 <div className="course-stop-actions"><button type="button" onClick={() => moveCourseItem(index, -1)} disabled={index === 0 || place.contentTypeId === "32"}>앞으로</button><button type="button" onClick={() => moveCourseItem(index, 1)} disabled={index === course.length - 1 || course[index + 1]?.contentTypeId === "32"}>뒤로</button><button type="button" className="remove" onClick={() => updateCourse((current) => current.filter((item) => item.contentId !== place.contentId))}>삭제</button></div>
                             </li>)}
                         </ol>}
-                        <footer className="course-summary"><div><span>{selectedDay + 1}일차 예상 일정</span><strong>{startTime} - {finishTime}</strong></div><div><span>전체 장소</span><strong>{courses.reduce((sum, day) => sum + day.length, 0)}곳</strong></div><small>날짜 탭을 선택해 일자별 코스를 편집하세요. 이동 시간은 좌표 간 거리로 계산한 참고값이에요.</small></footer>
+                        <footer className="course-summary"><div><span>{selectedDay + 1}일차 예상 일정</span><strong>{startTime} - {finishTime}</strong></div><div><span>전체 장소</span><strong>{courses.reduce((sum, day) => sum + day.length, 0)}곳</strong></div><small>{transportMode === "TRANSIT" && transitRoute ? `ODsay 추천 대중교통 기준 · 총 교통비 약 ${transitRoute.totalFare.toLocaleString()}원` : drivingRoute ? "지도와 구간별 시간·거리는 카카오모빌리티 추천 자동차 경로 기준입니다." : "길찾기 정보를 불러오지 못하면 좌표 간 직선거리 기반 참고값을 사용합니다."}</small></footer>
                     </aside>
                 </div>
             </div>

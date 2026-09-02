@@ -1,0 +1,82 @@
+package com.petway.trip.service;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.petway.trip.dto.SavedTripCreateRequest;
+import com.petway.trip.dto.SavedTripPayload;
+import com.petway.trip.dto.SavedTripResponse;
+import com.petway.trip.entity.SavedTrip;
+import com.petway.trip.repository.SavedTripRepository;
+import com.petway.user.entity.User;
+import com.petway.user.repository.UserRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
+public class SavedTripService {
+    private final SavedTripRepository savedTripRepository;
+    private final UserRepository userRepository;
+    private final ObjectMapper objectMapper;
+
+    @Transactional
+    public SavedTripResponse create(String email, SavedTripCreateRequest request) {
+        validate(request);
+        User user = user(email);
+        int placeCount = request.itinerary().days().stream().mapToInt(day -> day.places().size()).sum();
+        try {
+            SavedTrip saved = savedTripRepository.save(SavedTrip.create(
+                    user, request.title().trim(), request.regionName().trim(), request.startDate(), request.endDate(),
+                    normalizedMode(request.transportMode()), placeCount, objectMapper.writeValueAsString(request.itinerary())
+            ));
+            return response(saved);
+        } catch (JsonProcessingException exception) {
+            throw new IllegalArgumentException("여행일정을 저장할 수 없습니다.", exception);
+        }
+    }
+
+    public List<SavedTripResponse> list(String email) {
+        return savedTripRepository.findAllByUserOrderByStartDateDescCreatedAtDesc(user(email)).stream()
+                .map(this::response).toList();
+    }
+
+    public SavedTripResponse get(String email, Long id) {
+        return response(savedTripRepository.findByIdAndUser(id, user(email))
+                .orElseThrow(() -> new IllegalArgumentException("저장한 여행일정을 찾을 수 없습니다.")));
+    }
+
+    @Transactional
+    public void delete(String email, Long id) {
+        SavedTrip trip = savedTripRepository.findByIdAndUser(id, user(email))
+                .orElseThrow(() -> new IllegalArgumentException("저장한 여행일정을 찾을 수 없습니다."));
+        savedTripRepository.delete(trip);
+    }
+
+    private SavedTripResponse response(SavedTrip trip) {
+        try {
+            return new SavedTripResponse(trip.getId(), trip.getTitle(), trip.getRegionName(), trip.getStartDate(),
+                    trip.getEndDate(), trip.getTransportMode(), trip.getPlaceCount(),
+                    objectMapper.readValue(trip.getItineraryJson(), SavedTripPayload.class), trip.getCreatedAt());
+        } catch (JsonProcessingException exception) {
+            throw new IllegalStateException("저장된 여행일정을 읽을 수 없습니다.", exception);
+        }
+    }
+
+    private void validate(SavedTripCreateRequest request) {
+        if (request == null || request.title() == null || request.title().isBlank() || request.title().length() > 100)
+            throw new IllegalArgumentException("여행 제목은 1자 이상 100자 이하로 입력해 주세요.");
+        if (request.regionName() == null || request.regionName().isBlank() || request.startDate() == null || request.endDate() == null)
+            throw new IllegalArgumentException("여행 지역과 날짜는 필수입니다.");
+        if (request.endDate().isBefore(request.startDate())) throw new IllegalArgumentException("여행 종료일이 시작일보다 빠릅니다.");
+        if (request.itinerary() == null || request.itinerary().days().isEmpty()
+                || request.itinerary().days().stream().allMatch(day -> day.places().isEmpty()))
+            throw new IllegalArgumentException("저장할 장소가 한 곳 이상 필요합니다.");
+    }
+
+    private String normalizedMode(String mode) { return "TRANSIT".equals(mode) ? "TRANSIT" : "DRIVING"; }
+    private User user(String email) { return userRepository.findByEmail(email).orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다.")); }
+}

@@ -116,6 +116,7 @@ export default function NearbyPlacesSection({
     const [selectedPlace, setSelectedPlace] = useState<SelectedPlace | null>(null);
     const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null);
     const [selectedType, setSelectedType] = useState("all");
+    const [placePage, setPlacePage] = useState(1);
     const [locationLoading, setLocationLoading] = useState(false);
     const [locationMessage, setLocationMessage] = useState(INITIAL_LOCATION_MESSAGE);
     const detailRequestRef = useRef<{ id: number; controller: AbortController } | null>(null);
@@ -164,6 +165,7 @@ export default function NearbyPlacesSection({
     }, []);
 
     const getCurrentLocation = () => {
+        setPlacePage(1);
         if (!navigator.geolocation) {
             updateLocationMessage("이 브라우저에서는 현재 위치를 사용할 수 없습니다.");
             return;
@@ -188,7 +190,10 @@ export default function NearbyPlacesSection({
                     const response = await searchAllNearbyPlaces(
                         location.latitude,
                         location.longitude,
-                        policy.radius
+                        policy.radius,
+                        (partial) => setPlaces([...partial.items].sort((left, right) =>
+                            (distanceInMeters(location, left) ?? Number.MAX_VALUE)
+                            - (distanceInMeters(location, right) ?? Number.MAX_VALUE)))
                     );
                     const sortedPlaces = [...response.items].sort((left, right) =>
                         (distanceInMeters(location, left) ?? Number.MAX_VALUE)
@@ -228,6 +233,7 @@ export default function NearbyPlacesSection({
     };
 
     const searchAt = async (location: MapCenter) => {
+        setPlacePage(1);
         setLocationLoading(true);
         updateLocationMessage("선택한 지도 영역의 장소를 찾고 있어요.");
         try {
@@ -235,7 +241,10 @@ export default function NearbyPlacesSection({
             const response = await searchAllNearbyPlaces(
                 location.latitude,
                 location.longitude,
-                policy.radius
+                policy.radius,
+                (partial) => setPlaces([...partial.items].sort((left, right) =>
+                    (distanceInMeters(location, left) ?? Number.MAX_VALUE)
+                    - (distanceInMeters(location, right) ?? Number.MAX_VALUE)))
             );
             const sortedPlaces = [...response.items].sort((left, right) =>
                 (distanceInMeters(location, left) ?? Number.MAX_VALUE)
@@ -278,17 +287,23 @@ export default function NearbyPlacesSection({
             : places.filter((place) => place.contentTypeId === selectedType),
         [places, selectedType]
     );
+    const placePageSize = 12;
+    const placeTotalPages = Math.max(1, Math.ceil(filteredPlaces.length / placePageSize));
+    const pagedPlaces = useMemo(() => filteredPlaces.slice((placePage - 1) * placePageSize, placePage * placePageSize),
+        [filteredPlaces, placePage]);
+
+    useEffect(() => { setPlacePage(1); }, [selectedType]);
 
     const orderedPlaces = useMemo(() => {
-        if (selectedPlaceId === null) return filteredPlaces;
-        const selected = filteredPlaces.find((place) => place.contentId === selectedPlaceId);
+        if (selectedPlaceId === null) return pagedPlaces;
+        const selected = pagedPlaces.find((place) => place.contentId === selectedPlaceId);
         return selected
-            ? [selected, ...filteredPlaces.filter((place) => place.contentId !== selectedPlaceId)]
-            : filteredPlaces;
-    }, [filteredPlaces, selectedPlaceId]);
+            ? [selected, ...pagedPlaces.filter((place) => place.contentId !== selectedPlaceId)]
+            : pagedPlaces;
+    }, [pagedPlaces, selectedPlaceId]);
 
     const markers = useMemo<MapMarker[]>(() => [
-        ...filteredPlaces
+        ...pagedPlaces
             .filter((place) => place.latitude !== null && place.longitude !== null)
             .map((place) => ({
                 id: place.contentId,
@@ -304,7 +319,7 @@ export default function NearbyPlacesSection({
             longitude: currentLocation.longitude,
             kind: "current-location" as const,
         }] : []),
-    ], [currentLocation, filteredPlaces, hasCurrentLocation]);
+    ], [currentLocation, pagedPlaces, hasCurrentLocation]);
 
     const selectPlace = useCallback((place: PlaceSummary) => {
         if (!enableWeatherSelection) return;
@@ -459,7 +474,7 @@ export default function NearbyPlacesSection({
                     <span className="nearby-eyebrow">NEARBY</span>
                     <h2 className="nearby-title">내 주변 동반 장소</h2>
                     <p className="nearby-description">
-                        위치 동의 후 한국관광공사 반려동물 동반여행 장소를 가까운 순으로 확인하세요.
+                        위치 동의 후 한국관광공사와 한국문화정보원의 반려동물 동반 장소를 가까운 순으로 확인하세요.
                     </p>
                 </div>
                 {showFullMapButton && (
@@ -479,6 +494,7 @@ export default function NearbyPlacesSection({
                         onMarkerSelect={handleMarkerSelect}
                         onCenterChange={handleMapCenterChange}
                     />
+                    {locationLoading && <div className="nearby-paw-loading" role="status"><span aria-hidden="true">🐾</span><strong>주변 장소를 찾고 있어요.</strong></div>}
                     {mapMoved && (
                         <button
                             type="button"
@@ -571,7 +587,9 @@ export default function NearbyPlacesSection({
                                         </div>
                                         <h3>{place.title}</h3>
                                         <p>{place.address ?? "주소 정보가 제공되지 않습니다."}</p>
-                                        <small>한국관광공사 반려동물 동반여행 정보</small>
+                                        {place.operatingHours && <small>운영시간 · {place.operatingHours}</small>}
+                                        {place.closedDays && <small>휴무일 · {place.closedDays}</small>}
+                                        <small>출처 · {place.source ?? "한국관광공사"}</small>
                                         <button
                                             type="button"
                                             className="nearby-detail-button"
@@ -666,7 +684,7 @@ export default function NearbyPlacesSection({
                                         )}
                                         {detailExpanded && detail && hasPetDetail && !detailLoading && !detailError && (
                                             <section className="nearby-official-information">
-                                                <strong>공식 안내 · 한국관광공사 제공</strong>
+                                                <strong>공식 안내 · {place.source ?? "한국관광공사"} 제공</strong>
                                                 <dl className="nearby-pet-detail">
                                                     {detail.accompanimentType && <><dt>동반 유형</dt><dd>{detail.accompanimentType}</dd></>}
                                                     {detail.allowedCapacity && <><dt>동반 가능 동물</dt><dd>{detail.allowedCapacity}</dd></>}
@@ -694,6 +712,11 @@ export default function NearbyPlacesSection({
                         );
                     })}
                     </div>
+                    {placeTotalPages > 1 && <nav className="facility-pagination" aria-label="장소 페이지">
+                        <button type="button" onClick={() => setPlacePage((value) => Math.max(1, value - 1))} disabled={placePage === 1}>이전</button>
+                        <span>{placePage} / {placeTotalPages}</span>
+                        <button type="button" onClick={() => setPlacePage((value) => Math.min(placeTotalPages, value + 1))} disabled={placePage === placeTotalPages}>다음</button>
+                    </nav>}
                 </>
             )}
         </section>

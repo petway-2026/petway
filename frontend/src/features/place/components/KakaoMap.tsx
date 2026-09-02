@@ -24,6 +24,7 @@ interface KakaoMapProps {
     center: MapCenter;
     level?: number;
     markers?: MapMarker[];
+    routePath?: MapCenter[];
     selectedMarkerId?: MapMarker["id"] | null;
     onMarkerSelect?: (marker: MapMarker | null) => void;
     onCenterChange?: (center: MapCenter) => void;
@@ -35,6 +36,7 @@ export default function KakaoMap({
                                      center,
                                      level = 5,
                                      markers = [],
+                                     routePath = [],
                                      selectedMarkerId = null,
                                      onMarkerSelect,
                                      onCenterChange,
@@ -51,6 +53,9 @@ export default function KakaoMap({
 
     const markerRefs =
         useRef<any[]>([]);
+
+    const routeLineRef =
+        useRef<any>(null);
 
     const openInfoWindowRef =
         useRef<any>(null);
@@ -302,6 +307,14 @@ export default function KakaoMap({
                                         new kakao.maps.Point(16, 16),
                                 }
                             );
+                    } else if (markerData.label) {
+                        const escapedLabel = markerData.label.replace(/[^0-9]/g, "").slice(0, 2);
+                        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="48" viewBox="0 0 40 48"><path fill="#526f5d" stroke="#fff" stroke-width="3" d="M20 1.5c-10.2 0-18.5 8.1-18.5 18.2C1.5 32.8 20 46.5 20 46.5s18.5-13.7 18.5-26.8C38.5 9.6 30.2 1.5 20 1.5Z"/><circle cx="20" cy="20" r="12" fill="#fff"/><text x="20" y="25" text-anchor="middle" font-family="Arial,sans-serif" font-size="15" font-weight="700" fill="#3f5849">${escapedLabel}</text></svg>`;
+                        markerOptions.image = new kakao.maps.MarkerImage(
+                            `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`,
+                            new kakao.maps.Size(40, 48),
+                            { offset: new kakao.maps.Point(20, 48) }
+                        );
                     }
 
                     const marker =
@@ -380,6 +393,35 @@ export default function KakaoMap({
         };
 
     }, [mapReady, markers, onMarkerSelect]);
+
+    useEffect(() => {
+        if (!mapRef.current || !window.kakao) return;
+
+        routeLineRef.current?.setMap(null);
+        routeLineRef.current = null;
+        if (routePath.length < 2) return;
+
+        const kakao = window.kakao;
+        const path = routePath.map((point) => new kakao.maps.LatLng(point.latitude, point.longitude));
+        const routeLine = new kakao.maps.Polyline({
+            map: mapRef.current,
+            path,
+            strokeWeight: 5,
+            strokeColor: "#526f5d",
+            strokeOpacity: 0.82,
+            strokeStyle: "solid",
+        });
+        routeLineRef.current = routeLine;
+
+        const bounds = new kakao.maps.LatLngBounds();
+        path.forEach((position) => bounds.extend(position));
+        mapRef.current.setBounds(bounds, 52, 52, 52, 52);
+
+        return () => {
+            routeLine.setMap(null);
+            if (routeLineRef.current === routeLine) routeLineRef.current = null;
+        };
+    }, [mapReady, routePath]);
 
 
     return (

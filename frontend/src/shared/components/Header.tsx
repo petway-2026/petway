@@ -32,6 +32,10 @@ export default function Header() {
                         여행코스
                     </NavLink>
 
+                    <NavLink to="/my-trips">
+                        나의 여행일정
+                    </NavLink>
+
                     <NavLink to="/places">
                         장소찾기
                     </NavLink>
