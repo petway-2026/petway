@@ -2,7 +2,10 @@ package com.petway.pet.controller;
 
 import com.petway.pet.dto.PetCreateRequest;
 import com.petway.pet.dto.PetResponse;
+import com.petway.pet.dto.PetRegistrationLookupRequest;
+import com.petway.pet.dto.PetRegistrationLookupResponse;
 import com.petway.pet.dto.PetUpdateRequest;
+import com.petway.pet.service.PetRegistrationLookupService;
 import com.petway.pet.service.PetService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +22,20 @@ import java.util.Map;
 public class PetController {
 
     private final PetService petService;
+    private final PetRegistrationLookupService petRegistrationLookupService;
+
+
+    /**
+     * 국가동물등록정보를 조회해 반려견 등록 폼에 사용할 기본 정보를 반환한다.
+     */
+    @PostMapping("/registration-lookup")
+    public ResponseEntity<PetRegistrationLookupResponse> lookupRegistration(
+            @RequestBody PetRegistrationLookupRequest request
+    ) {
+        return ResponseEntity.ok(
+                petRegistrationLookupService.lookup(request)
+        );
+    }
 
 
     /**
