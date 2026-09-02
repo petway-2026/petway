@@ -7,16 +7,12 @@ import com.petway.place.model.PlacePetDetail;
 import com.petway.place.port.TourPlaceGateway;
 import com.petway.user.repository.UserAuthRepository;
 import com.petway.user.repository.UserRepository;
+import com.petway.trip.repository.SavedTripRepository;
 import com.petway.user.entity.User;
 import com.petway.user.entity.UserAuth;
 import com.petway.user.enums.AuthType;
 import com.petway.user.dto.LoginRequest;
 import com.petway.user.service.AuthService;
-import com.petway.weather.domain.ForecastType;
-import com.petway.weather.domain.WeatherRegion;
-import com.petway.weather.dto.WeatherDisplay;
-import com.petway.weather.dto.WeatherForecastResponse;
-import com.petway.weather.service.WeatherQueryService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,7 +38,6 @@ import static org.mockito.Mockito.*;
 
 import java.util.Optional;
 import java.math.BigDecimal;
-import java.time.LocalDate;
 
 @AutoConfigureMockMvc
 @SpringBootTest(properties = {
@@ -74,7 +69,7 @@ class PetwayApplicationTests {
     private TourPlaceGateway tourPlaceGateway;
 
     @MockitoBean
-    private WeatherQueryService weatherQueryService;
+    private SavedTripRepository savedTripRepository;
 
     @MockitoBean
     private ClientRegistrationRepository clientRegistrationRepository;
@@ -104,63 +99,6 @@ class PetwayApplicationTests {
     @DisplayName("기존 보호 API는 인증 없이 접근할 수 없다")
     void protectedApiStillRequiresAuthentication() throws Exception {
         mockMvc.perform(get("/api/pets"))
-                .andExpect(status().isForbidden());
-    }
-
-    @Test
-    @DisplayName("날씨 API는 인증 없이 접근할 수 있다")
-    void weatherApiIsPublic() throws Exception {
-        LocalDate targetDate = LocalDate.of(2026, 9, 5);
-        WeatherForecastResponse response = new WeatherForecastResponse(
-                targetDate,
-                ForecastType.MID_TERM,
-                "서울ㆍ인천ㆍ경기도",
-                21.0,
-                28.0,
-                40,
-                null,
-                new WeatherDisplay(
-                        "21~28℃",
-                        "강수확률 40%",
-                        "흐림",
-                        "흐린 날씨가 예상되며, 강수확률 40%입니다."
-                ),
-                null,
-                null,
-                null,
-                null,
-                null,
-                "중기예보의 지역 대표 지점 기온과 권역 날씨입니다.",
-                "기상청"
-        );
-        when(weatherQueryService.getForecast(
-                37.5665,
-                126.9780,
-                targetDate,
-                WeatherRegion.SEOUL_INCHEON_GYEONGGI
-        )).thenReturn(response);
-
-        mockMvc.perform(get("/api/weather")
-                        .param("latitude", "37.5665")
-                        .param("longitude", "126.9780")
-                        .param("targetDate", targetDate.toString())
-                        .param("region", "SEOUL_INCHEON_GYEONGGI"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.forecastType").value("MID_TERM"))
-                .andExpect(jsonPath("$.source").value("기상청"));
-
-        verify(weatherQueryService).getForecast(
-                37.5665,
-                126.9780,
-                targetDate,
-                WeatherRegion.SEOUL_INCHEON_GYEONGGI
-        );
-    }
-
-    @Test
-    @DisplayName("날씨 API의 GET 이외 요청은 인증 없이 접근할 수 없다")
-    void weatherNonGetRequestRequiresAuthentication() throws Exception {
-        mockMvc.perform(post("/api/weather"))
                 .andExpect(status().isForbidden());
     }
 

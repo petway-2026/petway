@@ -18,6 +18,7 @@ const KOREA_CENTER: MapCenter = {
     latitude: 36.35,
     longitude: 127.85,
 };
+const HOSPITAL_PAGE_SIZE = 20;
 
 const REGIONS = [
     { label: "전국", value: "", center: KOREA_CENTER, level: 13 },
@@ -29,6 +30,8 @@ const REGIONS = [
 
 export default function HospitalPage() {
     const [hospitals, setHospitals] = useState<Hospital[]>([]);
+    const [facilityType, setFacilityType] = useState<"HOSPITAL" | "PHARMACY">("HOSPITAL");
+    const [page, setPage] = useState(1);
     const [totalCount, setTotalCount] = useState(0);
     const [region, setRegion] = useState("");
     const [nameInput, setNameInput] = useState("");
@@ -55,7 +58,10 @@ export default function HospitalPage() {
             try {
                 const response = await getHospitals(
                     region || undefined,
-                    hospitalName || undefined
+                    hospitalName || undefined,
+                    facilityType,
+                    page,
+                    HOSPITAL_PAGE_SIZE
                 );
 
                 if (!active) {
@@ -88,19 +94,20 @@ export default function HospitalPage() {
         return () => {
             active = false;
         };
-    }, [region, hospitalName]);
+    }, [region, hospitalName, facilityType, page]);
+
+    const totalPages = Math.max(1, Math.ceil(totalCount / HOSPITAL_PAGE_SIZE));
 
     const displayedHospitals = useMemo(
-        () => appliedBounds === null
-            ? hospitals
-            : hospitals.filter((hospital) =>
-                hospital.latitude !== null &&
-                hospital.longitude !== null &&
+        () => hospitals.filter((hospital) =>
+            hospital.latitude !== null &&
+            hospital.longitude !== null &&
+            (appliedBounds === null || (
                 hospital.latitude >= appliedBounds.south &&
                 hospital.latitude <= appliedBounds.north &&
                 hospital.longitude >= appliedBounds.west &&
                 hospital.longitude <= appliedBounds.east
-            ),
+            ))),
         [appliedBounds, hospitals]
     );
 
@@ -115,10 +122,6 @@ export default function HospitalPage() {
     const markers = useMemo<MapMarker[]>(
         () => [
             ...displayedHospitals
-            .filter((hospital) =>
-                hospital.latitude !== null &&
-                hospital.longitude !== null
-            )
             .map((hospital) => ({
                 id: hospital.id,
                 title: hospital.name,
@@ -154,11 +157,13 @@ export default function HospitalPage() {
         setCenter(selectedRegion.center);
         setMapLevel(selectedRegion.level);
         setLocationMessage(null);
+        setPage(1);
     };
 
     const searchByName = (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         setHospitalName(nameInput.trim());
+        setPage(1);
     };
 
     const moveToHospital = (hospital: Hospital) => {
@@ -238,7 +243,12 @@ export default function HospitalPage() {
                     </p>
                 </header>
 
-                <section className="hospital-controls" aria-label="동물병원 검색">
+                <div className="hospital-kind-tabs" aria-label="의료시설 종류">
+                    <button type="button" className={facilityType === "HOSPITAL" ? "active" : ""} onClick={() => { setFacilityType("HOSPITAL"); setPage(1); }}>동물병원</button>
+                    <button type="button" className={facilityType === "PHARMACY" ? "active" : ""} onClick={() => { setFacilityType("PHARMACY"); setPage(1); }}>동물약국</button>
+                </div>
+
+                <section className="hospital-controls" aria-label="동물병원 및 동물약국 검색">
                     <div className="hospital-region-filter">
                         {REGIONS.map((item) => (
                             <button
@@ -304,22 +314,27 @@ export default function HospitalPage() {
                     </div>
 
                     <div className="hospital-map-summary">
-                        지도 영역 {displayedHospitals.length.toLocaleString()}곳 · 검색 결과 {totalCount.toLocaleString()}곳
+                        지도와 목록에 표시된 {facilityType === "HOSPITAL" ? "동물병원" : "동물약국"} {displayedHospitals.length.toLocaleString()}곳 · 전체 {totalCount.toLocaleString()}곳
                     </div>
+                    {!loading && totalPages > 1 && <nav className="facility-pagination" aria-label="의료시설 페이지">
+                        <button type="button" onClick={() => setPage((value) => Math.max(1, value - 1))} disabled={page === 1}>이전</button>
+                        <span>{page.toLocaleString()} / {totalPages.toLocaleString()}</span>
+                        <button type="button" onClick={() => setPage((value) => Math.min(totalPages, value + 1))} disabled={page === totalPages}>다음</button>
+                    </nav>}
                 </section>
 
                 <section className="hospital-results">
                     <header className="hospital-results-heading">
                         <div>
                             <span className="hospital-results-eyebrow">SEARCH RESULTS</span>
-                            <h2>동물병원 목록</h2>
+                            <h2>{facilityType === "HOSPITAL" ? "동물병원" : "동물약국"} 목록</h2>
                         </div>
-                        <p>병원 카드를 선택하면 지도 중심이 해당 위치로 이동합니다.</p>
+                        <p>시설 카드를 선택하면 지도 중심이 해당 위치로 이동합니다.</p>
                     </header>
 
                     <div className="hospital-list-panel">
                         {loading && (
-                            <div className="hospital-state">동물병원 정보를 불러오고 있습니다.</div>
+                            <div className="hospital-state paw-loading"><span aria-hidden="true">🐾</span><strong>가까운 동물병원을 찾고 있어요.</strong></div>
                         )}
 
                         {!loading && error && (
@@ -339,23 +354,22 @@ export default function HospitalPage() {
                                 onClick={() => moveToHospital(hospital)}
                                 disabled={hospital.latitude === null || hospital.longitude === null}
                             >
-                                <span className="hospital-card-status">
-                                    {hospital.detailedStatus ?? hospital.businessStatus ?? "영업 상태 확인 필요"}
-                                </span>
-                                <strong>{hospital.name}</strong>
-                                <span>{hospital.address ?? "주소 정보 없음"}</span>
-                                <span>{hospital.telephone ?? "전화번호 정보 없음"}</span>
-                                {(hospital.latitude === null || hospital.longitude === null) && (
-                                    <small>좌표 정보가 없어 지도에 표시되지 않습니다.</small>
-                                )}
+                                <div className="hospital-card-primary">
+                                    <strong>{hospital.name}</strong>
+                                    <span>{hospital.address ?? "주소 정보 없음"}</span>
+                                    <span>{hospital.telephone ?? "전화번호 정보 없음"}</span>
+                                </div>
+                                <div className="hospital-card-detail">
+                                    <strong>상세정보</strong>
+                                    <span>운영시간 · {hospital.operatingHours ?? "방문 전 확인 필요"}</span>
+                                    <span>휴무일 · {hospital.closedDays ?? "방문 전 확인 필요"}</span>
+                                    {hospital.parking && <span>주차 · {hospital.parking}</span>}
+                                </div>
                             </button>
                         ))}
                     </div>
                 </section>
 
-                <p className="hospital-source">
-                    출처: 행정안전부 지방행정인허가 동물병원 조회서비스
-                </p>
             </div>
         </main>
     );

@@ -125,26 +125,24 @@ export default function MyPage() {
               </span>
                         </div>
 
-                        <div className="mypage-menu-card disabled">
+                        <Link to="/my-trips" className="mypage-menu-card">
                             <div className="mypage-menu-icon blue">
                                 🗺
                             </div>
 
                             <div>
                                 <h3>
-                                    저장 코스
+                                    나의 여행일정
                                 </h3>
 
                                 <p>
-                                    저장한 일상·여행 코스를
-                                    확인해요.
+                                    저장한 코스를 일정표로
+                                    다시 확인해요.
                                 </p>
                             </div>
 
-                            <span className="mypage-coming-soon">
-                준비 중
-              </span>
-                        </div>
+                            <span className="mypage-menu-arrow">→</span>
+                        </Link>
 
                         <div className="mypage-menu-card disabled">
                             <div className="mypage-menu-icon purple">

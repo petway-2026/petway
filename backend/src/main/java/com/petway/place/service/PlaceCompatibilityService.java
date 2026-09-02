@@ -11,11 +11,11 @@ import com.petway.place.dto.PlacePetDetailResponse;
 import com.petway.place.mapper.PlacePetRuleSourceAdapter;
 import com.petway.place.model.PlacePetDetail;
 import com.petway.place.port.TourPlaceGateway;
-import lombok.RequiredArgsConstructor;
+import com.petway.facility.PetFacilityCatalog;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
-@RequiredArgsConstructor
 public class PlaceCompatibilityService {
 
     private final TourPlaceGateway tourPlaceGateway;
@@ -23,6 +23,26 @@ public class PlaceCompatibilityService {
     private final PetRuleParser petRuleParser;
     private final CompatibilityEvaluator compatibilityEvaluator;
     private final PrimaryPetQueryService primaryPetQueryService;
+    private final PetFacilityCatalog facilityCatalog;
+
+    @Autowired
+    public PlaceCompatibilityService(TourPlaceGateway tourPlaceGateway, PlacePetRuleSourceAdapter sourceAdapter,
+                                     PetRuleParser petRuleParser, CompatibilityEvaluator compatibilityEvaluator,
+                                     PrimaryPetQueryService primaryPetQueryService, PetFacilityCatalog facilityCatalog) {
+        this.tourPlaceGateway = tourPlaceGateway;
+        this.sourceAdapter = sourceAdapter;
+        this.petRuleParser = petRuleParser;
+        this.compatibilityEvaluator = compatibilityEvaluator;
+        this.primaryPetQueryService = primaryPetQueryService;
+        this.facilityCatalog = facilityCatalog;
+    }
+
+    public PlaceCompatibilityService(TourPlaceGateway tourPlaceGateway, PlacePetRuleSourceAdapter sourceAdapter,
+                                     PetRuleParser petRuleParser, CompatibilityEvaluator compatibilityEvaluator,
+                                     PrimaryPetQueryService primaryPetQueryService) {
+        this(tourPlaceGateway, sourceAdapter, petRuleParser, compatibilityEvaluator, primaryPetQueryService,
+                new PetFacilityCatalog());
+    }
 
     public PlaceCompatibilityResponse getCompatibility(
             String email,
@@ -39,7 +59,9 @@ public class PlaceCompatibilityService {
             String contentId
     ) {
 
-        PlacePetDetail officialInformation = tourPlaceGateway.getPetDetail(contentId);
+        PlacePetDetail officialInformation = facilityCatalog.byId(contentId)
+                .map(f -> new PlacePetDetail(f.petOnly(), f.allowedPetSize(), f.restrictions(), f.description(), null))
+                .orElseGet(() -> tourPlaceGateway.getPetDetail(contentId));
         if (officialInformation == null) {
             officialInformation = PlacePetDetail.empty();
         }

@@ -6,11 +6,15 @@ const API_URL =
 
 export async function getHospitals(
     address?: string,
-    name?: string
+    name?: string,
+    facilityType: "HOSPITAL" | "PHARMACY" = "HOSPITAL",
+    page = 1,
+    size = 20
 ): Promise<HospitalPageResponse> {
     const query = new URLSearchParams({
-        page: "1",
-        size: "100",
+        page: String(page),
+        size: String(size),
+        facilityType,
     });
 
     if (address) {

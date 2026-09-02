@@ -11,6 +11,16 @@ export interface PlaceSummary {
     latitude: number | null;
     longitude: number | null;
     thumbnailUrl: string | null;
+    telephone?: string | null;
+    homepage?: string | null;
+    operatingHours?: string | null;
+    closedDays?: string | null;
+    parking?: string | null;
+    price?: string | null;
+    indoor?: string | null;
+    outdoor?: string | null;
+    description?: string | null;
+    source?: string | null;
 }
 
 export interface PlaceSearchResponse {
@@ -147,7 +157,8 @@ export async function searchNearbyPlaces(
 export async function searchAllNearbyPlaces(
     latitude: number,
     longitude: number,
-    radius = 20000
+    radius = 20000,
+    onProgress?: (response: PlaceSearchResponse) => void
 ): Promise<PlaceSearchResponse> {
     const pageSize = 100;
     const firstPage = await searchNearbyPlaces(
@@ -159,16 +170,19 @@ export async function searchAllNearbyPlaces(
     );
     const pageCount = Math.min(Math.ceil(firstPage.totalCount / pageSize), 50);
     const items = [...firstPage.items];
+    const progress = () => {
+        const uniqueItems = Array.from(new Map(items.map((place) => [place.contentId, place])).values());
+        onProgress?.({ page: 1, size: uniqueItems.length, totalCount: firstPage.totalCount, items: uniqueItems });
+    };
+    progress();
 
-    for (let page = 2; page <= pageCount; page += 1) {
-        const response = await searchNearbyPlaces(
-            latitude,
-            longitude,
-            radius,
-            page,
-            pageSize
-        );
-        items.push(...response.items);
+    for (let start = 2; start <= pageCount; start += 5) {
+        const pages = Array.from({ length: Math.min(5, pageCount - start + 1) }, (_, index) => start + index);
+        const responses = await Promise.all(pages.map((page) => searchNearbyPlaces(
+            latitude, longitude, radius, page, pageSize
+        )));
+        responses.forEach((response) => items.push(...response.items));
+        progress();
     }
 
     const uniqueItems = Array.from(
