@@ -1,10 +1,17 @@
 package com.petway;
 
+import com.petway.external.animalregistration.exception.AnimalRegistrationErrorType;
+import com.petway.external.animalregistration.exception.AnimalRegistrationException;
 import com.petway.pet.repository.PetRepository;
 import com.petway.pet.entity.Pet;
+import com.petway.pet.enums.DogBreed;
 import com.petway.pet.enums.PetSizeType;
+import com.petway.pet.model.AnimalRegistrationLookupCondition;
+import com.petway.pet.model.RegisteredPetProfile;
+import com.petway.pet.port.AnimalRegistrationGateway;
 import com.petway.place.model.PlacePetDetail;
 import com.petway.place.port.TourPlaceGateway;
+import com.petway.trip.repository.SavedTripRepository;
 import com.petway.user.repository.UserAuthRepository;
 import com.petway.user.repository.UserRepository;
 import com.petway.user.entity.User;
@@ -74,7 +81,13 @@ class PetwayApplicationTests {
     private TourPlaceGateway tourPlaceGateway;
 
     @MockitoBean
+    private AnimalRegistrationGateway animalRegistrationGateway;
+
+    @MockitoBean
     private WeatherQueryService weatherQueryService;
+
+    @MockitoBean
+    private SavedTripRepository savedTripRepository;
 
     @MockitoBean
     private ClientRegistrationRepository clientRegistrationRepository;
@@ -105,6 +118,127 @@ class PetwayApplicationTests {
     void protectedApiStillRequiresAuthentication() throws Exception {
         mockMvc.perform(get("/api/pets"))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("동물등록정보 조회는 로그인 사용자만 사용할 수 있다")
+    void animalRegistrationLookupRequiresAuthentication() throws Exception {
+        mockMvc.perform(post("/api/pets/registration-lookup")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(registrationLookupRequest()))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("로그인 사용자는 동물등록정보를 조회할 수 있다")
+    void authenticatedUserCanLookUpAnimalRegistration() throws Exception {
+        AnimalRegistrationLookupCondition condition =
+                new AnimalRegistrationLookupCondition(
+                        "410123456789012",
+                        null,
+                        "홍길동",
+                        null
+                );
+        when(animalRegistrationGateway.lookup(condition)).thenReturn(
+                new RegisteredPetProfile(
+                        "보리",
+                        LocalDate.of(2021, 5, 10),
+                        DogBreed.MALTESE,
+                        "말티즈",
+                        true
+                )
+        );
+
+        mockMvc.perform(post("/api/pets/registration-lookup")
+                        .with(user("owner@petway.test"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(registrationLookupRequest()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.petName").value("보리"))
+                .andExpect(jsonPath("$.birthDate").value("2021-05-10"))
+                .andExpect(jsonPath("$.breed").value("MALTESE"))
+                .andExpect(jsonPath("$.breedDetail").value("말티즈"))
+                .andExpect(jsonPath("$.neutered").value(true))
+                .andExpect(jsonPath("$.animalRegistered").value(true))
+                .andExpect(jsonPath("$.animalRegistrationNumber").doesNotExist())
+                .andExpect(jsonPath("$.ownerName").doesNotExist());
+
+        verify(animalRegistrationGateway).lookup(condition);
+        verifyNoInteractions(petRepository);
+    }
+
+    @Test
+    @DisplayName("동물등록정보 조회 조건이 잘못되면 외부 API를 호출하지 않는다")
+    void invalidAnimalRegistrationLookupIsRejectedBeforeProviderCall() throws Exception {
+        mockMvc.perform(post("/api/pets/registration-lookup")
+                        .with(user("owner@petway.test"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "animalRegistrationNumber": "410123456789012",
+                                  "rfidCode": "900123456789012",
+                                  "ownerName": "홍길동"
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message")
+                        .value("동물등록번호와 RFID 중 하나만 입력해주세요."));
+
+        verifyNoInteractions(animalRegistrationGateway);
+    }
+
+    @Test
+    @DisplayName("동물등록정보가 없으면 404를 반환한다")
+    void missingAnimalRegistrationReturnsNotFound() throws Exception {
+        when(animalRegistrationGateway.lookup(any()))
+                .thenThrow(new AnimalRegistrationException(
+                        AnimalRegistrationErrorType.NOT_FOUND,
+                        "provider detail"
+                ));
+
+        mockMvc.perform(post("/api/pets/registration-lookup")
+                        .with(user("owner@petway.test"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(registrationLookupRequest()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message")
+                        .value("일치하는 동물등록정보를 찾을 수 없습니다."));
+    }
+
+    @Test
+    @DisplayName("동물등록정보 제공기관 오류는 502를 반환한다")
+    void animalRegistrationProviderFailureReturnsBadGateway() throws Exception {
+        when(animalRegistrationGateway.lookup(any()))
+                .thenThrow(new AnimalRegistrationException(
+                        AnimalRegistrationErrorType.API_ERROR,
+                        "provider detail"
+                ));
+
+        mockMvc.perform(post("/api/pets/registration-lookup")
+                        .with(user("owner@petway.test"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(registrationLookupRequest()))
+                .andExpect(status().isBadGateway())
+                .andExpect(jsonPath("$.message")
+                        .value("동물등록정보 제공기관 호출에 실패했습니다."));
+    }
+
+    @Test
+    @DisplayName("동물등록정보 제공기관 응답 시간 초과는 504를 반환한다")
+    void animalRegistrationProviderTimeoutReturnsGatewayTimeout() throws Exception {
+        when(animalRegistrationGateway.lookup(any()))
+                .thenThrow(new AnimalRegistrationException(
+                        AnimalRegistrationErrorType.TIMEOUT,
+                        "provider detail"
+                ));
+
+        mockMvc.perform(post("/api/pets/registration-lookup")
+                        .with(user("owner@petway.test"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(registrationLookupRequest()))
+                .andExpect(status().isGatewayTimeout())
+                .andExpect(jsonPath("$.message")
+                        .value("동물등록정보 제공기관의 응답 시간이 초과되었습니다."));
     }
 
     @Test
@@ -155,6 +289,15 @@ class PetwayApplicationTests {
                 targetDate,
                 WeatherRegion.SEOUL_INCHEON_GYEONGGI
         );
+    }
+
+    private String registrationLookupRequest() {
+        return """
+                {
+                  "animalRegistrationNumber": "410123456789012",
+                  "ownerName": "홍길동"
+                }
+                """;
     }
 
     @Test
