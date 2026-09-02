@@ -194,7 +194,7 @@ export default function TravelCoursePage() {
         setRegionPlaceCount(0);
         setMessage(`${locationLabel} 주변에서 반려견 동반 장소를 찾고 있어요.`);
         try {
-            const response = await searchAllNearbyPlaces(center.latitude, center.longitude, 100000, (partial) => {
+            const response = await searchAllNearbyPlaces(center.latitude, center.longitude, 30000, (partial) => {
                 const partialNearby = partial.items
                     .filter((place) => place.latitude !== null && place.longitude !== null)
                     .sort((left, right) => distanceKm(center, { latitude: left.latitude!, longitude: left.longitude! })
