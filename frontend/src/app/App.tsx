@@ -16,6 +16,8 @@ import PetCreatePage from "../features/pet/pages/PetCreatePage";
 import PetEditPage from "../features/pet/pages/PetEditPage";
 import HospitalPage from "../features/hospital/pages/HospitalPage";
 import TravelCoursePage from "../features/course/pages/TravelCoursePage";
+import SavedTripsPage from "../features/course/pages/SavedTripsPage";
+import SavedTripDetailPage from "../features/course/pages/SavedTripDetailPage";
 
 import HomePage from "../pages/HomePage";
 import MyPage from "../pages/MyPage";
@@ -66,6 +68,8 @@ function AppLayout() {
                             path="/courses"
                             element={<TravelCoursePage />}
                         />
+                        <Route path="/my-trips" element={<SavedTripsPage />} />
+                        <Route path="/my-trips/:tripId" element={<SavedTripDetailPage />} />
                         <Route
                             path="/mypage"
                             element={<MyPage />}

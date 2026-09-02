@@ -11,6 +11,12 @@ export interface Hospital {
     dataUpdatedAt: string | null;
     latitude: number | null;
     longitude: number | null;
+    operatingHours?: string | null;
+    closedDays?: string | null;
+    homepage?: string | null;
+    parking?: string | null;
+    description?: string | null;
+    source?: string | null;
 }
 
 export interface HospitalPageResponse {

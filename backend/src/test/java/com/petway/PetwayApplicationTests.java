@@ -7,6 +7,7 @@ import com.petway.place.model.PlacePetDetail;
 import com.petway.place.port.TourPlaceGateway;
 import com.petway.user.repository.UserAuthRepository;
 import com.petway.user.repository.UserRepository;
+import com.petway.trip.repository.SavedTripRepository;
 import com.petway.user.entity.User;
 import com.petway.user.entity.UserAuth;
 import com.petway.user.enums.AuthType;
@@ -66,6 +67,9 @@ class PetwayApplicationTests {
 
     @MockitoBean
     private TourPlaceGateway tourPlaceGateway;
+
+    @MockitoBean
+    private SavedTripRepository savedTripRepository;
 
     @MockitoBean
     private ClientRegistrationRepository clientRegistrationRepository;

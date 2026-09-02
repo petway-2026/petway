@@ -17,4 +17,5 @@ export interface MapMarker {
     latitude: number;
     longitude: number;
     kind?: "place" | "hospital" | "current-location";
+    label?: string;
 }

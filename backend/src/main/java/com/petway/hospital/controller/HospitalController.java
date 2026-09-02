@@ -5,6 +5,7 @@ import com.petway.hospital.service.HospitalService;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.Pattern;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -34,8 +35,14 @@ public class HospitalController {
             String address,
             @RequestParam(required = false)
             @Size(max = 100)
-            String name
+            String name,
+            @RequestParam(required = false)
+            @Pattern(regexp = "HOSPITAL|PHARMACY")
+            String facilityType
     ) {
+        if (facilityType != null) {
+            return hospitalService.findMedicalFacilities(page, size, address, name, facilityType);
+        }
         return hospitalService.findHospitals(
                 page,
                 size,
