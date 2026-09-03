@@ -16,7 +16,15 @@ export default function Header() {
         <header className="site-header">
             <div className="site-header-inner">
                 <Link to="/" className="site-logo">
-                    <div className="site-logo-mark">🐾</div>
+                    <div className="site-logo-mark" aria-label="PetWay 로고">
+                        <svg viewBox="0 0 48 48" aria-hidden="true">
+                            <ellipse cx="24" cy="31" rx="10" ry="8" fill="white" />
+                            <circle cx="11" cy="20" r="4.5" fill="white" />
+                            <circle cx="20" cy="13" r="4.5" fill="white" />
+                            <circle cx="29" cy="13" r="4.5" fill="white" />
+                            <circle cx="38" cy="20" r="4.5" fill="white" />
+                        </svg>
+                    </div>
 
                     <div className="site-logo-text">
                         <strong>PetWay</strong>
