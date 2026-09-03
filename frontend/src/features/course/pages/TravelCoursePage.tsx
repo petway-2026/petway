@@ -17,6 +17,7 @@ import type { WeatherForecastResponse, WeatherRegion } from "../../weather/types
 import { createAiCourse, type AiCourseCandidate } from "../api/courseApi";
 import { getDrivingRoute, getTransitRoute, type DrivingRoute, type TransitRoute } from "../api/routeApi";
 import { saveTrip } from "../api/savedTripApi";
+import FavoriteButton from "../../../shared/components/FavoriteButton";
 
 import "../styles/travel-course.css";
 
@@ -616,17 +617,6 @@ export default function TravelCoursePage() {
                     <div className="course-ai-actions"><label className="course-lodging-option"><input type="checkbox" checked={includeLodging} onChange={(event) => toggleLodging(event.target.checked)} /><span><strong>숙박도 추천받기</strong><small>숙박일의 마지막 장소로만 추가돼요.</small></span></label><button type="button" className="course-ai-generate" onClick={() => void generateAiCourse()} disabled={aiLoading || loading || recommendations.length === 0 || !primaryPet}>{aiLoading ? "코스 만드는 중…" : courses.some((day) => day.length > 0) ? "AI로 다시 짜기" : "AI가 코스 짜기"}</button></div>
                 </section>
 
-                <section className="course-trip-save" aria-label="전체 여행일정 저장">
-                    <div>
-                        <span>MY TRIP</span>
-                        <strong>{tripDays}일 전체 여행일정을 하나로 저장</strong>
-                        <small>DAY 1부터 마지막 날까지의 장소와 이동 정보를 한 번에 저장해요.</small>
-                    </div>
-                    <button type="button" onClick={() => void saveCurrentTrip()} disabled={saveLoading || !courses.some((day) => day.length > 0)}>
-                        {saveLoading ? "전체 일정 저장 중…" : "전체 여행일정 저장"}
-                    </button>
-                </section>
-
                 <div className="course-workspace">
                     <section className="course-recommendations">
                         <header><div><span>RECOMMENDATIONS</span><h2>{primaryPet ? `${primaryPet.petName}와 갈 만한 곳` : "지역 추천 장소"}</h2></div><strong>{filteredRecommendations.length} / 전체 {regionPlaceCount}곳</strong></header>
@@ -645,7 +635,7 @@ export default function TravelCoursePage() {
                                     <div className="course-place-image">{place.thumbnailUrl ? <img src={place.thumbnailUrl} alt="" loading="lazy" /> : <span>PetWay</span>}</div>
                                     <div className="course-place-copy">
                                         <div className="course-place-meta"><span>{TYPE_LABELS[place.contentTypeId] ?? "동반 장소"}</span><strong>{formatDistance(origin, place)}</strong></div>
-                                        <h3>{place.title}</h3><p>{place.address ?? "주소 정보가 없습니다."}</p>
+                                        <div className="course-place-title"><h3>{place.title}</h3><FavoriteButton targetType="PLACE" targetId={place.contentId} title={place.title} address={place.address} thumbnailUrl={place.thumbnailUrl} /></div><p>{place.address ?? "주소 정보가 없습니다."}</p>
                                         {place.operatingHours && <small>운영시간 · {place.operatingHours}</small>}
                                         {place.closedDays && <small>휴무일 · {place.closedDays}</small>}
                                         <span className={`course-compatibility ${status.className}`}>{status.label}</span>
