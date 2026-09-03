@@ -13,9 +13,12 @@ import {
 } from "../api/placeApi";
 import KakaoMap from "./KakaoMap";
 import PlaceWeatherPanel from "./PlaceWeatherPanel";
-import type { MapCenter, MapMarker } from "../types/map";
+import type { MapBounds, MapCenter, MapMarker } from "../types/map";
 import type { SelectedPlace } from "../types/place";
 import { resolveWeatherRegion } from "../utils/resolveWeatherRegion";
+import FavoriteButton from "../../../shared/components/FavoriteButton";
+import ReviewButton from "../../../shared/components/ReviewButton";
+import RadiusPicker, { RADIUS_OPTIONS, type RadiusOption } from "../../../shared/components/RadiusPicker";
 
 import "../styles/nearby.css";
 
@@ -100,11 +103,20 @@ export default function NearbyPlacesSection({
 }: NearbyPlacesSectionProps) {
     const navigate = useNavigate();
     const [currentLocation, setCurrentLocation] = useState(DEFAULT_LOCATION);
+    // Programmatic map moves and the center reported by a user drag must not
+    // share one state value. Feeding the reported center straight back into
+    // KakaoMap can make the map snap while it is being dragged.
+    const [mapTargetCenter, setMapTargetCenter] = useState(DEFAULT_LOCATION);
     const [mapCenter, setMapCenter] = useState(DEFAULT_LOCATION);
     const [searchOrigin, setSearchOrigin] = useState(DEFAULT_LOCATION);
     const [hasCurrentLocation, setHasCurrentLocation] = useState(false);
     const [mapMoved, setMapMoved] = useState(false);
-    const [radiusPolicy, setRadiusPolicy] = useState(getRadiusPolicy(DEFAULT_LOCATION));
+    const [draftBounds, setDraftBounds] = useState<MapBounds | null>(null);
+    const [appliedBounds, setAppliedBounds] = useState<MapBounds | null>(null);
+    const [radiusPolicy, setRadiusPolicy] = useState<{ radius: number; label: string }>({ radius: RADIUS_OPTIONS[2].meters, label: "10km" });
+    const [mapLevel, setMapLevel] = useState<number>(RADIUS_OPTIONS[2].level);
+    const [radiusPickerOpen, setRadiusPickerOpen] = useState(false);
+    const [pendingLocation, setPendingLocation] = useState<MapCenter | null>(null);
     const [places, setPlaces] = useState<PlaceSummary[]>([]);
     const [expandedPlaceId, setExpandedPlaceId] = useState<string | null>(null);
     const [detail, setDetail] = useState<PlacePetDetail | null>(null);
@@ -116,9 +128,9 @@ export default function NearbyPlacesSection({
     const [selectedPlace, setSelectedPlace] = useState<SelectedPlace | null>(null);
     const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null);
     const [selectedType, setSelectedType] = useState("all");
-    const [placePage, setPlacePage] = useState(1);
     const [locationLoading, setLocationLoading] = useState(false);
     const [locationMessage, setLocationMessage] = useState(INITIAL_LOCATION_MESSAGE);
+    const [mapAreaSearch, setMapAreaSearch] = useState(false);
     const detailRequestRef = useRef<{ id: number; controller: AbortController } | null>(null);
     const compatibilityRequestRef = useRef<AbortController | null>(null);
     const detailRequestIdRef = useRef(0);
@@ -165,14 +177,14 @@ export default function NearbyPlacesSection({
     }, []);
 
     const getCurrentLocation = () => {
-        setPlacePage(1);
+        setMapAreaSearch(false);
         if (!navigator.geolocation) {
             updateLocationMessage("이 브라우저에서는 현재 위치를 사용할 수 없습니다.");
             return;
         }
 
         setLocationLoading(true);
-        updateLocationMessage("현재 위치와 가까운 장소를 찾고 있어요.");
+        updateLocationMessage("현재 위치를 확인하고 있어요.");
 
         navigator.geolocation.getCurrentPosition(
             async (position) => {
@@ -180,45 +192,10 @@ export default function NearbyPlacesSection({
                     latitude: position.coords.latitude,
                     longitude: position.coords.longitude,
                 };
-                setCurrentLocation(location);
-                setMapCenter(location);
-                setSearchOrigin(location);
-                setHasCurrentLocation(true);
-
-                try {
-                    const policy = getRadiusPolicy(location);
-                    const response = await searchAllNearbyPlaces(
-                        location.latitude,
-                        location.longitude,
-                        policy.radius,
-                        (partial) => setPlaces([...partial.items].sort((left, right) =>
-                            (distanceInMeters(location, left) ?? Number.MAX_VALUE)
-                            - (distanceInMeters(location, right) ?? Number.MAX_VALUE)))
-                    );
-                    const sortedPlaces = [...response.items].sort((left, right) =>
-                        (distanceInMeters(location, left) ?? Number.MAX_VALUE)
-                        - (distanceInMeters(location, right) ?? Number.MAX_VALUE)
-                    );
-                    setPlaces(sortedPlaces);
-                    closePlaceExpansion();
-                    setSelectedType("all");
-                    setMapMoved(false);
-                    setRadiusPolicy(policy);
-                    updateLocationMessage(
-                        sortedPlaces.length > 0
-                            ? `${policy.label} 범위에서 가까운 순으로 ${sortedPlaces.length}곳을 찾았어요.`
-                            : `${policy.label} 범위에서 등록된 반려동물 동반 장소를 찾지 못했어요.`
-                    );
-                } catch (cause) {
-                    setPlaces([]);
-                    updateLocationMessage(
-                        cause instanceof Error
-                            ? cause.message
-                            : "주변 장소를 불러오지 못했습니다."
-                    );
-                } finally {
-                    setLocationLoading(false);
-                }
+                setPendingLocation(location);
+                setLocationLoading(false);
+                setRadiusPickerOpen(true);
+                updateLocationMessage("검색할 반경을 선택해주세요.");
             },
             (error) => {
                 setLocationLoading(false);
@@ -232,12 +209,14 @@ export default function NearbyPlacesSection({
         );
     };
 
-    const searchAt = async (location: MapCenter) => {
-        setPlacePage(1);
+    const searchAt = async (location: MapCenter, areaSearch = false, radiusOption?: RadiusOption, targetBounds?: MapBounds | null) => {
+        setMapAreaSearch(areaSearch);
         setLocationLoading(true);
         updateLocationMessage("선택한 지도 영역의 장소를 찾고 있어요.");
         try {
-            const policy = getRadiusPolicy(location);
+            const policy = radiusOption
+                ? { radius: radiusOption.meters, label: `${radiusOption.km}km` }
+                : radiusPolicy;
             const response = await searchAllNearbyPlaces(
                 location.latitude,
                 location.longitude,
@@ -252,13 +231,14 @@ export default function NearbyPlacesSection({
             );
             setSearchOrigin(location);
             setPlaces(sortedPlaces);
+            setAppliedBounds(areaSearch ? targetBounds ?? null : null);
             closePlaceExpansion();
             setSelectedType("all");
             setMapMoved(false);
             setRadiusPolicy(policy);
             updateLocationMessage(
                 sortedPlaces.length > 0
-                    ? `${policy.label} 범위에서 가까운 순으로 ${sortedPlaces.length}곳을 찾았어요.`
+                    ? `${areaSearch ? "현재 지도 영역" : policy.label}에서 총 ${sortedPlaces.length}곳을 찾았어요. 가까운 순으로 확인해보세요.`
                     : `${policy.label} 범위에서 등록된 동반 장소를 찾지 못했어요.`
             );
         } catch (cause) {
@@ -266,6 +246,21 @@ export default function NearbyPlacesSection({
         } finally {
             setLocationLoading(false);
         }
+    };
+
+    const selectCurrentLocationRadius = (option: RadiusOption) => {
+        if (!pendingLocation) return;
+        const location = pendingLocation;
+        setRadiusPickerOpen(false);
+        setPendingLocation(null);
+        setCurrentLocation(location);
+        setMapTargetCenter(location);
+        setMapCenter(location);
+        setSearchOrigin(location);
+        setHasCurrentLocation(true);
+        setMapLevel(option.level);
+        setAppliedBounds(null);
+        void searchAt(location, false, option);
     };
 
     const handleMapCenterChange = useCallback((center: MapCenter) => {
@@ -276,30 +271,35 @@ export default function NearbyPlacesSection({
         setMapMoved(moved);
     }, [searchOrigin]);
 
+    const areaPlaces = useMemo(
+        () => appliedBounds === null ? places : places.filter((place) =>
+            place.latitude !== null && place.longitude !== null
+            && place.latitude >= appliedBounds.south && place.latitude <= appliedBounds.north
+            && place.longitude >= appliedBounds.west && place.longitude <= appliedBounds.east
+        ),
+        [appliedBounds, places]
+    );
+
     const availableTypes = useMemo(
-        () => Array.from(new Set(places.map((place) => place.contentTypeId))),
-        [places]
+        () => Array.from(new Set(areaPlaces.map((place) => place.contentTypeId))),
+        [areaPlaces]
     );
 
     const filteredPlaces = useMemo(
         () => selectedType === "all"
-            ? places
-            : places.filter((place) => place.contentTypeId === selectedType),
-        [places, selectedType]
+            ? areaPlaces
+            : areaPlaces.filter((place) => place.contentTypeId === selectedType),
+        [areaPlaces, selectedType]
     );
-    const placePageSize = 12;
-    const placeTotalPages = Math.max(1, Math.ceil(filteredPlaces.length / placePageSize));
-    const pagedPlaces = useMemo(() => filteredPlaces.slice((placePage - 1) * placePageSize, placePage * placePageSize),
-        [filteredPlaces, placePage]);
-
-    useEffect(() => { setPlacePage(1); }, [selectedType]);
+    const pagedPlaces = filteredPlaces;
 
     const orderedPlaces = useMemo(() => {
-        if (selectedPlaceId === null) return pagedPlaces;
-        const selected = pagedPlaces.find((place) => place.contentId === selectedPlaceId);
+        const located = pagedPlaces.filter((place) => place.latitude !== null && place.longitude !== null);
+        if (selectedPlaceId === null) return located;
+        const selected = located.find((place) => place.contentId === selectedPlaceId);
         return selected
-            ? [selected, ...pagedPlaces.filter((place) => place.contentId !== selectedPlaceId)]
-            : pagedPlaces;
+            ? [selected, ...located.filter((place) => place.contentId !== selectedPlaceId)]
+            : located;
     }, [pagedPlaces, selectedPlaceId]);
 
     const markers = useMemo<MapMarker[]>(() => [
@@ -420,6 +420,7 @@ export default function NearbyPlacesSection({
         setExpandedPlaceId(place.contentId);
         selectPlace(place);
         void loadPlaceDetail(place);
+        void loadCompatibility(place);
     };
 
     const loadCompatibility = async (place: PlaceSummary) => {
@@ -487,19 +488,20 @@ export default function NearbyPlacesSection({
             <div className="nearby-map-card">
                 <div className="nearby-map">
                     <KakaoMap
-                        center={currentLocation}
+                        center={mapTargetCenter}
                         markers={markers}
-                        level={7}
+                        level={mapLevel}
                         selectedMarkerId={selectedPlaceId}
                         onMarkerSelect={handleMarkerSelect}
                         onCenterChange={handleMapCenterChange}
+                        onBoundsChange={setDraftBounds}
                     />
                     {locationLoading && <div className="nearby-paw-loading" role="status"><span aria-hidden="true">🐾</span><strong>주변 장소를 찾고 있어요.</strong></div>}
                     {mapMoved && (
                         <button
                             type="button"
                             className="nearby-search-area-button"
-                            onClick={() => void searchAt(mapCenter)}
+                            onClick={() => void searchAt(mapCenter, true, undefined, draftBounds)}
                             disabled={locationLoading}
                         >
                             이 지역 검색
@@ -524,10 +526,10 @@ export default function NearbyPlacesSection({
                 </div>
             </div>
 
-            {places.length > 0 && (
+            {filteredPlaces.length > 0 && (
                 <>
                     <div className="nearby-place-filters" aria-label="장소 종류 필터">
-                        <span className="nearby-radius-label">검색 범위 · {radiusPolicy.label}</span>
+                        <span className="nearby-radius-label">검색 범위 · {mapAreaSearch ? "현재 지도 영역" : radiusPolicy.label}</span>
                         <button
                             type="button"
                             className={selectedType === "all" ? "active" : ""}
@@ -536,7 +538,7 @@ export default function NearbyPlacesSection({
                                 closePlaceExpansion();
                             }}
                         >
-                            전체 <span>{places.length}</span>
+                            전체 <span>{areaPlaces.length}</span>
                         </button>
                         {availableTypes.map((contentTypeId) => (
                             <button
@@ -549,7 +551,7 @@ export default function NearbyPlacesSection({
                                 }}
                             >
                                 {CONTENT_TYPE_NAMES[contentTypeId] ?? "기타"}
-                                <span>{places.filter((place) => place.contentTypeId === contentTypeId).length}</span>
+                                <span>{areaPlaces.filter((place) => place.contentTypeId === contentTypeId).length}</span>
                             </button>
                         ))}
                     </div>
@@ -585,7 +587,7 @@ export default function NearbyPlacesSection({
                                             <span>{CONTENT_TYPE_NAMES[place.contentTypeId] ?? "동반 장소"}</span>
                                             <strong>{formatDistance(distanceInMeters(searchOrigin, place))}</strong>
                                         </div>
-                                        <h3>{place.title}</h3>
+                                        <div className="nearby-place-title"><h3>{place.title}</h3><div><ReviewButton targetType="PLACE" targetId={place.contentId} title={place.title}/><FavoriteButton targetType="PLACE" targetId={place.contentId} title={place.title} address={place.address} thumbnailUrl={place.thumbnailUrl} /></div></div>
                                         <p>{place.address ?? "주소 정보가 제공되지 않습니다."}</p>
                                         {place.operatingHours && <small>운영시간 · {place.operatingHours}</small>}
                                         {place.closedDays && <small>휴무일 · {place.closedDays}</small>}
@@ -596,9 +598,9 @@ export default function NearbyPlacesSection({
                                             onClick={() => toggleDetail(place)}
                                             aria-expanded={detailExpanded}
                                         >
-                                            {detailExpanded ? "상세정보 닫기" : "동반 상세정보"}
+                                            {detailExpanded ? "상세정보 닫기" : "마이펫 기준 동반 가능 여부"}
                                         </button>
-                                        {detailExpanded && (
+                                        {detailExpanded && !compatibility && !compatibilityLoading && (
                                             <button
                                                 type="button"
                                                 className="nearby-compatibility-button"
@@ -606,8 +608,8 @@ export default function NearbyPlacesSection({
                                                 disabled={compatibilityLoading}
                                             >
                                                 {compatibilityLoading
-                                                    ? "대표 반려견 기준으로 확인 중…"
-                                                    : "내 반려견 동반 가능 여부 확인"}
+                                                    ? "마이펫 기준으로 확인 중…"
+                                                    : "마이펫 기준 다시 확인"}
                                             </button>
                                         )}
                                         {detailExpanded && compatibilityError && !compatibilityLoading && (
@@ -712,13 +714,9 @@ export default function NearbyPlacesSection({
                         );
                     })}
                     </div>
-                    {placeTotalPages > 1 && <nav className="facility-pagination" aria-label="장소 페이지">
-                        <button type="button" onClick={() => setPlacePage((value) => Math.max(1, value - 1))} disabled={placePage === 1}>이전</button>
-                        <span>{placePage} / {placeTotalPages}</span>
-                        <button type="button" onClick={() => setPlacePage((value) => Math.min(placeTotalPages, value + 1))} disabled={placePage === placeTotalPages}>다음</button>
-                    </nav>}
                 </>
             )}
+            <RadiusPicker open={radiusPickerOpen} onClose={() => { setRadiusPickerOpen(false); setPendingLocation(null); }} onSelect={selectCurrentLocationRadius}/>
         </section>
     );
 }

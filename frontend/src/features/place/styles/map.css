@@ -517,7 +517,11 @@
     height: 100%;
 
     min-height: 280px;
+    touch-action: none;
+    cursor: grab;
 }
+
+.kakao-map-container:active { cursor: grabbing; }
 
 
 .kakao-map-error {

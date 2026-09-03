@@ -28,7 +28,7 @@ public class HospitalController {
             int page,
             @RequestParam(defaultValue = "100")
             @Min(1)
-            @Max(100)
+            @Max(20000)
             int size,
             @RequestParam(required = false)
             @Size(max = 100)

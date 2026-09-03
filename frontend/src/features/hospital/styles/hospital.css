@@ -97,7 +97,8 @@
     margin: 0;
 }
 
-.hospital-search input {
+.hospital-search input,
+.hospital-search select {
     width: 100%;
     min-width: 0;
     min-height: 42px;
@@ -160,6 +161,76 @@
     height: clamp(560px, 68vh, 760px);
 }
 
+.hospital-map-loading {
+    position: absolute;
+    inset: 0;
+    z-index: 15;
+    display: grid;
+    align-content: center;
+    justify-items: center;
+    gap: 10px;
+    background: rgba(255, 255, 255, 0.72);
+    color: var(--color-text-secondary);
+    backdrop-filter: blur(2px);
+    pointer-events: none;
+}
+
+.hospital-map-loading span {
+    font-size: 34px;
+    animation: hospital-map-paw-blink 0.8s ease-in-out infinite alternate;
+}
+
+.hospital-map-loading strong {
+    font-size: 13px;
+}
+
+@keyframes hospital-map-paw-blink {
+    from { opacity: 0.25; transform: scale(0.88) rotate(-8deg); }
+    to { opacity: 1; transform: scale(1.08) rotate(8deg); }
+}
+
+.hospital-search select {
+    appearance: none;
+    min-width: 150px;
+    padding-right: 34px;
+    background-image: linear-gradient(45deg, transparent 50%, var(--color-text-muted) 50%), linear-gradient(135deg, var(--color-text-muted) 50%, transparent 50%);
+    background-position: calc(100% - 18px) 18px, calc(100% - 12px) 18px;
+    background-repeat: no-repeat;
+    background-size: 6px 6px, 6px 6px;
+}
+
+.hospital-search select:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
+.hospital-map-status {
+    position: absolute;
+    right: 16px;
+    bottom: 16px;
+    left: 16px;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 12px 14px;
+    border: 1px solid rgba(82, 111, 93, 0.18);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.94);
+    box-shadow: var(--shadow-sm);
+}
+
+.hospital-map-status div {
+    display: grid;
+    gap: 3px;
+}
+
+.hospital-map-status span {
+    color: var(--color-text-muted);
+    font-size: 12px;
+}
+
 .hospital-search-area-button {
     position: absolute;
     top: 18px;
@@ -179,12 +250,27 @@
 }
 
 .hospital-map-summary {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
     padding: 15px 20px;
     border-top: 1px solid var(--color-border-light);
     background: var(--color-surface);
     color: var(--color-text-secondary);
     font-size: 12px;
     font-weight: 700;
+}
+
+.hospital-location-hint {
+    color: var(--color-text-muted);
+    font-weight: 500;
+}
+
+.hospital-map-summary .hospital-location-button {
+    min-height: 32px;
+    margin-left: auto;
+    padding-inline: 14px;
 }
 
 .hospital-results {
@@ -441,3 +527,4 @@
         padding: 12px;
     }
 }
+.hospital-card-title{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.hospital-card-title>div{display:flex;align-items:center;gap:4px}

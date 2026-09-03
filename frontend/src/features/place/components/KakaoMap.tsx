@@ -134,6 +134,11 @@ export default function KakaoMap({
                             }
                         );
 
+                    // Explicitly enable direct manipulation. This also restores
+                    // dragging if another map screen changed the shared SDK state.
+                    map.setDraggable(true);
+                    map.setZoomable(true);
+
 
                     mapRef.current =
                         map;
@@ -187,6 +192,12 @@ export default function KakaoMap({
             return;
         }
 
+
+        const actualCenter = mapRef.current.getCenter();
+        const alreadyAtRequestedCenter =
+            Math.abs(actualCenter.getLat() - center.latitude) < 0.000001 &&
+            Math.abs(actualCenter.getLng() - center.longitude) < 0.000001;
+        if (alreadyAtRequestedCenter) return;
 
         const position =
             new window.kakao.maps.LatLng(
