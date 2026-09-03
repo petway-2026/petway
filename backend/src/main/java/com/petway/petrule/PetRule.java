@@ -69,8 +69,13 @@ public record PetRule(
             BigDecimal maxWeightKg,
             WeightOperator operator,
             SpaceScope scope,
-            PetRuleSource source
+            PetRuleSource source,
+            BigDecimal minWeightKg
     ) {
+
+        public WeightLimit(BigDecimal maxWeightKg, WeightOperator operator, SpaceScope scope, PetRuleSource source) {
+            this(maxWeightKg, operator, scope, source, null);
+        }
 
         public WeightLimit {
             Objects.requireNonNull(maxWeightKg, "maxWeightKg must not be null");
@@ -80,6 +85,9 @@ public record PetRule(
 
             if (maxWeightKg.signum() < 0) {
                 throw new IllegalArgumentException("maxWeightKg must not be negative");
+            }
+            if (minWeightKg != null && (minWeightKg.signum() < 0 || minWeightKg.compareTo(maxWeightKg) > 0)) {
+                throw new IllegalArgumentException("minWeightKg must be between zero and maxWeightKg");
             }
         }
     }

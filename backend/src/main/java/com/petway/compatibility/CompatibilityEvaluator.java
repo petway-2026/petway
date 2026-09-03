@@ -170,6 +170,13 @@ public class CompatibilityEvaluator {
             WeightLimit limit,
             Assessment assessment
     ) {
+        if (limit.minWeightKg() != null && petWeight.compareTo(limit.minWeightKg()) < 0) {
+            assessment.unavailable(
+                    "諛섎젮寃?泥댁쨷 " + formatWeight(petWeight) + "kg? "
+                            + formatWeight(limit.minWeightKg()) + "kg ?댁긁 ?댁슜 議곌굔??異⑹”?섏? ?딆뒿?덈떎."
+            );
+            return;
+        }
         int comparison = petWeight.compareTo(limit.maxWeightKg());
         boolean matches = limit.operator() == WeightOperator.LESS_THAN_OR_EQUAL
                 ? comparison <= 0
