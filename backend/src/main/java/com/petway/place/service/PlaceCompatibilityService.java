@@ -60,7 +60,7 @@ public class PlaceCompatibilityService {
     ) {
 
         PlacePetDetail officialInformation = facilityCatalog.byId(contentId)
-                .map(f -> new PlacePetDetail(f.petOnly(), f.allowedPetSize(), f.restrictions(), f.description(), null))
+                .map(f -> new PlacePetDetail(f.normalizedAccompanimentType(), f.normalizedAllowedCapacity(), null, f.normalizedAdditionalInformation(), null))
                 .orElseGet(() -> tourPlaceGateway.getPetDetail(contentId));
         if (officialInformation == null) {
             officialInformation = PlacePetDetail.empty();

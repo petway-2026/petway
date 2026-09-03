@@ -219,6 +219,8 @@
 
 .nearby-search-area-button:disabled { cursor: wait; opacity: 0.6; }
 
+.nearby-paw-loading { pointer-events: none; }
+
 
 /* =========================
    MAP STATUS
@@ -669,3 +671,4 @@ max-width: 480px
     }
 
 }
+.nearby-place-title{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.nearby-place-title>div{display:flex;align-items:center;gap:4px}

@@ -38,6 +38,10 @@ public final class PetRuleParser {
             "(\\d+(?:\\.\\d+)?)\\s*(?:kg|㎏)\\s*(이하|미만)",
             Pattern.CASE_INSENSITIVE
     );
+    private static final Pattern WEIGHT_RANGE_PATTERN = Pattern.compile(
+            "(\\d+(?:\\.\\d+)?)\\s*(?:kg|㎏)?\\s*[~～-]\\s*(\\d+(?:\\.\\d+)?)\\s*(?:kg|㎏)",
+            Pattern.CASE_INSENSITIVE
+    );
 
     private static final Pattern PROHIBITED_SIZE_PATTERN = Pattern.compile(
             SIZE_EXPRESSION + "\\s*(?:은|는|이|가)?\\s*"
@@ -246,6 +250,16 @@ public final class PetRuleParser {
             List<WeightLimit> weightLimits
     ) {
         String rawText = source.rawText();
+        Matcher rangeMatcher = WEIGHT_RANGE_PATTERN.matcher(rawText);
+        while (rangeMatcher.find()) {
+            WeightContext context = resolveWeightContext(rawText, rangeMatcher.start());
+            if (context == null) continue;
+            weightLimits.add(new WeightLimit(
+                    new BigDecimal(rangeMatcher.group(2)), WeightOperator.LESS_THAN_OR_EQUAL,
+                    context.scope(), source, new BigDecimal(rangeMatcher.group(1))
+            ));
+            mark(recognized, context.recognizedStart(), rangeMatcher.end());
+        }
         Matcher matcher = WEIGHT_PATTERN.matcher(rawText);
         while (matcher.find()) {
             WeightContext context = resolveWeightContext(rawText, matcher.start());

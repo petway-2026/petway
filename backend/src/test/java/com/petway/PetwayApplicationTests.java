@@ -12,6 +12,8 @@ import com.petway.pet.port.AnimalRegistrationGateway;
 import com.petway.place.model.PlacePetDetail;
 import com.petway.place.port.TourPlaceGateway;
 import com.petway.trip.repository.SavedTripRepository;
+import com.petway.favorite.repository.FavoriteRepository;
+import com.petway.review.repository.ReviewRepository;
 import com.petway.user.repository.UserAuthRepository;
 import com.petway.user.repository.UserRepository;
 import com.petway.user.entity.User;
@@ -88,6 +90,12 @@ class PetwayApplicationTests {
 
     @MockitoBean
     private SavedTripRepository savedTripRepository;
+
+    @MockitoBean
+    private FavoriteRepository favoriteRepository;
+
+    @MockitoBean
+    private ReviewRepository reviewRepository;
 
     @MockitoBean
     private ClientRegistrationRepository clientRegistrationRepository;

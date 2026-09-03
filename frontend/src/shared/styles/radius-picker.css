@@ -1,0 +1,5 @@
+.radius-picker-backdrop{position:fixed;inset:0;z-index:10000;display:grid;place-items:center;padding:20px;background:rgba(22,31,25,.48)}
+.radius-picker{position:relative;width:min(460px,100%);padding:32px;border-radius:24px;background:#fff;box-shadow:0 24px 70px rgba(23,40,29,.24)}
+.radius-picker>span{color:#52705c;font-size:12px;font-weight:800;letter-spacing:.12em}.radius-picker h2{margin:8px 36px 8px 0;font-size:24px}.radius-picker p{margin:0 0 22px;color:#69736c;font-size:14px}
+.radius-picker-close{position:absolute;right:18px;top:14px;border:0;background:transparent;font-size:30px;color:#657068;cursor:pointer}.radius-picker-options{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}.radius-picker-options button{padding:14px 5px;border:1px solid #dce5de;border-radius:12px;background:#f7faf8;color:#395243;font-weight:800;cursor:pointer}.radius-picker-options button:hover,.radius-picker-options button:focus-visible{border-color:#52705c;background:#52705c;color:#fff}
+@media(max-width:520px){.radius-picker-options{grid-template-columns:repeat(2,1fr)}.radius-picker-options button:last-child{grid-column:1/-1}}

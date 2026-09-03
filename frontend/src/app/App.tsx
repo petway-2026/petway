@@ -21,6 +21,7 @@ import SavedTripDetailPage from "../features/course/pages/SavedTripDetailPage";
 
 import HomePage from "../pages/HomePage";
 import MyPage from "../pages/MyPage";
+import FavoritePage from "../pages/FavoritePage";
 import Header from "../shared/components/Header";
 
 function AppLayout() {
@@ -74,6 +75,7 @@ function AppLayout() {
                             path="/mypage"
                             element={<MyPage />}
                         />
+                        <Route path="/my-favorites" element={<FavoritePage />} />
 
                         <Route
                             path="/pets"

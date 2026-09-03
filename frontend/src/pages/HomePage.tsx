@@ -184,10 +184,7 @@ export default function HomePage() {
               </span>
                         </Link>
 
-                        <div
-                            className="home-quick-card"
-                            onClick={() => navigate("/places")}
-                        >
+                        <Link to="/places" className="home-quick-card">
                             <div className="home-quick-icon blue">
                                 📍
                             </div>
@@ -204,9 +201,9 @@ export default function HomePage() {
                             <span className="home-quick-link">
         지도에서 보기 →
     </span>
-                        </div>
+                        </Link>
 
-                        <div className="home-quick-card disabled">
+                        <Link to="/courses" className="home-quick-card">
                             <div className="home-quick-icon orange">
                                 🗺
                             </div>
@@ -223,9 +220,9 @@ export default function HomePage() {
                             <span className="home-coming">
                 준비 중
               </span>
-                        </div>
+                        </Link>
 
-                        <div className="home-quick-card disabled">
+                        <Link to="/courses" className="home-quick-card">
                             <div className="home-quick-icon purple">
                                 ✨
                             </div>
@@ -242,7 +239,7 @@ export default function HomePage() {
                             <span className="home-coming">
                 준비 중
               </span>
-                        </div>
+                        </Link>
 
                     </div>
                 </div>

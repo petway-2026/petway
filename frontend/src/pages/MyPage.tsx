@@ -104,7 +104,7 @@ export default function MyPage() {
               </span>
                         </Link>
 
-                        <div className="mypage-menu-card disabled">
+                        <Link to="/my-favorites" className="mypage-menu-card">
                             <div className="mypage-menu-icon orange">
                                 ♡
                             </div>
@@ -123,7 +123,7 @@ export default function MyPage() {
                             <span className="mypage-coming-soon">
                 준비 중
               </span>
-                        </div>
+                        </Link>
 
                         <Link to="/my-trips" className="mypage-menu-card">
                             <div className="mypage-menu-icon blue">

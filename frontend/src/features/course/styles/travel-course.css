@@ -159,3 +159,4 @@
     .course-place-image { display: none; }
     .course-place-copy { padding-left: 14px; }
 }
+.course-place-title{display:flex;align-items:center;justify-content:space-between;gap:8px}.favorite-button{border:0;background:transparent;color:#a4aaa5;font-size:25px;line-height:1;cursor:pointer;padding:4px}.favorite-button.saved{color:#e86d68}.favorite-button:disabled{opacity:.5}

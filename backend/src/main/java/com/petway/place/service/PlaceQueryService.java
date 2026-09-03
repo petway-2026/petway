@@ -65,7 +65,7 @@ public class PlaceQueryService {
         if (csv.isPresent()) {
             PetFacility f = csv.get();
             return PlacePetDetailResponse.from(new com.petway.place.model.PlacePetDetail(
-                    f.petOnly(), f.allowedPetSize(), f.restrictions(), f.description(), null));
+                    f.normalizedAccompanimentType(), f.normalizedAllowedCapacity(), null, f.normalizedAdditionalInformation(), null));
         }
         var detail = tourPlaceGateway.getPetDetail(contentId);
         return PlacePetDetailResponse.from(detail);

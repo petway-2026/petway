@@ -616,3 +616,9 @@
         font-size: 12px;
     }
 }
+
+.site-logo-mark svg {
+    width: 25px;
+    height: 25px;
+    display: block;
+}
