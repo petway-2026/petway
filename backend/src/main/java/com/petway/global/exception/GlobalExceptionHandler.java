@@ -1,5 +1,6 @@
 package com.petway.global.exception;
 
+import com.petway.external.animalregistration.exception.AnimalRegistrationException;
 import com.petway.external.tour.exception.TourApiErrorType;
 import com.petway.external.tour.exception.TourApiException;
 import com.petway.weather.service.WeatherForecastUnavailableException;
@@ -26,6 +27,32 @@ import java.util.Map;
 public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    @ExceptionHandler(AnimalRegistrationException.class)
+    public ResponseEntity<?> handleAnimalRegistration(
+            AnimalRegistrationException e
+    ) {
+        HttpStatus status = switch (e.getErrorType()) {
+            case NOT_FOUND -> HttpStatus.NOT_FOUND;
+            case CONFIGURATION -> HttpStatus.SERVICE_UNAVAILABLE;
+            case TIMEOUT -> HttpStatus.GATEWAY_TIMEOUT;
+            case CONNECTION, HTTP_ERROR, API_ERROR, INVALID_RESPONSE ->
+                    HttpStatus.BAD_GATEWAY;
+        };
+
+        String message = switch (e.getErrorType()) {
+            case NOT_FOUND -> "일치하는 동물등록정보를 찾을 수 없습니다.";
+            case CONFIGURATION -> "동물등록정보 조회 기능을 사용할 수 없습니다.";
+            case TIMEOUT -> "동물등록정보 제공기관의 응답 시간이 초과되었습니다.";
+            case CONNECTION, HTTP_ERROR, API_ERROR, INVALID_RESPONSE ->
+                    "동물등록정보 제공기관 호출에 실패했습니다.";
+        };
+
+        log.warn("Animal registration provider failure: type={}", e.getErrorType());
+        return ResponseEntity
+                .status(status)
+                .body(Map.of("message", message));
+    }
 
     @ExceptionHandler(WalkFitRateLimitedException.class)
     public ResponseEntity<?> handleWalkFitRateLimited(WalkFitRateLimitedException e) {
