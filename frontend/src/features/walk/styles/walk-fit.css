@@ -97,6 +97,31 @@
   font-weight: 700;
 }
 
+.walk-fit-group-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #dfe9e4;
+}
+
+.walk-fit-group-heading.secondary {
+  margin-top: 10px;
+  padding-top: 18px;
+}
+
+.walk-fit-group-heading h3 {
+  margin: 0;
+  color: #263a30;
+  font-size: 20px;
+}
+
+.walk-fit-group-heading span {
+  color: #6a776f;
+  font-size: 13px;
+}
+
 .walk-fit-card {
   display: grid;
   grid-template-columns: minmax(180px, 260px) 1fr;
@@ -254,5 +279,11 @@
   .walk-fit-status-row {
     align-items: flex-start;
     flex-wrap: wrap;
+  }
+
+  .walk-fit-group-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
   }
 }

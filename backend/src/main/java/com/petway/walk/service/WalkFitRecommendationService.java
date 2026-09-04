@@ -37,7 +37,7 @@ import java.util.stream.Collectors;
 public class WalkFitRecommendationService {
 
     static final int CANDIDATE_LIMIT = 8;
-    private static final int RECOMMENDATION_LIMIT = 3;
+    private static final int RECOMMENDATION_LIMIT = CANDIDATE_LIMIT;
     private static final int SEARCH_RADIUS_METERS = 20_000;
 
     private final PrimaryPetQueryService primaryPetQueryService;

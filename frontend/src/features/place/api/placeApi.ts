@@ -30,6 +30,11 @@ export interface PlaceSearchResponse {
     items: PlaceSummary[];
 }
 
+export interface NearbySearchLimits {
+    targetUniqueCount?: number;
+    maxPages?: number;
+}
+
 export interface PlacePetDetail {
     accompanimentType: string | null;
     allowedCapacity: string | null;
@@ -158,9 +163,12 @@ export async function searchAllNearbyPlaces(
     latitude: number,
     longitude: number,
     radius = 20000,
-    onProgress?: (response: PlaceSearchResponse) => void
+    onProgress?: (response: PlaceSearchResponse) => void,
+    limits: NearbySearchLimits = {}
 ): Promise<PlaceSearchResponse> {
     const pageSize = 100;
+    const targetUniqueCount = Math.max(1, limits.targetUniqueCount ?? 200);
+    const maxPages = Math.max(1, limits.maxPages ?? 5);
     const firstPage = await searchNearbyPlaces(
         latitude,
         longitude,
@@ -168,32 +176,30 @@ export async function searchAllNearbyPlaces(
         1,
         pageSize
     );
-    const pageCount = Math.min(Math.ceil(firstPage.totalCount / pageSize), 50);
+    const pageCount = Math.min(Math.ceil(firstPage.totalCount / pageSize), maxPages);
     const items = [...firstPage.items];
+    const uniqueItems = () => Array.from(
+        new Map(items.map((place) => [place.contentId, place])).values()
+    );
     const progress = () => {
-        const uniqueItems = Array.from(new Map(items.map((place) => [place.contentId, place])).values());
-        onProgress?.({ page: 1, size: uniqueItems.length, totalCount: firstPage.totalCount, items: uniqueItems });
+        const current = uniqueItems();
+        onProgress?.({ page: 1, size: current.length, totalCount: firstPage.totalCount, items: current });
     };
     progress();
 
-    for (let start = 2; start <= pageCount; start += 5) {
-        const pages = Array.from({ length: Math.min(5, pageCount - start + 1) }, (_, index) => start + index);
-        const responses = await Promise.all(pages.map((page) => searchNearbyPlaces(
-            latitude, longitude, radius, page, pageSize
-        )));
-        responses.forEach((response) => items.push(...response.items));
+    for (let page = 2; page <= pageCount && uniqueItems().length < targetUniqueCount; page += 1) {
+        const response = await searchNearbyPlaces(latitude, longitude, radius, page, pageSize);
+        items.push(...response.items);
         progress();
     }
 
-    const uniqueItems = Array.from(
-        new Map(items.map((place) => [place.contentId, place])).values()
-    );
+    const resultItems = uniqueItems();
 
     return {
         page: 1,
-        size: uniqueItems.length,
+        size: resultItems.length,
         totalCount: firstPage.totalCount,
-        items: uniqueItems,
+        items: resultItems,
     };
 }
 

@@ -23,6 +23,11 @@ import "../styles/travel-course.css";
 
 const SEOUL_CENTER: MapCenter = { latitude: 37.5665, longitude: 126.978 };
 const STORAGE_KEY = "petway-travel-course";
+const AI_CANDIDATE_LIMIT = 30;
+const NEARBY_CANDIDATE_TARGET = 60;
+const NEARBY_PAGE_LIMIT = 5;
+const COMPATIBILITY_ATTEMPT_LIMIT = 45;
+const COMPATIBILITY_BATCH_SIZE = 6;
 
 const REGIONS = [
     { code: "1", name: "서울특별시", center: SEOUL_CENTER },
@@ -202,8 +207,10 @@ export default function TravelCoursePage() {
                         - distanceKm(center, { latitude: right.latitude!, longitude: right.longitude! }));
                 setRegionPlaceCount(partialNearby.length);
                 setRecommendations(partialNearby);
-                setLoading(false);
                 setMessage(`${locationLabel} 주변 장소 ${partialNearby.length}곳을 먼저 보여드리고 있어요.`);
+            }, {
+                targetUniqueCount: NEARBY_CANDIDATE_TARGET,
+                maxPages: NEARBY_PAGE_LIMIT,
             });
             setRegionPlaceCount(response.items.length);
             const nearby = response.items
@@ -214,24 +221,43 @@ export default function TravelCoursePage() {
                     return leftDistance - rightDistance;
                 });
 
-            const assessed = new Map<string, Recommendation>();
-            const compatibilityBatchSize = 6;
-            const assessmentTargets = nearby.slice(0, 120);
-            for (let index = 0; index < assessmentTargets.length; index += compatibilityBatchSize) {
-                const batch = assessmentTargets.slice(index, index + compatibilityBatchSize);
-                const batchResult = await Promise.all(batch.map(async (place): Promise<Recommendation> => {
-                    try { return { ...place, compatibility: await getPlaceCompatibility(place.contentId) }; }
-                    catch { return { ...place, compatibility: undefined }; }
+            const eligible: Recommendation[] = [];
+            let attempted = 0;
+            let providerFailureCount = 0;
+            while (attempted < nearby.length
+                && attempted < COMPATIBILITY_ATTEMPT_LIMIT
+                && eligible.length < AI_CANDIDATE_LIMIT) {
+                const remainingNeeded = AI_CANDIDATE_LIMIT - eligible.length;
+                const batchSize = Math.min(
+                    COMPATIBILITY_BATCH_SIZE,
+                    remainingNeeded,
+                    COMPATIBILITY_ATTEMPT_LIMIT - attempted,
+                    nearby.length - attempted,
+                );
+                const batch = nearby.slice(attempted, attempted + batchSize);
+                const batchResult = await Promise.all(batch.map(async (place) => {
+                    try {
+                        return {
+                            place: { ...place, compatibility: await getPlaceCompatibility(place.contentId) },
+                            failed: false as const,
+                        };
+                    } catch {
+                        return { failed: true as const };
+                    }
                 }));
-                batchResult.forEach((place) => assessed.set(place.contentId, place));
-                setRecommendations(nearby.map((place): Recommendation => assessed.get(place.contentId) ?? { ...place, compatibility: undefined })
-                    .filter((place) => place.compatibility?.petwayAssessment.status !== "UNAVAILABLE"));
+                attempted += batch.length;
+                batchResult.forEach((result) => {
+                    if (result.failed) {
+                        providerFailureCount += 1;
+                    } else if (result.place.compatibility.petwayAssessment.status !== "UNAVAILABLE") {
+                        eligible.push(result.place);
+                    }
+                });
+                setRecommendations([...eligible]);
                 setMessage(`${locationLabel} 전체 ${nearby.length}곳 중 가까운 장소의 동반 조건을 확인하고 있어요.`);
             }
-            const eligible = nearby.map((place): Recommendation => assessed.get(place.contentId) ?? { ...place, compatibility: undefined })
-                .filter((place) => place.compatibility?.petwayAssessment.status !== "UNAVAILABLE");
             setRecommendations(eligible);
-            setMessage(`${locationLabel} 전체 ${response.items.length}곳을 확인해 ${eligible.length}곳을 추천했어요.`);
+            setMessage(`${locationLabel} 후보 ${response.items.length}곳 중 동반 조건을 확인한 ${eligible.length}곳을 추천했어요.${providerFailureCount > 0 ? ` 제공기관 오류로 ${providerFailureCount}곳은 추천에서 제외했어요.` : ""}`);
         } catch (error) {
             setRecommendations([]);
             setMessage(error instanceof Error ? error.message : "추천 장소를 불러오지 못했습니다.");
@@ -527,7 +553,7 @@ export default function TravelCoursePage() {
             return forecast ? `${date} ${forecast.display.summary}` : `${date} 예보 확인 전`;
         }).join(" / ");
         const eligibleRecommendations = recommendations.filter((place) => includeLodging || place.contentTypeId !== "32");
-        const candidates = eligibleRecommendations.slice(0, 30);
+        const candidates = eligibleRecommendations.slice(0, AI_CANDIDATE_LIMIT);
         try {
             const inputCandidates: AiCourseCandidate[] = candidates.map((place) => ({
                 candidateId: place.contentId,

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   getWalkFitRecommendations,
@@ -169,12 +169,24 @@ export default function WalkFitRecommendationsSection() {
         <div className="walk-fit-results" aria-live="polite">
           <p className="walk-fit-message">{result.message}</p>
 
-          {result.recommendations.map((recommendation) => {
+          {result.recommendations.map((recommendation, index) => {
             const grade = GRADE_COPY[recommendation.walkFit.grade];
             return (
+              <Fragment key={recommendation.contentId}>
+                {index === 0 && (
+                  <div className="walk-fit-group-heading">
+                    <h3>오늘의 추천 TOP 3</h3>
+                    <span>가장 잘 맞는 순서예요</span>
+                  </div>
+                )}
+                {index === 3 && (
+                  <div className="walk-fit-group-heading secondary">
+                    <h3>추가로 둘러볼 만한 장소</h3>
+                    <span>이미 평가를 마친 적합 후보예요</span>
+                  </div>
+                )}
               <article
                 className={`walk-fit-card ${grade.className}`}
-                key={recommendation.contentId}
               >
                 {recommendation.imageUrl && (
                   <img
@@ -256,6 +268,7 @@ export default function WalkFitRecommendationsSection() {
                   </section>
                 </div>
               </article>
+              </Fragment>
             );
           })}
         </div>
