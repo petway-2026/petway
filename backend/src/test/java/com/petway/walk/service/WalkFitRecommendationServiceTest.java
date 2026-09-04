@@ -177,7 +177,7 @@ class WalkFitRecommendationServiceTest {
         when(weatherQueryService.getForecast(any(Double.class), any(Double.class), eq(TARGET_DATE), any()))
                 .thenThrow(new RuntimeException("weather unavailable"));
 
-        recommend();
+        WalkFitRecommendationResponse response = recommend();
 
         ArgumentCaptor<NearbyPlaceSearchCondition> condition =
                 ArgumentCaptor.forClass(NearbyPlaceSearchCondition.class);
@@ -185,6 +185,41 @@ class WalkFitRecommendationServiceTest {
         assertThat(condition.getValue().size())
                 .isEqualTo(WalkFitRecommendationService.CANDIDATE_LIMIT);
         verify(placeCompatibilityService, times(8))
+                .getCompatibility(eq(primaryPet), anyString());
+        assertThat(response.recommendations()).hasSize(8);
+        assertThat(response.recommendations())
+                .extracting(WalkFitRecommendationResponse.Recommendation::rank)
+                .containsExactly(1, 2, 3, 4, 5, 6, 7, 8);
+    }
+
+    @Test
+    void returnsAllSixSortedEligibleCandidatesWithoutPadding() {
+        List<PlaceSummary> places = java.util.stream.IntStream.rangeClosed(1, 6)
+                .mapToObj(index -> place(
+                        String.valueOf(100 + index),
+                        "28",
+                        LATITUDE.add(new BigDecimal("0.001").multiply(BigDecimal.valueOf(index))),
+                        LONGITUDE
+                ))
+                .toList();
+        stubPlaces(places);
+        when(placeCompatibilityService.getCompatibility(eq(primaryPet), anyString()))
+                .thenAnswer(invocation -> compatibility(
+                        invocation.getArgument(1),
+                        CompatibilityStatus.AVAILABLE,
+                        List.of(),
+                        false
+                ));
+        when(weatherQueryService.getForecast(any(Double.class), any(Double.class), eq(TARGET_DATE), any()))
+                .thenThrow(new RuntimeException("weather unavailable"));
+
+        WalkFitRecommendationResponse response = recommend();
+
+        assertThat(response.recommendations()).hasSize(6);
+        assertThat(response.recommendations())
+                .extracting(WalkFitRecommendationResponse.Recommendation::rank)
+                .containsExactly(1, 2, 3, 4, 5, 6);
+        verify(placeCompatibilityService, times(6))
                 .getCompatibility(eq(primaryPet), anyString());
     }
 

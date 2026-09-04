@@ -7,6 +7,7 @@ import com.petway.external.tour.exception.TourApiException;
 import com.petway.external.tour.mapper.TourPlaceMapper;
 import com.petway.place.model.PlaceSearchCondition;
 import com.petway.place.model.PlaceSearchResult;
+import com.petway.place.model.NearbyPlaceSearchCondition;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
@@ -18,6 +19,9 @@ import org.springframework.web.util.UriComponentsBuilder;
 import java.net.SocketTimeoutException;
 import java.time.Clock;
 import java.time.Duration;
+import java.math.BigDecimal;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -177,7 +181,18 @@ class TourApiClientTest {
                 restClient,
                 properties,
                 new TourPlaceMapper(new ObjectMapper()),
-                new TourPetDetailCache(Clock.systemUTC())
+                new TourPetDetailCache(Clock.systemUTC()),
+                new TourNearbySearchCache(Clock.systemUTC())
+        );
+    }
+
+    private NearbyPlaceSearchCondition nearbyCondition() {
+        return new NearbyPlaceSearchCondition(
+                new BigDecimal("37.5665"),
+                new BigDecimal("126.9780"),
+                5000,
+                1,
+                100
         );
     }
 
@@ -247,6 +262,100 @@ class TourApiClientTest {
         assertThat(client.getPetDetail("100").requiredItems()).isEqualTo("목줄");
 
         server.verify();
+    }
+
+    @Test
+    void coalescesConcurrentPetDetailRequestsByContentId() {
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        TourApiClient client = createClient(builder.baseUrl(BASE_URL).build(), "test-key");
+        CountDownLatch start = new CountDownLatch(1);
+
+        server.expect(request -> assertThat(request.getURI().getPath())
+                        .endsWith("/detailPetTour2"))
+                .andRespond(request -> {
+                    try {
+                        Thread.sleep(100);
+                    } catch (InterruptedException exception) {
+                        Thread.currentThread().interrupt();
+                    }
+                    return withSuccess(petDetailResponse(false), MediaType.APPLICATION_JSON)
+                            .createResponse(request);
+                });
+
+        CompletableFuture<String> first = CompletableFuture.supplyAsync(() -> {
+            await(start);
+            return client.getPetDetail("100").requiredItems();
+        });
+        CompletableFuture<String> second = CompletableFuture.supplyAsync(() -> {
+            await(start);
+            return client.getPetDetail("100").requiredItems();
+        });
+        start.countDown();
+
+        assertThat(first.join()).isEqualTo("목줄");
+        assertThat(second.join()).isEqualTo("목줄");
+        server.verify();
+    }
+
+    @Test
+    void cachesSuccessfulNearbySearch() {
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        TourApiClient client = createClient(builder.baseUrl(BASE_URL).build(), "test-key");
+
+        server.expect(request -> assertThat(request.getURI().getPath())
+                        .endsWith("/locationBasedList2"))
+                .andRespond(withSuccess(successResponse(), MediaType.APPLICATION_JSON));
+
+        assertThat(client.searchNearby(nearbyCondition()).items()).hasSize(1);
+        assertThat(client.searchNearby(nearbyCondition()).items()).hasSize(1);
+        server.verify();
+    }
+
+    @Test
+    void doesNotCacheNearbyRateLimit() {
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        TourApiClient client = createClient(builder.baseUrl(BASE_URL).build(), "test-key");
+
+        server.expect(request -> { }).andRespond(withStatus(HttpStatus.TOO_MANY_REQUESTS));
+        server.expect(request -> { }).andRespond(withStatus(HttpStatus.TOO_MANY_REQUESTS));
+
+        assertThatThrownBy(() -> client.searchNearby(nearbyCondition()))
+                .isInstanceOf(TourApiException.class)
+                .extracting(exception -> ((TourApiException) exception).getErrorType())
+                .isEqualTo(TourApiErrorType.RATE_LIMITED);
+        assertThatThrownBy(() -> client.searchNearby(nearbyCondition()))
+                .isInstanceOf(TourApiException.class)
+                .extracting(exception -> ((TourApiException) exception).getErrorType())
+                .isEqualTo(TourApiErrorType.RATE_LIMITED);
+        server.verify();
+    }
+
+    @Test
+    void doesNotCacheNearbyServerFailure() {
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        TourApiClient client = createClient(builder.baseUrl(BASE_URL).build(), "test-key");
+
+        server.expect(request -> { }).andRespond(withStatus(HttpStatus.INTERNAL_SERVER_ERROR));
+        server.expect(request -> { }).andRespond(withStatus(HttpStatus.INTERNAL_SERVER_ERROR));
+
+        assertThatThrownBy(() -> client.searchNearby(nearbyCondition()))
+                .isInstanceOf(TourApiException.class);
+        assertThatThrownBy(() -> client.searchNearby(nearbyCondition()))
+                .isInstanceOf(TourApiException.class);
+        server.verify();
+    }
+
+    private void await(CountDownLatch latch) {
+        try {
+            latch.await();
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException(exception);
+        }
     }
 
     @Test
