@@ -61,7 +61,7 @@ public final class PetRuleParser {
     );
 
     private static final Pattern ALL_BREEDS_ALLOWED_PATTERN = Pattern.compile(
-            "전\\s*견종\\s*(?:은|는|이|가)?\\s*"
+            "(?:전|모든)\\s*견종\\s*(?:은|는|이|가)?\\s*"
                     + "(?:동반|출입|이용)?\\s*(?:가능|허용)"
     );
 
