@@ -5,6 +5,7 @@ import com.petway.petrule.PetRule.BreedRule;
 import com.petway.petrule.PetRule.BreedRuleType;
 import com.petway.petrule.PetRule.ConfirmationCondition;
 import com.petway.petrule.PetRule.ConfirmationType;
+import com.petway.petrule.PetRule.FeeRule;
 import com.petway.petrule.PetRule.PetRuleSource;
 import com.petway.petrule.PetRule.PetRuleSourceField;
 import com.petway.petrule.PetRule.PetSize;
@@ -203,6 +204,24 @@ public final class PetRuleParser {
                     + "(?:필수|필요|후\\s*(?:이용|동반|출입)?\\s*(?:가능|허용))"
     );
 
+    private static final String PET_FEE_SUBJECT = "(?:반려견|반려동물|애견)";
+
+    private static final Pattern PET_FEE_AMOUNT_PATTERN = Pattern.compile(
+            PET_FEE_SUBJECT + "[^,.;\\n]{0,30}?"
+                    + "(?:추가\\s*요금|동반\\s*요금|\\d+\\s*마리당)\\s*"
+                    + "(?::|은|는)?\\s*(\\d[\\d,]*)\\s*원"
+    );
+
+    private static final Pattern PET_FEE_REQUIRED_PATTERN = Pattern.compile(
+            PET_FEE_SUBJECT + "[^,.;\\n]{0,30}?"
+                    + "(?:추가\\s*요금|동반\\s*요금)[^,.;\\n]{0,10}?"
+                    + "(?:발생|부과|필수|필요)"
+    );
+
+    private static final Pattern UNCERTAIN_FEE_PATTERN = Pattern.compile(
+            "(?:발생|부과)\\s*(?:가능|할\\s*수)"
+    );
+
     public PetRule parse(String rawText) {
         return parse(new PetRuleSource(
                 PetRuleSourceField.UNSPECIFIED,
@@ -263,6 +282,7 @@ public final class PetRuleParser {
         parseSpaces(source, recognized, result.spaceRules);
         parseRequirements(source, recognized, result.requirements);
         parseConfirmationConditions(source, recognized, result.confirmationConditions);
+        parseFees(source, recognized, result.feeRules);
 
         if (result.parsedConditionCount() > parsedCountBefore) {
             markAllMatches(GENERIC_ALLOWANCE_PATTERN, rawText, recognized);
@@ -720,6 +740,52 @@ public final class PetRuleParser {
         }
     }
 
+    private void parseFees(
+            PetRuleSource source,
+            boolean[] recognized,
+            List<FeeRule> feeRules
+    ) {
+        Matcher amountMatcher = PET_FEE_AMOUNT_PATTERN.matcher(source.rawText());
+        while (amountMatcher.find()) {
+            if (overlaps(recognized, amountMatcher.start(), amountMatcher.end())
+                    || hasClauseMatch(
+                    NEGATED_REQUIREMENT_PATTERN,
+                    source.rawText(),
+                    amountMatcher.start(),
+                    amountMatcher.end()
+            )) {
+                continue;
+            }
+            BigDecimal amountWon = new BigDecimal(amountMatcher.group(1).replace(",", ""));
+            if (amountWon.signum() <= 0) {
+                continue;
+            }
+            feeRules.add(new FeeRule(amountWon, source));
+            mark(recognized, amountMatcher.start(), amountMatcher.end());
+        }
+
+        Matcher requiredMatcher = PET_FEE_REQUIRED_PATTERN.matcher(source.rawText());
+        while (requiredMatcher.find()) {
+            if (overlaps(recognized, requiredMatcher.start(), requiredMatcher.end())
+                    || hasClauseMatch(
+                    NEGATED_REQUIREMENT_PATTERN,
+                    source.rawText(),
+                    requiredMatcher.start(),
+                    requiredMatcher.end()
+            )
+                    || hasClauseMatch(
+                    UNCERTAIN_FEE_PATTERN,
+                    source.rawText(),
+                    requiredMatcher.start(),
+                    requiredMatcher.end()
+            )) {
+                continue;
+            }
+            feeRules.add(new FeeRule(null, source));
+            mark(recognized, requiredMatcher.start(), requiredMatcher.end());
+        }
+    }
+
     private List<UnparsedFragment> extractUnparsedFragments(
             PetRuleSource source,
             boolean[] recognized
@@ -922,6 +988,7 @@ public final class PetRuleParser {
         private final List<Requirement> requirements = new ArrayList<>();
         private final List<BreedRule> breedRules = new ArrayList<>();
         private final List<ConfirmationCondition> confirmationConditions = new ArrayList<>();
+        private final List<FeeRule> feeRules = new ArrayList<>();
         private final List<UnparsedFragment> unparsedFragments = new ArrayList<>();
 
         private int parsedConditionCount() {
@@ -930,7 +997,8 @@ public final class PetRuleParser {
                     + spaceRules.size()
                     + requirements.size()
                     + breedRules.size()
-                    + confirmationConditions.size();
+                    + confirmationConditions.size()
+                    + feeRules.size();
         }
 
         private PetRule toPetRule() {
@@ -942,6 +1010,7 @@ public final class PetRuleParser {
                     requirements,
                     breedRules,
                     confirmationConditions,
+                    feeRules,
                     unparsedFragments
             );
         }

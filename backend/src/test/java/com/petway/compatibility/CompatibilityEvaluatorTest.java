@@ -7,6 +7,7 @@ import com.petway.petrule.PetRule.BreedRule;
 import com.petway.petrule.PetRule.BreedRuleType;
 import com.petway.petrule.PetRule.ConfirmationCondition;
 import com.petway.petrule.PetRule.ConfirmationType;
+import com.petway.petrule.PetRule.FeeRule;
 import com.petway.petrule.PetRule.PetRuleSource;
 import com.petway.petrule.PetRule.PetRuleSourceField;
 import com.petway.petrule.PetRule.PetSize;
@@ -629,6 +630,36 @@ class CompatibilityEvaluatorTest {
                 .containsExactly(RequirementType.VACCINATION_CERTIFICATE);
     }
 
+    @Test
+    void marksExplicitPetFeeAsConditionalWithAmount() {
+        PetRule rule = ruleWithFees(new FeeRule(
+                new BigDecimal("5000"),
+                source(PetRuleSourceField.ETC_ACMPY_INFO)
+        ));
+
+        CompatibilityResult result = evaluate(pet("5", PetSizeType.SMALL), rule);
+
+        assertThat(result.status()).isEqualTo(CompatibilityStatus.CONDITIONAL);
+        assertThat(result.reasons()).contains(
+                "반려동물 동반 시 추가 요금 5,000원이 필요합니다."
+        );
+    }
+
+    @Test
+    void marksExplicitPetFeeAsConditionalWithoutInventingAmount() {
+        PetRule rule = ruleWithFees(new FeeRule(
+                null,
+                source(PetRuleSourceField.ETC_ACMPY_INFO)
+        ));
+
+        CompatibilityResult result = evaluate(pet("5", PetSizeType.SMALL), rule);
+
+        assertThat(result.status()).isEqualTo(CompatibilityStatus.CONDITIONAL);
+        assertThat(result.reasons()).contains(
+                "반려동물 동반 시 추가 요금이 발생하므로 금액을 확인해 주세요."
+        );
+    }
+
     private CompatibilityResult evaluate(Pet pet, PetRule rule) {
         return evaluator.evaluate(pet, rule);
     }
@@ -679,6 +710,20 @@ class CompatibilityEvaluatorTest {
     private PetRule ruleWithSpace(SpaceCondition condition) {
         return rule(
                 List.of(), List.of(), List.of(space(condition)), List.of(), List.of(), List.of()
+        );
+    }
+
+    private PetRule ruleWithFees(FeeRule... feeRules) {
+        return new PetRule(
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(feeRules),
+                List.of()
         );
     }
 

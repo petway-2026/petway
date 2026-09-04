@@ -13,6 +13,7 @@ public record PetRule(
         List<Requirement> requirements,
         List<BreedRule> breedRules,
         List<ConfirmationCondition> confirmationConditions,
+        List<FeeRule> feeRules,
         List<UnparsedFragment> unparsedFragments
 ) {
 
@@ -24,7 +25,22 @@ public record PetRule(
         requirements = immutableList(requirements);
         breedRules = immutableList(breedRules);
         confirmationConditions = immutableList(confirmationConditions);
+        feeRules = immutableList(feeRules);
         unparsedFragments = immutableList(unparsedFragments);
+    }
+
+    public PetRule(
+            List<PetRuleSource> sources,
+            List<WeightLimit> weightLimits,
+            List<SizeCondition> sizeConditions,
+            List<SpaceRule> spaceRules,
+            List<Requirement> requirements,
+            List<BreedRule> breedRules,
+            List<ConfirmationCondition> confirmationConditions,
+            List<UnparsedFragment> unparsedFragments
+    ) {
+        this(sources, weightLimits, sizeConditions, spaceRules, requirements,
+                breedRules, confirmationConditions, List.of(), unparsedFragments);
     }
 
     public PetRule(
@@ -37,11 +53,12 @@ public record PetRule(
             List<UnparsedFragment> unparsedFragments
     ) {
         this(sources, weightLimits, sizeConditions, spaceRules, requirements,
-                breedRules, List.of(), unparsedFragments);
+                breedRules, List.of(), List.of(), unparsedFragments);
     }
 
     public static PetRule empty() {
         return new PetRule(
+                List.of(),
                 List.of(),
                 List.of(),
                 List.of(),
@@ -59,7 +76,8 @@ public record PetRule(
                 || !spaceRules.isEmpty()
                 || !requirements.isEmpty()
                 || !breedRules.isEmpty()
-                || !confirmationConditions.isEmpty();
+                || !confirmationConditions.isEmpty()
+                || !feeRules.isEmpty();
     }
 
     public boolean hasUnknownContent() {
@@ -198,6 +216,19 @@ public record PetRule(
         public ConfirmationCondition {
             Objects.requireNonNull(type, "type must not be null");
             Objects.requireNonNull(source, "source must not be null");
+        }
+    }
+
+    public record FeeRule(
+            BigDecimal amountWon,
+            PetRuleSource source
+    ) {
+
+        public FeeRule {
+            Objects.requireNonNull(source, "source must not be null");
+            if (amountWon != null && amountWon.signum() <= 0) {
+                throw new IllegalArgumentException("amountWon must be positive");
+            }
         }
     }
 
