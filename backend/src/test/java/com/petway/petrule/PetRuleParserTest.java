@@ -280,6 +280,19 @@ class PetRuleParserTest {
     }
 
     @Test
+    void parsesCsvAllBreedsAllowedWording() {
+        PetRule rule = parser.parse(source(
+                PetRuleSourceField.ACMPY_PSBL_CPAM,
+                "모든 견종 동반 가능"
+        ));
+
+        assertThat(rule.breedRules())
+                .extracting(PetRule.BreedRule::type)
+                .containsExactly(BreedRuleType.ALL_BREEDS_ALLOWED);
+        assertThat(rule.unparsedFragments()).isEmpty();
+    }
+
+    @Test
     void keepsDangerousBreedAsRequirementTargetInsteadOfBlockingWholePlace() {
         PetRule rule = parser.parse(source(
                 PetRuleSourceField.ACMPY_NEED_MTR,

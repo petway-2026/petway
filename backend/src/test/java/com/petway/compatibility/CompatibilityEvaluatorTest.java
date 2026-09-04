@@ -416,7 +416,7 @@ class CompatibilityEvaluatorTest {
     }
 
     @Test
-    void indoorAllowanceRemainsAvailableWithUnparsedPetAndEtcText() {
+    void unclearPetConditionIsNotHiddenByIndoorAllowance() {
         PetRule rule = rule(
                 List.of(),
                 List.of(),
@@ -431,8 +431,11 @@ class CompatibilityEvaluatorTest {
 
         CompatibilityResult result = evaluate(pet("5", PetSizeType.SMALL), rule);
 
-        assertThat(result.status()).isEqualTo(CompatibilityStatus.AVAILABLE);
-        assertThat(result.reasons()).containsExactly("실내 동반이 허용됩니다.");
+        assertThat(result.status()).isEqualTo(CompatibilityStatus.NEED_CONFIRMATION);
+        assertThat(result.reasons()).contains(
+                "동반 가능한 반려동물 조건에 확인되지 않은 내용이 있습니다.",
+                "실내 동반이 허용됩니다."
+        );
     }
 
     @Test
