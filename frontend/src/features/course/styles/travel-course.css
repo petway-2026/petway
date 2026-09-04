@@ -43,7 +43,8 @@
 .course-lodging-option strong { color: var(--color-text); font-size: 11px; }
 .course-lodging-option small { color: var(--color-text-muted); font-size: 9px; line-height: 1.35; }
 .course-ai-generate { width: 100%; min-height: 44px; padding: 0 18px; border: 0; border-radius: 999px; background: var(--color-primary-active); color: #fff; font-size: 12px; font-weight: 800; cursor: pointer; white-space: nowrap; }
-.course-ai-generate:disabled { opacity: .55; cursor: wait; }
+.course-ai-generate:disabled { opacity: .55; cursor: not-allowed; }
+.course-ai-generate[aria-busy="true"] { cursor: wait; }
 .course-trip-save { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 22px; padding: 16px 20px; border: 1px solid rgba(82, 111, 93, .22); border-radius: 18px; background: linear-gradient(135deg, rgba(238, 246, 240, .96), rgba(255, 255, 255, .96)); box-shadow: var(--shadow-sm); }
 .course-trip-save > div { display: grid; gap: 3px; }
 .course-trip-save span { color: var(--color-primary-active); font-size: 9px; font-weight: 900; letter-spacing: .14em; }
