@@ -62,13 +62,13 @@ cd backend
 
 ## 필요한 환경변수
 
-| 변수              | 필수 여부 | 설명                    | 기본값                                                                                 |
-| ----------------- | --------- | ----------------------- | -------------------------------------------------------------------------------------- |
-| `DB_URL`          | 선택      | MySQL JDBC URL          | `jdbc:mysql://localhost:3306/petway?serverTimezone=Asia/Seoul&characterEncoding=UTF-8` |
-| `DB_USERNAME`     | 선택      | MySQL 사용자명          | `petway`                                                                               |
-| `DB_PASSWORD`     | 필수      | MySQL 비밀번호          | 없음                                                                                   |
-| `TOUR_API_KEY`    | 향후 필요 | 한국관광공사 TourAPI 키 | 없음                                                                                   |
-| `WEATHER_API_KEY` | 향후 필요 | 날씨 API 키             | 없음                                                                                   |
-| `OPENAI_API_KEY`  | 향후 필요 | OpenAI API 키           | 없음                                                                                   |
+| 변수 | 필수 여부 | 설명 | 기본값 |
+|---|---|---|---|
+| `DB_URL` | 선택 | MySQL JDBC URL | `jdbc:mysql://localhost:3306/petway?serverTimezone=Asia/Seoul&characterEncoding=UTF-8` |
+| `DB_USERNAME` | 선택 | MySQL 사용자명 | `petway` |
+| `DB_PASSWORD` | 필수 | MySQL 비밀번호 | 없음 |
+| `TOUR_API_KEY` | 향후 필요 | 한국관광공사 TourAPI 키 | 없음 |
+| `WEATHER_API_KEY` | 향후 필요 | 날씨 API 키 | 없음 |
+| `OPENAI_API_KEY` | 향후 필요 | OpenAI API 키 | 없음 |
 
 `backend/.env.example`은 변수명만 제공하는 템플릿입니다. `.env`, `application-secret.yml`, `application-local.yml`과 실제 비밀값은 Git에서 제외됩니다. 현재 단계에서는 외부 API 키를 사용하는 코드가 없습니다.
