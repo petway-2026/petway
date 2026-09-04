@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { getPets } from "../../pet/api/petApi";
@@ -67,6 +67,11 @@ const PROMPT_SUGGESTIONS = [
 
 type CourseStyle = "RELAXED" | "BALANCED" | "ACTIVE";
 type TransportMode = "DRIVING" | "TRANSIT";
+type SaveFeedback = {
+    type: "success" | "error";
+    message: string;
+    tripId?: number;
+};
 
 const WEATHER_ICONS: Record<string, string> = {
     CLEAR: "☀️", PARTLY_CLOUDY: "🌤️", CLOUDY: "☁️", RAIN: "🌧️",
@@ -164,9 +169,11 @@ export default function TravelCoursePage() {
     const [transportMode, setTransportMode] = useState<TransportMode>("DRIVING");
     const [routeLoading, setRouteLoading] = useState(false);
     const [saveLoading, setSaveLoading] = useState(false);
+    const [saveFeedback, setSaveFeedback] = useState<SaveFeedback | null>(null);
     const [weatherByDay, setWeatherByDay] = useState<Record<number, WeatherForecastResponse>>({});
     const [weatherLoading, setWeatherLoading] = useState(false);
     const [message, setMessage] = useState("서울 중심으로 추천 장소를 준비하고 있어요.");
+    const saveInFlightRef = useRef(false);
 
     const primaryPet = pets.find((pet) => pet.isPrimary) ?? pets[0] ?? null;
     const maxStops = style === "RELAXED" ? 3 : style === "ACTIVE" ? 6 : 4;
@@ -439,13 +446,15 @@ export default function TravelCoursePage() {
     };
 
     const saveCurrentTrip = async () => {
-        if (!courses.some((day) => day.length > 0)) return;
+        if (saveInFlightRef.current || !courses.some((day) => day.length > 0)) return;
         const suggestedTitle = `${selectedRegion.name} ${tripDays}일 여행`;
         const title = window.prompt("저장할 여행 제목을 입력해 주세요.", suggestedTitle)?.trim();
         if (!title) return;
+        saveInFlightRef.current = true;
         setSaveLoading(true);
+        setSaveFeedback(null);
         try {
-            await saveTrip({
+            const savedTrip = await saveTrip({
                 title,
                 regionName: selectedRegion.name,
                 startDate,
@@ -466,10 +475,18 @@ export default function TravelCoursePage() {
                     })),
                 },
             });
-            window.alert("모든 날짜의 여행일정을 하나의 일정으로 저장했어요.");
+            setSaveFeedback({
+                type: "success",
+                message: "모든 날짜의 여행일정을 하나의 일정으로 저장했어요.",
+                tripId: savedTrip.id,
+            });
         } catch (error) {
-            window.alert(error instanceof Error ? error.message : "여행일정을 저장하지 못했습니다.");
+            setSaveFeedback({
+                type: "error",
+                message: error instanceof Error ? error.message : "여행일정을 저장하지 못했습니다.",
+            });
         } finally {
+            saveInFlightRef.current = false;
             setSaveLoading(false);
         }
     };
@@ -649,6 +666,17 @@ export default function TravelCoursePage() {
                     <button type="button" onClick={() => void saveCurrentTrip()} disabled={saveLoading || !courses.some((day) => day.length > 0)}>
                         {saveLoading ? "저장 중…" : "전체 일정 저장"}
                     </button>
+                    {saveFeedback && (
+                        <div
+                            className={`course-save-feedback ${saveFeedback.type}`}
+                            role={saveFeedback.type === "error" ? "alert" : "status"}
+                        >
+                            <span>{saveFeedback.message}</span>
+                            {saveFeedback.tripId !== undefined && (
+                                <Link to={`/my-trips/${saveFeedback.tripId}`}>저장 일정 확인</Link>
+                            )}
+                        </div>
+                    )}
                 </section>
 
                 <div className="course-workspace">
