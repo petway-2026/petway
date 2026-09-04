@@ -84,3 +84,19 @@ export interface PetCreateRequest {
 }
 
 export type PetUpdateRequest = PetCreateRequest;
+
+export interface PetRegistrationLookupRequest {
+    animalRegistrationNumber: string | null;
+    rfidCode: string | null;
+    ownerName: string | null;
+    ownerBirthDate: string | null;
+}
+
+export interface PetRegistrationLookupResponse {
+    petName: string;
+    birthDate: string | null;
+    breed: DogBreed | null;
+    breedDetail: string | null;
+    neutered: boolean | null;
+    animalRegistered: true;
+}

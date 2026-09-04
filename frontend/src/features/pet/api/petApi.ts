@@ -1,6 +1,8 @@
 import type {
     Pet,
     PetCreateRequest,
+    PetRegistrationLookupRequest,
+    PetRegistrationLookupResponse,
     PetUpdateRequest,
 } from "../types/pet";
 
@@ -21,6 +23,43 @@ async function parseError(
     } catch {
         return "요청 처리 중 오류가 발생했습니다.";
     }
+}
+
+export class PetRegistrationLookupApiError extends Error {
+    constructor(
+        public readonly status: number,
+        message: string
+    ) {
+        super(message);
+        this.name = "PetRegistrationLookupApiError";
+    }
+}
+
+export async function lookupPetRegistration(
+    data: PetRegistrationLookupRequest,
+    signal?: AbortSignal
+): Promise<PetRegistrationLookupResponse> {
+    const response = await fetch(
+        `${API_URL}/api/pets/registration-lookup`,
+        {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            credentials: "include",
+            body: JSON.stringify(data),
+            signal,
+        }
+    );
+
+    if (!response.ok) {
+        throw new PetRegistrationLookupApiError(
+            response.status,
+            await parseError(response)
+        );
+    }
+
+    return response.json();
 }
 
 export async function getPets(): Promise<Pet[]> {
