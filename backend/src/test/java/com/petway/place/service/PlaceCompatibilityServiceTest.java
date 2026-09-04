@@ -115,6 +115,27 @@ class PlaceCompatibilityServiceTest {
     }
 
     @Test
+    void exposesVaccinationCertificateForVaccinatedPet() {
+        stubPrimaryPet(new BigDecimal("7.8"), true);
+        when(tourPlaceGateway.getPetDetail("100"))
+                .thenReturn(detail(null, null, "예방접종 증명서 지참"));
+
+        PlaceCompatibilityResponse response = service.getCompatibility(
+                "owner@petway.test",
+                "100"
+        );
+
+        assertThat(response.petwayAssessment().status())
+                .isEqualTo(CompatibilityStatus.CONDITIONAL);
+        assertThat(response.petwayAssessment().requirements())
+                .extracting(PlaceCompatibilityResponse.RequirementItem::type)
+                .containsExactly(RequirementType.VACCINATION_CERTIFICATE);
+        assertThat(response.petwayAssessment().requirements())
+                .extracting(PlaceCompatibilityResponse.RequirementItem::label)
+                .containsExactly("예방접종 증명서");
+    }
+
+    @Test
     void keepsAmbiguousOfficialTextAsNeedConfirmation() {
         stubPrimaryPet(new BigDecimal("7.8"));
         when(tourPlaceGateway.getPetDetail("100"))
@@ -225,6 +246,10 @@ class PlaceCompatibilityServiceTest {
     }
 
     private Pet stubPrimaryPet(BigDecimal weight) {
+        return stubPrimaryPet(weight, null);
+    }
+
+    private Pet stubPrimaryPet(BigDecimal weight, Boolean vaccinated) {
         Pet pet = Pet.create(
                 owner,
                 "보리",
@@ -238,7 +263,7 @@ class PlaceCompatibilityServiceTest {
                 null,
                 null,
                 null,
-                null,
+                vaccinated,
                 null,
                 true
         );

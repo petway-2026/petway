@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.util.List;
 import java.util.Set;
@@ -499,7 +500,7 @@ class PetRuleParserTest {
     void keepsParsedRulesAndOnlyPreservesUnsupportedRemainder() {
         PetRule rule = parser.parse(source(
                 PetRuleSourceField.ETC_ACMPY_INFO,
-                "9kg 이하, 예방접종 증명서 필수"
+                "9kg 이하, 반려견 추가 요금 발생"
         ));
 
         assertThat(rule.weightLimits()).hasSize(1);
@@ -507,7 +508,68 @@ class PetRuleParserTest {
         assertThat(rule.unparsedFragments().get(0).sourceField())
                 .isEqualTo(PetRuleSourceField.ETC_ACMPY_INFO);
         assertThat(rule.unparsedFragments().get(0).rawText())
-                .isEqualTo("예방접종 증명서 필수");
+                .isEqualTo("반려견 추가 요금 발생");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "예방접종 필수",
+            "예방접종 완료 필수",
+            "접종 완료한 반려견만 이용 가능"
+    })
+    void parsesRequiredVaccinationStatus(String rawText) {
+        PetRule rule = parser.parse(source(
+                PetRuleSourceField.ETC_ACMPY_INFO,
+                rawText
+        ));
+
+        assertThat(rule.requirements())
+                .extracting(PetRule.Requirement::type)
+                .containsExactly(RequirementType.VACCINATION_STATUS);
+        assertThat(rule.requirements().get(0).source().rawText()).isEqualTo(rawText);
+        assertThat(rule.unparsedFragments()).isEmpty();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "예방접종 증명서 필수",
+            "예방접종 증명서 지참",
+            "접종 증명서 제시 필요"
+    })
+    void parsesVaccinationCertificateAsStatusAndProofRequirements(String rawText) {
+        PetRule rule = parser.parse(source(
+                PetRuleSourceField.ACMPY_NEED_MTR,
+                rawText
+        ));
+
+        assertThat(rule.requirements())
+                .extracting(PetRule.Requirement::type)
+                .containsExactly(
+                        RequirementType.VACCINATION_STATUS,
+                        RequirementType.VACCINATION_CERTIFICATE
+                );
+        assertThat(rule.unparsedFragments()).isEmpty();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "예방접종 권장",
+            "예방접종 가능",
+            "예방접종 불필요",
+            "접종 증명서 필요 없음"
+    })
+    void doesNotInventRequiredVaccinationFromNonMandatoryText(String rawText) {
+        PetRule rule = parser.parse(source(
+                PetRuleSourceField.ETC_ACMPY_INFO,
+                rawText
+        ));
+
+        assertThat(rule.requirements())
+                .extracting(PetRule.Requirement::type)
+                .doesNotContain(
+                        RequirementType.VACCINATION_STATUS,
+                        RequirementType.VACCINATION_CERTIFICATE
+                );
     }
 
     @Test

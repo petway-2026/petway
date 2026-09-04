@@ -161,6 +161,22 @@ public final class PetRuleParser {
             "매너\\s*벨트\\s*(?:착용|사용|지참)?\\s*(?:필수|필요)"
     );
 
+    private static final Pattern VACCINATION_REQUIRED_PATTERN = Pattern.compile(
+            "(?:예방\\s*)?접종\\s*완료\\s*(?:한\\s*반려견)?\\s*만\\s*"
+                    + "(?:이용|동반|출입)?\\s*(?:가능|허용)|"
+                    + "예방\\s*접종\\s*(?:완료\\s*)?(?:은|는|이|가)?\\s*(?:필수|필요)"
+    );
+
+    private static final Pattern VACCINATION_CERTIFICATE_NEED_PATTERN = Pattern.compile(
+            "(?:예방\\s*)?접종\\s*(?:증명서|증빙)\\s*"
+                    + "(?:지참|제시|준비)?\\s*(?:필수|필요)?"
+    );
+
+    private static final Pattern VACCINATION_CERTIFICATE_EXPLICIT_PATTERN = Pattern.compile(
+            "(?:예방\\s*)?접종\\s*(?:증명서|증빙)\\s*"
+                    + "(?:(?:지참|제시|준비)(?:\\s*(?:필수|필요))?|필수|필요)"
+    );
+
     private static final Pattern REQUIREMENT_TARGET_PATTERN = Pattern.compile(
             "(중소형견|소형견|중형견|대형견|맹견)"
                     + "(?:의\\s*경우|은|는|이|가)?\\s*$"
@@ -492,6 +508,22 @@ public final class PetRuleParser {
         boolean needMatterSource =
                 source.sourceField() == PetRuleSourceField.ACMPY_NEED_MTR;
 
+        parseVaccinationCertificate(
+                needMatterSource
+                        ? VACCINATION_CERTIFICATE_NEED_PATTERN
+                        : VACCINATION_CERTIFICATE_EXPLICIT_PATTERN,
+                source,
+                recognized,
+                requirements
+        );
+        parseRequirement(
+                VACCINATION_REQUIRED_PATTERN,
+                RequirementType.VACCINATION_STATUS,
+                source,
+                recognized,
+                requirements
+        );
+
         parseRequirement(
                 needMatterSource ? LEASH_NEED_PATTERN : LEASH_EXPLICIT_PATTERN,
                 RequirementType.LEASH,
@@ -545,6 +577,39 @@ public final class PetRuleParser {
                 recognized,
                 requirements
         );
+    }
+
+    private void parseVaccinationCertificate(
+            Pattern pattern,
+            PetRuleSource source,
+            boolean[] recognized,
+            List<Requirement> requirements
+    ) {
+        Matcher matcher = pattern.matcher(source.rawText());
+        while (matcher.find()) {
+            if (overlaps(recognized, matcher.start(), matcher.end())
+                    || hasClauseMatch(
+                    NEGATED_REQUIREMENT_PATTERN,
+                    source.rawText(),
+                    matcher.start(),
+                    matcher.end()
+            )) {
+                continue;
+            }
+            requirements.add(new Requirement(
+                    RequirementType.VACCINATION_STATUS,
+                    SpaceScope.UNSPECIFIED,
+                    PetSubject.unspecified(),
+                    source
+            ));
+            requirements.add(new Requirement(
+                    RequirementType.VACCINATION_CERTIFICATE,
+                    SpaceScope.UNSPECIFIED,
+                    PetSubject.unspecified(),
+                    source
+            ));
+            mark(recognized, matcher.start(), matcher.end());
+        }
     }
 
     private void parseRequirement(
