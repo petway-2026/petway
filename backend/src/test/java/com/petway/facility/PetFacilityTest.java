@@ -32,6 +32,7 @@ class PetFacilityTest {
                 "csv-test", "테스트 장소", "반려의료", "동물약국",
                 "서울특별시", "중구", "서울 중구 테스트로 1", null,
                 null, null, null, null, null, null,
+                null, null,
                 "Y", "해당없음", "모두 가능", restrictions,
                 indoor, outdoor, description, "없음", "2026-09-04"
         );

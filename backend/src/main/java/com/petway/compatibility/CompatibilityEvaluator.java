@@ -298,6 +298,13 @@ public class CompatibilityEvaluator {
             PetRule rule,
             Assessment assessment
     ) {
+        // Preserve unparsed text for later display/AI assistance, but do not let
+        // an unsupported tail override a rule that already produced a concrete
+        // compatibility outcome. A completely unparsed rule still requires
+        // confirmation through the fallback in evaluate().
+        if (assessment.hasOutcomeEvidence()) {
+            return;
+        }
         for (UnparsedFragment fragment : rule.unparsedFragments()) {
             if (isDecisionRelevant(fragment)) {
                 assessment.confirm(unparsedReason(fragment.sourceField()));

@@ -12,6 +12,7 @@ export interface AiCourseCandidate {
 }
 
 export interface AiCourseRecommendation {
+    source: "OPENAI";
     summary: string;
     recommendations: Array<{
         candidateId: string;
@@ -44,5 +45,9 @@ export async function createAiCourse(input: {
         throw new Error(message);
     }
 
-    return response.json() as Promise<AiCourseRecommendation>;
+    const result = await response.json() as AiCourseRecommendation;
+    if (result.source !== "OPENAI") {
+        throw new Error("AI 추천 응답의 생성 경로를 확인할 수 없습니다.");
+    }
+    return result;
 }

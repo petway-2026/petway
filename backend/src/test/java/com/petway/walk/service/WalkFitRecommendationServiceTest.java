@@ -41,6 +41,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -75,9 +76,9 @@ class WalkFitRecommendationServiceTest {
                 new WalkFitPolicy(new WalkPlaceTypePolicy())
         );
         primaryPet = pet();
-        when(weatherQueryService.resolveForecastType(TARGET_DATE))
+        lenient().when(weatherQueryService.resolveForecastType(TARGET_DATE))
                 .thenReturn(ForecastType.SHORT_TERM);
-        when(primaryPetQueryService.findByUserEmail("owner@petway.test"))
+        lenient().when(primaryPetQueryService.findByUserEmail("owner@petway.test"))
                 .thenReturn(primaryPet);
     }
 
@@ -214,9 +215,9 @@ class WalkFitRecommendationServiceTest {
 
         assertThat(firstDay).hasSize(8);
         assertThat(nextDay).hasSize(8);
-        assertThat(firstDay.subList(0, 3)).containsExactly("101", "102", "103");
-        assertThat(nextDay.subList(0, 3)).containsExactly("101", "102", "103");
-        assertThat(firstDay.subList(3, 8)).isNotEqualTo(nextDay.subList(3, 8));
+        assertThat(firstDay.subList(0, 2)).containsExactly("101", "102");
+        assertThat(nextDay.subList(0, 2)).containsExactly("101", "102");
+        assertThat(firstDay.subList(2, 8)).doesNotContainAnyElementsOf(nextDay.subList(2, 8));
     }
 
     @Test

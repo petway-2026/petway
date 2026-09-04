@@ -38,7 +38,7 @@ public class WalkFitRecommendationService {
 
     static final int CANDIDATE_LIMIT = 8;
     static final int NEARBY_POOL_LIMIT = 24;
-    private static final int NEAREST_CANDIDATE_COUNT = 3;
+    private static final int NEAREST_CANDIDATE_COUNT = 2;
     private static final int RECOMMENDATION_LIMIT = CANDIDATE_LIMIT;
     private static final int SEARCH_RADIUS_METERS = 20_000;
 
@@ -190,7 +190,11 @@ public class WalkFitRecommendationService {
         selected.addAll(candidatePool.subList(0, nearestCount));
 
         List<PlaceSummary> rotatingPool = candidatePool.subList(nearestCount, candidatePool.size());
-        int start = Math.floorMod(targetDate.toEpochDay(), rotatingPool.size());
+        int rotatingCandidateCount = CANDIDATE_LIMIT - nearestCount;
+        int start = Math.floorMod(
+                targetDate.toEpochDay() * rotatingCandidateCount,
+                rotatingPool.size()
+        );
         for (int offset = 0; selected.size() < CANDIDATE_LIMIT; offset++) {
             selected.add(rotatingPool.get((start + offset) % rotatingPool.size()));
         }
