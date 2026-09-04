@@ -5,6 +5,8 @@ import com.petway.pet.enums.PetSizeType;
 import com.petway.petrule.PetRule;
 import com.petway.petrule.PetRule.BreedRule;
 import com.petway.petrule.PetRule.BreedRuleType;
+import com.petway.petrule.PetRule.ConfirmationCondition;
+import com.petway.petrule.PetRule.ConfirmationType;
 import com.petway.petrule.PetRule.PetRuleSource;
 import com.petway.petrule.PetRule.PetRuleSourceField;
 import com.petway.petrule.PetRule.PetSize;
@@ -498,6 +500,54 @@ class CompatibilityEvaluatorTest {
 
         assertThat(evaluate(pet("5", PetSizeType.SMALL), rule).status())
                 .isEqualTo(CompatibilityStatus.CONDITIONAL);
+    }
+
+    @Test
+    void explicitReservationStillNeedsConfirmationWithClearAllowance() {
+        PetRule rule = new PetRule(
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(space(SpaceCondition.ALL_AREAS_ALLOWED)),
+                List.of(),
+                List.of(),
+                List.of(new ConfirmationCondition(
+                        ConfirmationType.RESERVATION_REQUIRED,
+                        source(PetRuleSourceField.ETC_ACMPY_INFO)
+                )),
+                List.of()
+        );
+
+        CompatibilityResult result = evaluate(pet("5", PetSizeType.SMALL), rule);
+
+        assertThat(result.status()).isEqualTo(CompatibilityStatus.NEED_CONFIRMATION);
+        assertThat(result.reasons()).contains(
+                "이용 전 사전 예약이 필요하므로 방문 전 확인해 주세요."
+        );
+    }
+
+    @Test
+    void explicitInquiryNeedsConfirmationWithSpecificReason() {
+        PetRule rule = new PetRule(
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(new ConfirmationCondition(
+                        ConfirmationType.INQUIRY_REQUIRED,
+                        source(PetRuleSourceField.ETC_ACMPY_INFO)
+                )),
+                List.of()
+        );
+
+        CompatibilityResult result = evaluate(pet("5", PetSizeType.SMALL), rule);
+
+        assertThat(result.status()).isEqualTo(CompatibilityStatus.NEED_CONFIRMATION);
+        assertThat(result.reasons()).contains(
+                "이용 전 장소 문의가 필요하므로 방문 전 확인해 주세요."
+        );
     }
 
     @Test

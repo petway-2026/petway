@@ -12,6 +12,7 @@ public record PetRule(
         List<SpaceRule> spaceRules,
         List<Requirement> requirements,
         List<BreedRule> breedRules,
+        List<ConfirmationCondition> confirmationConditions,
         List<UnparsedFragment> unparsedFragments
 ) {
 
@@ -22,11 +23,26 @@ public record PetRule(
         spaceRules = immutableList(spaceRules);
         requirements = immutableList(requirements);
         breedRules = immutableList(breedRules);
+        confirmationConditions = immutableList(confirmationConditions);
         unparsedFragments = immutableList(unparsedFragments);
+    }
+
+    public PetRule(
+            List<PetRuleSource> sources,
+            List<WeightLimit> weightLimits,
+            List<SizeCondition> sizeConditions,
+            List<SpaceRule> spaceRules,
+            List<Requirement> requirements,
+            List<BreedRule> breedRules,
+            List<UnparsedFragment> unparsedFragments
+    ) {
+        this(sources, weightLimits, sizeConditions, spaceRules, requirements,
+                breedRules, List.of(), unparsedFragments);
     }
 
     public static PetRule empty() {
         return new PetRule(
+                List.of(),
                 List.of(),
                 List.of(),
                 List.of(),
@@ -42,7 +58,8 @@ public record PetRule(
                 || !sizeConditions.isEmpty()
                 || !spaceRules.isEmpty()
                 || !requirements.isEmpty()
-                || !breedRules.isEmpty();
+                || !breedRules.isEmpty()
+                || !confirmationConditions.isEmpty();
     }
 
     public boolean hasUnknownContent() {
@@ -173,6 +190,17 @@ public record PetRule(
         }
     }
 
+    public record ConfirmationCondition(
+            ConfirmationType type,
+            PetRuleSource source
+    ) {
+
+        public ConfirmationCondition {
+            Objects.requireNonNull(type, "type must not be null");
+            Objects.requireNonNull(source, "source must not be null");
+        }
+    }
+
     public record UnparsedFragment(
             PetRuleSourceField sourceField,
             String rawText,
@@ -249,6 +277,11 @@ public record PetRule(
 
     public enum BreedRuleType {
         ALL_BREEDS_ALLOWED
+    }
+
+    public enum ConfirmationType {
+        RESERVATION_REQUIRED,
+        INQUIRY_REQUIRED
     }
 
     public enum UnparsedReason {

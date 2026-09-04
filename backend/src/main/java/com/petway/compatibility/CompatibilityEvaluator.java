@@ -4,6 +4,7 @@ import com.petway.pet.entity.Pet;
 import com.petway.pet.enums.PetSizeType;
 import com.petway.petrule.PetRule;
 import com.petway.petrule.PetRule.BreedGroup;
+import com.petway.petrule.PetRule.ConfirmationCondition;
 import com.petway.petrule.PetRule.PetRuleSourceField;
 import com.petway.petrule.PetRule.PetSize;
 import com.petway.petrule.PetRule.Requirement;
@@ -46,6 +47,7 @@ public class CompatibilityEvaluator {
         evaluateWeights(pet, rule, spaceContext, assessment);
         evaluateSizes(pet, rule, assessment);
         evaluateBreedRules(rule, assessment);
+        evaluateConfirmationConditions(rule, assessment);
         evaluateRequirements(pet, rule, assessment);
         evaluateUnparsedFragments(rule, assessment);
 
@@ -291,6 +293,21 @@ public class CompatibilityEvaluator {
             }
 
             assessment.require(requirement, requirementReason(requirement));
+        }
+    }
+
+    private void evaluateConfirmationConditions(
+            PetRule rule,
+            Assessment assessment
+    ) {
+        for (ConfirmationCondition condition : rule.confirmationConditions()) {
+            String reason = switch (condition.type()) {
+                case RESERVATION_REQUIRED ->
+                        "이용 전 사전 예약이 필요하므로 방문 전 확인해 주세요.";
+                case INQUIRY_REQUIRED ->
+                        "이용 전 장소 문의가 필요하므로 방문 전 확인해 주세요.";
+            };
+            assessment.confirm(reason);
         }
     }
 
