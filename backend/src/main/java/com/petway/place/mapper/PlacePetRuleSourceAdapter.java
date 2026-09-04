@@ -22,6 +22,10 @@ public class PlacePetRuleSourceAdapter {
         add(sources, PetRuleSourceField.ACMPY_NEED_MTR, detail.requiredItems());
         add(sources, PetRuleSourceField.ETC_ACMPY_INFO, detail.additionalInformation());
         add(sources, PetRuleSourceField.RELA_ACDNT_RISK_MTR, detail.safetyNotice());
+        add(sources, PetRuleSourceField.RELA_POSES_FCLTY, detail.availableFacilities());
+        add(sources, PetRuleSourceField.RELA_FRNSH_PRDLST, detail.providedItems());
+        add(sources, PetRuleSourceField.RELA_PURC_PRDLST, detail.purchasableItems());
+        add(sources, PetRuleSourceField.RELA_RNTL_PRDLST, detail.rentableItems());
         return List.copyOf(sources);
     }
 

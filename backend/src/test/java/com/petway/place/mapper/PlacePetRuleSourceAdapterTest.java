@@ -18,7 +18,11 @@ class PlacePetRuleSourceAdapterTest {
                 "10kg 이하 동반 가능",
                 "목줄 필수",
                 "실내 이용은 현장 문의",
-                "맹견은 입마개 필수"
+                "맹견은 입마개 필수",
+                "반려견 놀이터",
+                "배변봉투",
+                "반려견 간식",
+                "반려견 유모차"
         );
 
         var sources = adapter.adapt(detail);
@@ -30,7 +34,11 @@ class PlacePetRuleSourceAdapterTest {
                         PetRuleSourceField.ACMPY_PSBL_CPAM,
                         PetRuleSourceField.ACMPY_NEED_MTR,
                         PetRuleSourceField.ETC_ACMPY_INFO,
-                        PetRuleSourceField.RELA_ACDNT_RISK_MTR
+                        PetRuleSourceField.RELA_ACDNT_RISK_MTR,
+                        PetRuleSourceField.RELA_POSES_FCLTY,
+                        PetRuleSourceField.RELA_FRNSH_PRDLST,
+                        PetRuleSourceField.RELA_PURC_PRDLST,
+                        PetRuleSourceField.RELA_RNTL_PRDLST
                 );
         assertThat(sources.get(0).rawText())
                 .isEqualTo(" 전구역 동반가능 ");

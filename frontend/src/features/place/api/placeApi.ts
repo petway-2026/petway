@@ -41,6 +41,10 @@ export interface PlacePetDetail {
     requiredItems: string | null;
     additionalInformation: string | null;
     safetyNotice: string | null;
+    availableFacilities: string | null;
+    providedItems: string | null;
+    purchasableItems: string | null;
+    rentableItems: string | null;
 }
 
 export type CompatibilityStatus =

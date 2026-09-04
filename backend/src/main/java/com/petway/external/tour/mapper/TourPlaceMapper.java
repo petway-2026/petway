@@ -89,7 +89,11 @@ public class TourPlaceMapper {
                 textOrNull(item, "acmpyPsblCpam"),
                 textOrNull(item, "acmpyNeedMtr"),
                 textOrNull(item, "etcAcmpyInfo"),
-                textOrNull(item, "relaAcdntRiskMtr")
+                textOrNull(item, "relaAcdntRiskMtr"),
+                textOrNull(item, "relaPosesFclty"),
+                textOrNull(item, "relaFrnshPrdlst"),
+                textOrNull(item, "relaPurcPrdlst"),
+                textOrNull(item, "relaRntlPrdlst")
         );
     }
 

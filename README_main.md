@@ -401,7 +401,7 @@ Compatibility는 입장 가능 여부를 판단하고, PetFit/WalkFit은 이용 
 - [x] 전구역·일부 구역·실내·야외·테라스 범위
 - [x] 목줄·입마개·배변봉투·배변처리·이동장·유모차·매너벨트
 - [x] 파싱하지 못한 원문 조각 보존
-- [ ] `relaPosesFclty`, `relaFrnshPrdlst`, `relaPurcPrdlst`, `relaRntlPrdlst` 보존
+- [x] `relaPosesFclty`, `relaFrnshPrdlst`, `relaPurcPrdlst`, `relaRntlPrdlst` 보존
 - [ ] 보호자 수 대비 반려견 마릿수와 팀당 최대 마릿수 파싱
 - [ ] 예방접종·사전 예약·문의·추가 요금·연령 조건 파싱
 
