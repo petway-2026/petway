@@ -446,7 +446,7 @@ Compatibility는 입장 가능 여부를 판단하고, PetFit/WalkFit은 이용 
 - [x] `UNAVAILABLE` AI 결과 차단
 - [x] AI 장애 시 규칙 기반 fallback
 - [x] 저장 일정 Backend API와 목록·상세·삭제 화면
-- [ ] 여행 코스 화면의 저장 버튼과 `saveCurrentTrip` 연결
+- [x] 여행 코스 화면의 저장 버튼과 `saveCurrentTrip` 연결
 - [x] 실제 AI 결과와 fallback 결과의 상태 구분
 - [ ] 서버가 실제 TourAPI 후보와 Compatibility를 재검증한 뒤 AI에 전달
 - [ ] 장소별 Compatibility Snapshot 저장
@@ -549,9 +549,9 @@ Compatibility는 입장 가능 여부를 판단하고, PetFit/WalkFit은 이용 
 
 - **노션과 `PETWAY_CODEX_CONTEXT.md`:** 사용자가 확인한 코스를 저장하고 나중에 출발 전 재검증하는 흐름을 요구합니다.
 - **`README.md`와 `docs/README.md`:** Backend 저장 API는 구현됐지만 여행 코스 화면의 저장 버튼 연결은 미구현으로 표시합니다.
-- **현재 코드:** `saveCurrentTrip` 함수와 `saveTrip` API는 존재하지만 `TravelCoursePage` JSX에서 호출되지 않습니다. 목록·상세·삭제 화면은 존재합니다.
+- **현재 코드:** `saveCurrentTrip`과 저장 버튼이 연결되어 있으며 빈 코스·중복 요청을 차단합니다. 성공 후 저장 일정 상세로 이동하는 링크와 실패 안내를 제공하고, 목록·상세·삭제 화면도 존재합니다.
 
-**최선의 방안:** 저장 모델을 재설계하기 전에 기존 `saveCurrentTrip`을 사용자 버튼에 연결하고 저장·조회·삭제 E2E를 먼저 완성합니다. 저장 구조 변경은 별도 결정으로 분리합니다.
+**현재 반영:** 기존 저장 구조와 API를 유지한 채 저장 버튼과 후속 확인 동선을 연결했습니다. 실제 저장·조회·삭제 브라우저 E2E와 저장 구조 변경은 별도 작업으로 분리합니다.
 
 ### 충돌 8. 문서의 과거 구현 상태와 최신 구현 상태
 
@@ -1456,7 +1456,7 @@ npm run build
 - [x] `csv-*` 장소 상세·Compatibility 400 문제 해결
 - [x] 동물병원 공공 API·CSV Source 분기와 fallback 해결
 - [ ] CSV가 없는 환경의 동물약국 Source와 처리 방식 확정
-- [ ] 여행 코스 저장 버튼 연결
+- [x] 여행 코스 저장 버튼 연결
 - [ ] 외부 API Key와 팀 실행 환경 통일
 - [ ] 로그인부터 일정 저장까지 핵심 E2E 반복 검증
 - [ ] 실제 KTO 호출량과 429 회귀 검증
