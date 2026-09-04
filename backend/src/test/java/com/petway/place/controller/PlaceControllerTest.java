@@ -168,6 +168,28 @@ class PlaceControllerTest {
     }
 
     @Test
+    void returnsPreservedPetDetailFields() throws Exception {
+        when(placeQueryService.getPetDetail("125266")).thenReturn(new PlacePetDetailResponse(
+                "전구역 동반가능",
+                null,
+                null,
+                null,
+                null,
+                "반려견 놀이터",
+                "배변봉투",
+                "반려견 간식",
+                "반려견 유모차"
+        ));
+
+        mockMvc.perform(get("/api/places/{contentId}/pet-detail", "125266"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.availableFacilities").value("반려견 놀이터"))
+                .andExpect(jsonPath("$.providedItems").value("배변봉투"))
+                .andExpect(jsonPath("$.purchasableItems").value("반려견 간식"))
+                .andExpect(jsonPath("$.rentableItems").value("반려견 유모차"));
+    }
+
+    @Test
     void rejectsUnknownContentIdFormat() throws Exception {
         mockMvc.perform(get("/api/places/{contentId}/pet-detail", "csv-invalid"))
                 .andExpect(status().isBadRequest());

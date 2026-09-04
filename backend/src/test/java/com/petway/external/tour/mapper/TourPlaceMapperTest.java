@@ -184,7 +184,11 @@ class TourPlaceMapperTest {
                           "acmpyPsblCpam": "10kg 이하 동반 가능",
                           "acmpyNeedMtr": "목줄 필수",
                           "etcAcmpyInfo": "현장 문의",
-                          "relaAcdntRiskMtr": "맹견 입마개 필수"
+                          "relaAcdntRiskMtr": "맹견 입마개 필수",
+                          "relaPosesFclty": "반려견 놀이터",
+                          "relaFrnshPrdlst": "배변봉투",
+                          "relaPurcPrdlst": "반려견 간식",
+                          "relaRntlPrdlst": "반려견 유모차"
                         }]
                       }
                     }
@@ -199,6 +203,10 @@ class TourPlaceMapperTest {
         assertThat(detail.requiredItems()).isEqualTo("목줄 필수");
         assertThat(detail.additionalInformation()).isEqualTo("현장 문의");
         assertThat(detail.safetyNotice()).isEqualTo("맹견 입마개 필수");
+        assertThat(detail.availableFacilities()).isEqualTo("반려견 놀이터");
+        assertThat(detail.providedItems()).isEqualTo("배변봉투");
+        assertThat(detail.purchasableItems()).isEqualTo("반려견 간식");
+        assertThat(detail.rentableItems()).isEqualTo("반려견 유모차");
     }
 
     @Test
