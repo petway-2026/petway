@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { getPets } from "../../pet/api/petApi";
@@ -67,6 +67,11 @@ const PROMPT_SUGGESTIONS = [
 
 type CourseStyle = "RELAXED" | "BALANCED" | "ACTIVE";
 type TransportMode = "DRIVING" | "TRANSIT";
+type SaveFeedback = {
+    type: "success" | "error";
+    message: string;
+    tripId?: number;
+};
 
 const WEATHER_ICONS: Record<string, string> = {
     CLEAR: "☀️", PARTLY_CLOUDY: "🌤️", CLOUDY: "☁️", RAIN: "🌧️",
@@ -164,9 +169,11 @@ export default function TravelCoursePage() {
     const [transportMode, setTransportMode] = useState<TransportMode>("DRIVING");
     const [routeLoading, setRouteLoading] = useState(false);
     const [saveLoading, setSaveLoading] = useState(false);
+    const [saveFeedback, setSaveFeedback] = useState<SaveFeedback | null>(null);
     const [weatherByDay, setWeatherByDay] = useState<Record<number, WeatherForecastResponse>>({});
     const [weatherLoading, setWeatherLoading] = useState(false);
     const [message, setMessage] = useState("서울 중심으로 추천 장소를 준비하고 있어요.");
+    const saveInFlightRef = useRef(false);
 
     const primaryPet = pets.find((pet) => pet.isPrimary) ?? pets[0] ?? null;
     const maxStops = style === "RELAXED" ? 3 : style === "ACTIVE" ? 6 : 4;
@@ -174,6 +181,13 @@ export default function TravelCoursePage() {
     const selectedRegion = REGIONS.find((region) => region.code === regionCode) ?? REGIONS[0];
     const dayDates = useMemo(() => Array.from({ length: tripDays }, (_, index) => addDays(startDate, index)), [startDate, tripDays]);
     const maximumTravelDate = useMemo(() => addDays(today, 90), [today]);
+    const aiDisabledReason = !primaryPet
+        ? "대표 반려견을 등록하면 AI 코스를 만들 수 있어요."
+        : loading
+            ? "추천 장소를 불러오고 있어요."
+            : recommendations.length === 0
+                ? "AI 코스를 만들 추천 장소가 없습니다."
+                : undefined;
 
     const updateCourse = (updater: Recommendation[] | ((current: Recommendation[]) => Recommendation[])) => {
         setCourses((current) => {
@@ -439,13 +453,15 @@ export default function TravelCoursePage() {
     };
 
     const saveCurrentTrip = async () => {
-        if (!courses.some((day) => day.length > 0)) return;
+        if (saveInFlightRef.current || !courses.some((day) => day.length > 0)) return;
         const suggestedTitle = `${selectedRegion.name} ${tripDays}일 여행`;
         const title = window.prompt("저장할 여행 제목을 입력해 주세요.", suggestedTitle)?.trim();
         if (!title) return;
+        saveInFlightRef.current = true;
         setSaveLoading(true);
+        setSaveFeedback(null);
         try {
-            await saveTrip({
+            const savedTrip = await saveTrip({
                 title,
                 regionName: selectedRegion.name,
                 startDate,
@@ -466,10 +482,18 @@ export default function TravelCoursePage() {
                     })),
                 },
             });
-            window.alert("모든 날짜의 여행일정을 하나의 일정으로 저장했어요.");
+            setSaveFeedback({
+                type: "success",
+                message: "모든 날짜의 여행일정을 하나의 일정으로 저장했어요.",
+                tripId: savedTrip.id,
+            });
         } catch (error) {
-            window.alert(error instanceof Error ? error.message : "여행일정을 저장하지 못했습니다.");
+            setSaveFeedback({
+                type: "error",
+                message: error instanceof Error ? error.message : "여행일정을 저장하지 못했습니다.",
+            });
         } finally {
+            saveInFlightRef.current = false;
             setSaveLoading(false);
         }
     };
@@ -637,7 +661,19 @@ export default function TravelCoursePage() {
                         <textarea id="travel-course-prompt" value={travelPrompt} onChange={(event) => setTravelPrompt(event.target.value)} maxLength={500} rows={3} placeholder="예: 첫날은 강아지와 오래 산책하고, 둘째 날은 이동을 줄여 카페와 실내 관광지 위주로 짜줘. 점심은 음식점을 꼭 넣어줘." />
                         <div className="course-prompt-footer"><div className="course-prompt-suggestions">{PROMPT_SUGGESTIONS.map((suggestion) => <button type="button" key={suggestion} onClick={() => setTravelPrompt((current) => current.includes(suggestion) ? current : `${current}${current ? ", " : ""}${suggestion}`)}>{suggestion}</button>)}</div><small>{travelPrompt.length} / 500</small></div>
                     </div>
-                    <div className="course-ai-actions"><label className="course-lodging-option"><input type="checkbox" checked={includeLodging} onChange={(event) => toggleLodging(event.target.checked)} /><span><strong>숙박도 추천받기</strong><small>숙박일의 마지막 장소로만 추가돼요.</small></span></label><button type="button" className="course-ai-generate" onClick={() => void generateAiCourse()} disabled={aiLoading || loading || recommendations.length === 0 || !primaryPet}>{aiLoading ? "코스 만드는 중…" : courses.some((day) => day.length > 0) ? "AI로 다시 짜기" : "AI가 코스 짜기"}</button></div>
+                    <div className="course-ai-actions">
+                        <label className="course-lodging-option"><input type="checkbox" checked={includeLodging} onChange={(event) => toggleLodging(event.target.checked)} /><span><strong>숙박도 추천받기</strong><small>숙박일의 마지막 장소로만 추가돼요.</small></span></label>
+                        <button
+                            type="button"
+                            className="course-ai-generate"
+                            onClick={() => void generateAiCourse()}
+                            disabled={aiLoading || aiDisabledReason !== undefined}
+                            aria-busy={aiLoading}
+                            title={aiDisabledReason}
+                        >
+                            {aiLoading ? "코스 만드는 중…" : courses.some((day) => day.length > 0) ? "AI로 다시 짜기" : "AI가 코스 짜기"}
+                        </button>
+                    </div>
                 </section>
 
                 <section className="course-trip-save" aria-label="전체 여행일정 저장">
@@ -649,6 +685,17 @@ export default function TravelCoursePage() {
                     <button type="button" onClick={() => void saveCurrentTrip()} disabled={saveLoading || !courses.some((day) => day.length > 0)}>
                         {saveLoading ? "저장 중…" : "전체 일정 저장"}
                     </button>
+                    {saveFeedback && (
+                        <div
+                            className={`course-save-feedback ${saveFeedback.type}`}
+                            role={saveFeedback.type === "error" ? "alert" : "status"}
+                        >
+                            <span>{saveFeedback.message}</span>
+                            {saveFeedback.tripId !== undefined && (
+                                <Link to={`/my-trips/${saveFeedback.tripId}`}>저장 일정 확인</Link>
+                            )}
+                        </div>
+                    )}
                 </section>
 
                 <div className="course-workspace">
