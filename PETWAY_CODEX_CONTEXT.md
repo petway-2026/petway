@@ -2202,3 +2202,213 @@ KorPetTourService2의 공식 명세와 실응답을 최우선 기준으로 사�
 42. 한 문장 요약
 
 PetWay는 한국관광공사 KorPetTourService2의 실제 반려동물 동반 데이터를 필드 문맥을 보존해 PetRule로 구조화하고, 마이펫 기준 Compatibility와 판정 근거·준비물을 제공한 뒤, 날씨·거리·오늘 외출·여행 코스·출발 전 재검증까지 연결하며, AI에는 검증된 실제 장소만 전달하는 반려생활 맞춤형 관광 서비스다.
+
+43. 2026-09-04 최신 main 구현 상태 체크리스트
+
+이 절은 앞선 설계 원칙과 과거 구현 상태를 삭제하거나 변경하지 않고 최신 `main`의 추가 구현 상태를 기록한다.
+
+체크 기준:
+
+- [x] 현재 production code에 구현되어 있고 관련 build 또는 test가 통과함
+- [ ] 미구현이거나 runtime 연결, 실제 외부 API, 핵심 E2E 또는 배포 검증이 남음
+
+43-1. 현재 검증 결과
+
+- [x] Backend 전체 테스트 통과
+- [x] Frontend production build 통과
+- [x] 최신 `main` working tree clean 상태 확인
+- [ ] 실제 제출 환경의 전체 외부 API smoke test
+- [ ] 로그인부터 일정 저장까지 핵심 E2E 브라우저 반복 검증
+- [ ] 실제 배포 URL 검증
+
+43-2. Auth / User
+
+- [x] 일반 회원가입
+- [x] 세션 로그인 및 로그아웃
+- [x] `/api/auth/me`
+- [x] BCrypt
+- [x] Kakao OAuth
+- [x] `USER`, `ADMIN`
+- [x] 일반 회원가입을 통한 `ADMIN` 직접 생성 차단 구조
+- [ ] 운영 CSRF 전략
+- [ ] 운영 Cookie 및 SameSite/Secure 검증
+- [ ] 공모전 테스트 전용 `USER` 계정
+
+43-3. Pet
+
+- [x] 다견 CRUD
+- [x] 대표 반려견
+- [x] `size_type`
+- [x] 동물등록번호 또는 RFID 기반 외부 등록정보 조회
+- [x] 외부 조회 결과를 Pet 등록 폼에 자동 입력
+- [x] 자동 입력 이후 사용자 확인을 거친 Pet 저장
+- [x] 조회조건과 원본 외부 응답을 Pet DB에 저장하지 않음
+- [ ] 체중 소수점 최대 2자리 허용 여부 팀 결정
+- [ ] 체중 소수 허용 시 `9.99`, `10.00`, `10.01` 경계 테스트
+
+43-4. Place / Map
+
+- [x] KorPetTourService2 `areaBasedList2`
+- [x] KorPetTourService2 `locationBasedList2`
+- [x] KorPetTourService2 `detailPetTour2`
+- [x] 지역 기반 장소 조회
+- [x] 위치 기반 주변 장소 조회
+- [x] Kakao Map marker
+- [x] Browser Geolocation
+- [x] 문화정보원 CSV 보조 데이터 Catalog 코드
+- [x] 관광공사와 문화정보원 출처 필드 응답
+- [ ] KorPetTourService2 `detailCommon2`
+- [ ] 문화정보원 `csv-*` contentId의 상세 및 Compatibility 조회
+- [ ] 출처별 contentId 계약
+- [ ] 혼합 출처 중복 제거
+- [ ] 혼합 결과 `page`, `size`, `totalCount` 계약
+- [ ] 문화정보원 CSV 배포 공급 방식
+- [ ] Frontend `/places` 비로그인 Route
+- [ ] 공개 장소·날씨와 인증 필요 Compatibility·WalkFit UI 분리
+
+43-5. PetTour Raw / PetRule Parser
+
+- [x] `acmpyTypeCd` source 보존
+- [x] `acmpyPsblCpam` source 보존
+- [x] `acmpyNeedMtr` source 보존
+- [x] `etcAcmpyInfo` source 보존
+- [x] `relaAcdntRiskMtr` source 보존
+- [x] kg와 Unicode ㎏ 처리
+- [x] 이하와 미만 연산자 분리
+- [x] 복수 WeightLimit
+- [x] 소형·중형·대형·중소형견
+- [x] 전구역·일부구역·실내·야외·테라스 범위
+- [x] 목줄·입마개·배변봉투·배변처리·이동장·유모차·매너벨트
+- [x] source field와 unparsed fragment 보존
+- [ ] `relaPosesFclty` source 보존
+- [ ] `relaFrnshPrdlst` source 보존
+- [ ] `relaPurcPrdlst` source 보존
+- [ ] `relaRntlPrdlst` source 보존
+- [ ] 보호자 1인당 반려견 마릿수 제한
+- [ ] 예방접종
+- [ ] 사전 예약
+- [ ] 사전 문의
+- [ ] 추가 요금
+- [ ] 연령 조건
+
+43-6. Compatibility
+
+- [x] `AVAILABLE`
+- [x] `CONDITIONAL`
+- [x] `NEED_CONFIRMATION`
+- [x] `UNAVAILABLE`
+- [x] 체중 조건 판정
+- [x] 크기 조건 판정
+- [x] 공간 범위 판정
+- [x] 준비사항과 reason 응답
+- [x] 명확하지 않은 규정의 `NEED_CONFIRMATION` 처리
+- [x] 공식정보와 PetWay 판정 분리 UI
+- [ ] 최소 체중 미달 reason의 깨진 한글 수정
+- [ ] 실제 등록 견종의 위험견 여부와 대상 requirement 비교
+- [ ] 마릿수·예방접종·예약·문의·요금 조건 판정
+- [ ] 판정 기준 반려견을 장소 화면에서 변경하는 UI
+- [ ] 여러 반려견 동시 판정
+
+43-7. Weather / WalkFit
+
+- [x] D0~D3 단기예보
+- [x] D4~D10 중기예보
+- [x] D11~D90 3개월 전망
+- [x] 전북자치도 지역명 처리
+- [x] 예보 발표 경계 처리
+- [x] 날씨 전용 HTTP Client
+- [x] 비로그인 `GET /api/weather`
+- [x] 대표 반려견과 Compatibility 기반 WalkFit
+- [x] 거리·장소 유형·날씨 반영
+- [x] 최대 8개 후보 평가 및 반환
+- [x] provider 전체 429와 일부 실패 분리
+- [ ] 실제 기상청 Key 기반 배포 smoke test
+- [ ] 비로그인 장소 화면과 로그인 WalkFit 표시 정책 적용
+
+43-8. KTO quota 보호
+
+- [x] `locationBasedList2` 2분 bounded cache
+- [x] cache 최대 256 entries
+- [x] 좌표 소수점 3자리 정규화
+- [x] 실패·429·timeout 응답 cache 제외
+- [x] `detailPetTour2` cache
+- [x] 동일 contentId cold request single-flight
+- [x] TravelCourse nearby 최대 5 page
+- [x] unique 후보 60개 확보 시 early-stop
+- [x] Compatibility 최대 45개 시도
+- [x] eligible 후보 30개 확보 시 early-stop
+- [x] TravelCourse cold worst case 최대 약 50 KTO 호출 구조
+- [ ] 실제 API 호출량 logging 및 측정
+- [ ] 제출 환경 429 회귀 smoke test
+- [ ] 현재 미사용 `searchAllPlaces` 최대 50 page 경로의 재사용 방지 또는 상한 재검토
+
+43-9. Course / Route / AI
+
+- [x] 여행 코스 Builder
+- [x] 여행일별 장소 구성
+- [x] 날짜별 날씨
+- [x] Kakao Mobility 자동차 경로
+- [x] ODsay 대중교통 경로
+- [x] OpenAI structured recommendation client
+- [x] 입력 후보와 AI 응답 validator
+- [x] `UNAVAILABLE` AI 결과 차단
+- [x] AI 장애 시 heuristic fallback
+- [x] `saved_trip` 및 itinerary JSON 저장 Backend API
+- [x] 저장 일정 목록·상세·삭제 화면
+- [ ] 여행 코스 화면의 `saveCurrentTrip` 실행 버튼
+- [ ] AI 결과와 fallback 결과의 명시적 상태 필드 및 배지
+- [ ] 클라이언트가 아닌 서버에서 실제 TourAPI 후보 검증
+- [ ] 정식 `course`, `course_place` 구조 또는 현재 JSON snapshot 정책 확정
+- [ ] 장소별 Compatibility snapshot
+- [ ] 저장 일정 수정
+- [ ] 출발 전 `tour_content_id` 최신 규정 재호출
+- [ ] 재호출 후 PetRule 재생성 및 Compatibility 재판정
+- [ ] 규정 변경 전후 안내
+
+43-10. Favorite / Review / Hospital / M4
+
+- [x] 즐겨찾기 Backend와 Frontend
+- [x] 리뷰 Backend와 Frontend
+- [x] 동물병원 및 동물약국 Backend와 Frontend
+- [x] 행정안전부 동물병원 API Client
+- [x] 문화정보원 병원·약국 Catalog 코드
+- [ ] Frontend가 전달하는 `facilityType`과 Backend source 분기 수정
+- [ ] CSV가 없는 환경의 병원 fallback
+- [ ] 문화정보원 CSV가 없는 환경의 동물약국 처리
+- [ ] 사용자 현장 제보
+- [ ] 관리자 제보 검토
+- [ ] AI 제보 요약·분류·공식정보 충돌 탐지
+- [ ] 정보 신뢰도
+- [ ] 방문 기록
+- [ ] 장소 비교
+
+43-11. Docs / Test / Deployment
+
+- [x] `README.md` 존재
+- [x] `docs/README.md` 존재
+- [x] Backend 단위·Controller·Security 테스트 실행 가능
+- [x] Frontend TypeScript production build 실행 가능
+- [ ] `README.md` 기존 초기 골격 설명의 최신화 여부 결정
+- [ ] 실제 환경변수 목록 최신화
+- [ ] `docs/contracts/pet-api.md`
+- [ ] `docs/contracts/place-api.md`
+- [ ] `docs/contracts/weather-api.md`
+- [ ] `docs/contracts/pet-rule.md`
+- [ ] `docs/contracts/compatibility.md`
+- [ ] `docs/contracts/course-api.md`
+- [ ] `docs/deployment.md`
+- [ ] Favorite 전용 테스트
+- [ ] Review 전용 테스트
+- [ ] SavedTrip 전용 테스트
+- [ ] Kakao Directions Client 테스트
+- [ ] ODsay Transit Client 테스트
+- [ ] 문화정보원 CSV loading 테스트
+- [ ] 혼합 출처 pagination 테스트
+- [ ] Frontend component 및 사용자 흐름 자동 테스트
+- [ ] 핵심 E2E 브라우저 smoke test
+- [ ] 외부 API 실제 호출 smoke test
+- [ ] 운영 Secret 공급 절차
+- [ ] CSRF, Cookie, CORS 운영 정책
+- [ ] `api_request_log`
+- [ ] 공모전 테스트 계정
+- [ ] 자동배포와 제출 URL 반복 검증
