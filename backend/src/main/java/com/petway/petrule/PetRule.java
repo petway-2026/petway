@@ -261,7 +261,9 @@ public record PetRule(
         WASTE_DISPOSAL,
         CARRIER,
         STROLLER,
-        MANNER_BELT
+        MANNER_BELT,
+        VACCINATION_STATUS,
+        VACCINATION_CERTIFICATE
     }
 
     public enum SpaceScope {

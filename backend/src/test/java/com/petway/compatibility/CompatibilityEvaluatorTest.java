@@ -565,11 +565,79 @@ class CompatibilityEvaluatorTest {
                 .isEqualTo(CompatibilityStatus.AVAILABLE);
     }
 
+    @Test
+    void acceptsRequiredVaccinationWhenPetIsVaccinated() {
+        CompatibilityResult result = evaluate(
+                pet("5", PetSizeType.SMALL, true),
+                ruleWithRequirements(requirement(
+                        RequirementType.VACCINATION_STATUS,
+                        PetSubject.unspecified()
+                ))
+        );
+
+        assertThat(result.status()).isEqualTo(CompatibilityStatus.AVAILABLE);
+        assertThat(result.reasons()).contains("반려견의 예방접종 조건을 충족합니다.");
+        assertThat(result.requirements()).isEmpty();
+    }
+
+    @Test
+    void rejectsRequiredVaccinationWhenPetIsNotVaccinated() {
+        CompatibilityResult result = evaluate(
+                pet("5", PetSizeType.SMALL, false),
+                ruleWithRequirements(requirement(
+                        RequirementType.VACCINATION_STATUS,
+                        PetSubject.unspecified()
+                ))
+        );
+
+        assertThat(result.status()).isEqualTo(CompatibilityStatus.UNAVAILABLE);
+        assertThat(result.reasons()).contains(
+                "예방접종을 완료한 반려견만 이용할 수 있습니다."
+        );
+    }
+
+    @Test
+    void needsConfirmationWhenVaccinationStatusIsMissing() {
+        CompatibilityResult result = evaluate(
+                pet("5", PetSizeType.SMALL, null),
+                ruleWithRequirements(requirement(
+                        RequirementType.VACCINATION_STATUS,
+                        PetSubject.unspecified()
+                ))
+        );
+
+        assertThat(result.status()).isEqualTo(CompatibilityStatus.NEED_CONFIRMATION);
+        assertThat(result.reasons()).contains(
+                "장소에서 예방접종을 요구하지만 반려견의 접종 정보가 없어 확인이 필요합니다."
+        );
+    }
+
+    @Test
+    void requiresCertificateWhenVaccinatedPetNeedsProof() {
+        CompatibilityResult result = evaluate(
+                pet("5", PetSizeType.SMALL, true),
+                ruleWithRequirements(
+                        requirement(RequirementType.VACCINATION_STATUS, PetSubject.unspecified()),
+                        requirement(RequirementType.VACCINATION_CERTIFICATE, PetSubject.unspecified())
+                )
+        );
+
+        assertThat(result.status()).isEqualTo(CompatibilityStatus.CONDITIONAL);
+        assertThat(result.reasons()).contains("예방접종 증명서를 준비해야 합니다.");
+        assertThat(result.requirements())
+                .extracting(Requirement::type)
+                .containsExactly(RequirementType.VACCINATION_CERTIFICATE);
+    }
+
     private CompatibilityResult evaluate(Pet pet, PetRule rule) {
         return evaluator.evaluate(pet, rule);
     }
 
     private Pet pet(String weightKg, PetSizeType sizeType) {
+        return pet(weightKg, sizeType, null);
+    }
+
+    private Pet pet(String weightKg, PetSizeType sizeType, Boolean vaccinated) {
         return Pet.create(
                 null,
                 "두부",
@@ -583,7 +651,7 @@ class CompatibilityEvaluatorTest {
                 null,
                 null,
                 null,
-                null,
+                vaccinated,
                 null,
                 false
         );

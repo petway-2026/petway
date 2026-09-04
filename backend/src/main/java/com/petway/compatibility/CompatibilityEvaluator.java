@@ -8,6 +8,7 @@ import com.petway.petrule.PetRule.ConfirmationCondition;
 import com.petway.petrule.PetRule.PetRuleSourceField;
 import com.petway.petrule.PetRule.PetSize;
 import com.petway.petrule.PetRule.Requirement;
+import com.petway.petrule.PetRule.RequirementType;
 import com.petway.petrule.PetRule.SizeCondition;
 import com.petway.petrule.PetRule.SizeConditionType;
 import com.petway.petrule.PetRule.SpaceCondition;
@@ -270,9 +271,14 @@ public class CompatibilityEvaluator {
     private void evaluateRequirements(
             Pet pet,
             PetRule rule,
-            Assessment assessment
+        Assessment assessment
     ) {
         for (Requirement requirement : rule.requirements()) {
+            if (requirement.type() == RequirementType.VACCINATION_STATUS) {
+                evaluateVaccinationStatus(pet, assessment);
+                continue;
+            }
+
             if (requirement.target().breedGroup() == BreedGroup.DANGEROUS_BREEDS) {
                 assessment.confirm(
                         "대상 견종에만 적용되는 준비사항은 방문 전 확인이 필요합니다."
@@ -293,6 +299,18 @@ public class CompatibilityEvaluator {
             }
 
             assessment.require(requirement, requirementReason(requirement));
+        }
+    }
+
+    private void evaluateVaccinationStatus(Pet pet, Assessment assessment) {
+        if (pet.getVaccinated() == null) {
+            assessment.confirm(
+                    "장소에서 예방접종을 요구하지만 반려견의 접종 정보가 없어 확인이 필요합니다."
+            );
+        } else if (pet.getVaccinated()) {
+            assessment.positive("반려견의 예방접종 조건을 충족합니다.");
+        } else {
+            assessment.unavailable("예방접종을 완료한 반려견만 이용할 수 있습니다.");
         }
     }
 
@@ -359,6 +377,8 @@ public class CompatibilityEvaluator {
             case CARRIER -> "이동장 사용이 필요합니다.";
             case STROLLER -> "유모차 사용이 필요합니다.";
             case MANNER_BELT -> "매너벨트 착용이 필요합니다.";
+            case VACCINATION_STATUS -> "예방접종 완료가 필요합니다.";
+            case VACCINATION_CERTIFICATE -> "예방접종 증명서를 준비해야 합니다.";
         };
 
         return switch (requirement.scope()) {

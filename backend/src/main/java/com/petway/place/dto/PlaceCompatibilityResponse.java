@@ -79,6 +79,8 @@ public record PlaceCompatibilityResponse(
                 case CARRIER -> "이동장";
                 case STROLLER -> "유모차";
                 case MANNER_BELT -> "매너벨트";
+                case VACCINATION_STATUS -> "예방접종 완료";
+                case VACCINATION_CERTIFICATE -> "예방접종 증명서";
             };
         }
     }
