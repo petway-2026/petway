@@ -3,6 +3,7 @@ package com.petway.petrule;
 import com.petway.petrule.PetRule.BreedGroup;
 import com.petway.petrule.PetRule.BreedRuleType;
 import com.petway.petrule.PetRule.ConfirmationType;
+import com.petway.petrule.PetRule.FeeRule;
 import com.petway.petrule.PetRule.PetRuleSource;
 import com.petway.petrule.PetRule.PetRuleSourceField;
 import com.petway.petrule.PetRule.PetSize;
@@ -500,7 +501,7 @@ class PetRuleParserTest {
     void keepsParsedRulesAndOnlyPreservesUnsupportedRemainder() {
         PetRule rule = parser.parse(source(
                 PetRuleSourceField.ETC_ACMPY_INFO,
-                "9kg 이하, 반려견 추가 요금 발생"
+                "9kg 이하, 중성화 필수"
         ));
 
         assertThat(rule.weightLimits()).hasSize(1);
@@ -508,7 +509,7 @@ class PetRuleParserTest {
         assertThat(rule.unparsedFragments().get(0).sourceField())
                 .isEqualTo(PetRuleSourceField.ETC_ACMPY_INFO);
         assertThat(rule.unparsedFragments().get(0).rawText())
-                .isEqualTo("반려견 추가 요금 발생");
+                .isEqualTo("중성화 필수");
     }
 
     @ParameterizedTest
@@ -570,6 +571,60 @@ class PetRuleParserTest {
                         RequirementType.VACCINATION_STATUS,
                         RequirementType.VACCINATION_CERTIFICATE
                 );
+    }
+
+    @ParameterizedTest
+    @MethodSource("feeAmountCases")
+    void parsesExplicitPetFeeAmount(String rawText, String expectedAmount) {
+        PetRule rule = parser.parse(source(
+                PetRuleSourceField.ETC_ACMPY_INFO,
+                rawText
+        ));
+
+        assertThat(rule.feeRules()).hasSize(1);
+        assertThat(rule.feeRules().get(0).amountWon())
+                .isEqualByComparingTo(expectedAmount);
+        assertThat(rule.feeRules())
+                .extracting(FeeRule::source)
+                .extracting(PetRuleSource::rawText)
+                .containsExactly(rawText);
+        assertThat(rule.unparsedFragments()).isEmpty();
+    }
+
+    private static Stream<Arguments> feeAmountCases() {
+        return Stream.of(
+                Arguments.of("반려견 추가 요금 5,000원", "5000"),
+                Arguments.of("반려동물 동반 시 추가요금 10000원", "10000"),
+                Arguments.of("애견 1마리당 7000원", "7000")
+        );
+    }
+
+    @Test
+    void parsesExplicitPetFeeWithoutInventingAmount() {
+        PetRule rule = parser.parse(source(
+                PetRuleSourceField.ETC_ACMPY_INFO,
+                "반려견 추가 요금 발생"
+        ));
+
+        assertThat(rule.feeRules()).hasSize(1);
+        assertThat(rule.feeRules().get(0).amountWon()).isNull();
+        assertThat(rule.unparsedFragments()).isEmpty();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "입장료 5,000원",
+            "주차 요금 3,000원",
+            "반려견 추가 요금 없음",
+            "반려견 추가 요금 발생할 수 있음"
+    })
+    void doesNotInventPetFeeFromUnrelatedOrUncertainText(String rawText) {
+        PetRule rule = parser.parse(source(
+                PetRuleSourceField.ETC_ACMPY_INFO,
+                rawText
+        ));
+
+        assertThat(rule.feeRules()).isEmpty();
     }
 
     @Test

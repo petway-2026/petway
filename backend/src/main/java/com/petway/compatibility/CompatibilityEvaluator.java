@@ -5,6 +5,7 @@ import com.petway.pet.enums.PetSizeType;
 import com.petway.petrule.PetRule;
 import com.petway.petrule.PetRule.BreedGroup;
 import com.petway.petrule.PetRule.ConfirmationCondition;
+import com.petway.petrule.PetRule.FeeRule;
 import com.petway.petrule.PetRule.PetRuleSourceField;
 import com.petway.petrule.PetRule.PetSize;
 import com.petway.petrule.PetRule.Requirement;
@@ -19,10 +20,12 @@ import com.petway.petrule.PetRule.WeightOperator;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
+import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
 
@@ -49,6 +52,7 @@ public class CompatibilityEvaluator {
         evaluateSizes(pet, rule, assessment);
         evaluateBreedRules(rule, assessment);
         evaluateConfirmationConditions(rule, assessment);
+        evaluateFees(rule, assessment);
         evaluateRequirements(pet, rule, assessment);
         evaluateUnparsedFragments(rule, assessment);
 
@@ -326,6 +330,20 @@ public class CompatibilityEvaluator {
                         "이용 전 장소 문의가 필요하므로 방문 전 확인해 주세요.";
             };
             assessment.confirm(reason);
+        }
+    }
+
+    private void evaluateFees(PetRule rule, Assessment assessment) {
+        for (FeeRule feeRule : rule.feeRules()) {
+            if (feeRule.amountWon() == null) {
+                assessment.conditional(
+                        "반려동물 동반 시 추가 요금이 발생하므로 금액을 확인해 주세요."
+                );
+                continue;
+            }
+            String amount = NumberFormat.getIntegerInstance(Locale.KOREA)
+                    .format(feeRule.amountWon());
+            assessment.conditional("반려동물 동반 시 추가 요금 " + amount + "원이 필요합니다.");
         }
     }
 
