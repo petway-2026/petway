@@ -97,7 +97,7 @@ export default function HomePage() {
 
                                 <div>
                                     <span>✓</span>
-                                    동반 마릿수 확인
+                                    장소별 동반 조건 확인
                                 </div>
 
                                 <div>
@@ -217,9 +217,7 @@ export default function HomePage() {
                                 연결해 코스를 만들어요.
                             </p>
 
-                            <span className="home-coming">
-                준비 중
-              </span>
+                            <span className="home-quick-link">코스 만들기 →</span>
                         </Link>
 
                         <Link to="/courses" className="home-quick-card">
@@ -236,9 +234,7 @@ export default function HomePage() {
                                 가장 잘 맞는 곳을 추천해요.
                             </p>
 
-                            <span className="home-coming">
-                준비 중
-              </span>
+                            <span className="home-quick-link">AI 추천받기 →</span>
                         </Link>
 
                     </div>

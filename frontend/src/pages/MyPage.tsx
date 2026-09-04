@@ -120,8 +120,8 @@ export default function MyPage() {
                                 </p>
                             </div>
 
-                            <span className="mypage-coming-soon">
-                준비 중
+                            <span className="mypage-menu-arrow">
+                →
               </span>
                         </Link>
 

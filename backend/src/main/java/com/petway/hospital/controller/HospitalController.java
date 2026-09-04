@@ -40,7 +40,7 @@ public class HospitalController {
             @Pattern(regexp = "HOSPITAL|PHARMACY")
             String facilityType
     ) {
-        if (facilityType != null) {
+        if ("PHARMACY".equals(facilityType)) {
             return hospitalService.findMedicalFacilities(page, size, address, name, facilityType);
         }
         return hospitalService.findHospitals(

@@ -87,4 +87,15 @@ class HospitalControllerTest {
                 .andExpect(status().isBadGateway())
                 .andExpect(jsonPath("$.message").value("외부 API 오류"));
     }
+
+    @Test
+    void hospitalFacilityTypeStillUsesExternalHospitalFallback() throws Exception {
+        when(hospitalService.findHospitals(1, 100, null, null))
+                .thenReturn(new HospitalPageResponse(List.of(), 1, 100, 0));
+
+        mockMvc.perform(get("/api/hospitals").param("facilityType", "HOSPITAL"))
+                .andExpect(status().isOk());
+
+        verify(hospitalService).findHospitals(1, 100, null, null);
+    }
 }

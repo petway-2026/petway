@@ -59,7 +59,17 @@ public class HospitalService {
                         item.businessStatusCode()
                 ))
                 .map(this::toResponse)
-                .toList();
+                .filter(hospital -> matches(hospital.address(), address))
+                .filter(hospital -> matches(hospital.name(), name))
+                .collect(java.util.stream.Collectors.collectingAndThen(
+                        java.util.stream.Collectors.toMap(
+                                HospitalResponse::id,
+                                hospital -> hospital,
+                                (first, ignored) -> first,
+                                java.util.LinkedHashMap::new
+                        ),
+                        values -> List.copyOf(values.values())
+                ));
         java.util.Set<String> matchedCsvIds = external.stream()
                 .map(h -> facilityCatalog.matchingHospital(h.name(), h.address(), h.latitude(), h.longitude()).orElse(null))
                 .filter(java.util.Objects::nonNull).map(PetFacility::id).collect(java.util.stream.Collectors.toSet());
@@ -71,6 +81,15 @@ public class HospitalService {
                 .map(this::toResponse).toList();
         List<HospitalResponse> hospitals = new java.util.ArrayList<>(external);
         hospitals.addAll(csv);
+        hospitals = hospitals.stream().collect(java.util.stream.Collectors.collectingAndThen(
+                java.util.stream.Collectors.toMap(
+                        HospitalResponse::id,
+                        hospital -> hospital,
+                        (first, ignored) -> first,
+                        java.util.LinkedHashMap::new
+                ),
+                values -> new java.util.ArrayList<>(values.values())
+        ));
 
         return new HospitalPageResponse(
                 hospitals,
@@ -142,5 +161,17 @@ public class HospitalService {
         return value == null || value.isBlank()
                 ? null
                 : value.trim();
+    }
+
+    private static boolean matches(String value, String query) {
+        if (query == null || query.isBlank()) {
+            return true;
+        }
+        if (value == null) {
+            return false;
+        }
+        String normalizedValue = value.replaceAll("[^가-힣a-zA-Z0-9]", "").toLowerCase(java.util.Locale.ROOT);
+        String normalizedQuery = query.replaceAll("[^가-힣a-zA-Z0-9]", "").toLowerCase(java.util.Locale.ROOT);
+        return normalizedValue.contains(normalizedQuery);
     }
 }

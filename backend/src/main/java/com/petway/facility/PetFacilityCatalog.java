@@ -49,9 +49,9 @@ public class PetFacilityCatalog {
                 if (facility.isPharmacy()) loadedPharmacies.add(facility);
                 if (facility.isCoursePlace() || facility.isHospital() || facility.isPharmacy()) loadedById.put(facility.id(), facility);
             }
-            places = List.copyOf(loadedPlaces);
-            hospitals = List.copyOf(loadedHospitals);
-            pharmacies = List.copyOf(loadedPharmacies);
+            places = uniqueById(loadedPlaces);
+            hospitals = uniqueById(loadedHospitals);
+            pharmacies = uniqueById(loadedPharmacies);
             byId = Map.copyOf(loadedById);
             log.info("Loaded pet facility CSV: places={}, hospitals={}, pharmacies={}", places.size(), hospitals.size(), pharmacies.size());
         } catch (IOException exception) {
@@ -88,6 +88,12 @@ public class PetFacilityCatalog {
     }
 
     public Optional<PetFacility> byId(String id) { return Optional.ofNullable(byId.get(id)); }
+
+    private static List<PetFacility> uniqueById(List<PetFacility> facilities) {
+        Map<String, PetFacility> unique = new LinkedHashMap<>();
+        facilities.forEach(facility -> unique.putIfAbsent(facility.id(), facility));
+        return List.copyOf(unique.values());
+    }
 
     public Optional<PetFacility> matching(String name, String address, BigDecimal lat, BigDecimal lon) {
         String normalizedName = normalize(name);

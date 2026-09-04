@@ -22,7 +22,6 @@ import FavoriteButton from "../../../shared/components/FavoriteButton";
 import "../styles/travel-course.css";
 
 const SEOUL_CENTER: MapCenter = { latitude: 37.5665, longitude: 126.978 };
-const STORAGE_KEY = "petway-travel-course";
 const AI_CANDIDATE_LIMIT = 30;
 const NEARBY_CANDIDATE_TARGET = 60;
 const NEARBY_PAGE_LIMIT = 5;
@@ -150,12 +149,7 @@ export default function TravelCoursePage() {
     const [origin, setOrigin] = useState<MapCenter>(SEOUL_CENTER);
     const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
     const [regionPlaceCount, setRegionPlaceCount] = useState(0);
-    const [courses, setCourses] = useState<Recommendation[][]>(() => {
-        try {
-            const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "[]") as Recommendation[] | Recommendation[][];
-            return Array.isArray(saved[0]) ? saved as Recommendation[][] : [saved as Recommendation[], []];
-        } catch { return [[], []]; }
-    });
+    const [courses, setCourses] = useState<Recommendation[][]>([[], []]);
     const [style, setStyle] = useState<CourseStyle>("BALANCED");
     const [includeLodging, setIncludeLodging] = useState(false);
     const [selectedType, setSelectedType] = useState("all");
@@ -267,8 +261,6 @@ export default function TravelCoursePage() {
     };
 
     useEffect(() => { void loadRecommendations("1", SEOUL_CENTER, "서울특별시"); }, []);
-    useEffect(() => { localStorage.setItem(STORAGE_KEY, JSON.stringify(courses)); }, [courses]);
-
     useEffect(() => {
         setCourses((current) => Array.from({ length: tripDays }, (_, index) => current[index] ?? []));
         setSelectedDay((current) => Math.min(current, tripDays - 1));
@@ -487,6 +479,9 @@ export default function TravelCoursePage() {
         setRegionCode(code);
         setOrigin(region.center);
         setSelectedType("all");
+        setSelectedDay(0);
+        setCourses(Array.from({ length: tripDays }, () => []));
+        setAiSummary(null);
         void loadRecommendations(region.code, region.center, region.name);
     };
 
@@ -561,7 +556,9 @@ export default function TravelCoursePage() {
                 category: TYPE_LABELS[place.contentTypeId] ?? "동반 장소",
                 compatibilityStatus: place.compatibility?.petwayAssessment.status === "AVAILABLE"
                     ? "AVAILABLE"
-                    : "NEED_CONFIRMATION",
+                    : place.compatibility?.petwayAssessment.status === "CONDITIONAL"
+                        ? "CONDITIONAL"
+                        : "NEED_CONFIRMATION",
                 compatibilityReasons: place.compatibility?.petwayAssessment.reasons ?? ["방문 전 동반 조건 확인이 필요합니다."],
                 requirements: place.compatibility?.petwayAssessment.requirements.map((item) => item.label) ?? [],
                 distanceKm: place.latitude !== null && place.longitude !== null
@@ -641,6 +638,17 @@ export default function TravelCoursePage() {
                         <div className="course-prompt-footer"><div className="course-prompt-suggestions">{PROMPT_SUGGESTIONS.map((suggestion) => <button type="button" key={suggestion} onClick={() => setTravelPrompt((current) => current.includes(suggestion) ? current : `${current}${current ? ", " : ""}${suggestion}`)}>{suggestion}</button>)}</div><small>{travelPrompt.length} / 500</small></div>
                     </div>
                     <div className="course-ai-actions"><label className="course-lodging-option"><input type="checkbox" checked={includeLodging} onChange={(event) => toggleLodging(event.target.checked)} /><span><strong>숙박도 추천받기</strong><small>숙박일의 마지막 장소로만 추가돼요.</small></span></label><button type="button" className="course-ai-generate" onClick={() => void generateAiCourse()} disabled={aiLoading || loading || recommendations.length === 0 || !primaryPet}>{aiLoading ? "코스 만드는 중…" : courses.some((day) => day.length > 0) ? "AI로 다시 짜기" : "AI가 코스 짜기"}</button></div>
+                </section>
+
+                <section className="course-trip-save" aria-label="전체 여행일정 저장">
+                    <div>
+                        <span>MY TRIP</span>
+                        <strong>{tripDays}일 전체 여행일정을 저장</strong>
+                        <small>DAY 1부터 마지막 날까지 담은 장소와 이동 정보를 한 번에 저장해요.</small>
+                    </div>
+                    <button type="button" onClick={() => void saveCurrentTrip()} disabled={saveLoading || !courses.some((day) => day.length > 0)}>
+                        {saveLoading ? "저장 중…" : "전체 일정 저장"}
+                    </button>
                 </section>
 
                 <div className="course-workspace">

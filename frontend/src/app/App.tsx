@@ -52,15 +52,16 @@ function AppLayout() {
                         element={<SignupPage />}
                     />
 
+                    <Route
+                        path="/places"
+                        element={<PlaceMapPage />}
+                    />
+
 
                     {/* 로그인 필요 */}
                     <Route
                         element={<ProtectedRoute />}
                     >
-                        <Route
-                            path="/places"
-                            element={<PlaceMapPage />}
-                        />
                         <Route
                             path="/hospitals"
                             element={<HospitalPage />}

@@ -4,7 +4,7 @@ export interface AiCourseCandidate {
     candidateId: string;
     name: string;
     category: string;
-    compatibilityStatus: "AVAILABLE" | "NEED_CONFIRMATION";
+    compatibilityStatus: "AVAILABLE" | "CONDITIONAL" | "NEED_CONFIRMATION";
     compatibilityReasons: string[];
     requirements: string[];
     distanceKm: number | null;
@@ -18,7 +18,7 @@ export interface AiCourseRecommendation {
         rank: number;
         reason: string;
         preparationTips: string[];
-        compatibilityStatus: "AVAILABLE" | "NEED_CONFIRMATION";
+        compatibilityStatus: "AVAILABLE" | "CONDITIONAL" | "NEED_CONFIRMATION";
     }>;
 }
 

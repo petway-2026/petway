@@ -58,7 +58,7 @@ public class PlaceController {
     }
 
     private void validateContentId(String contentId) {
-        if (!contentId.matches("\\d+")) {
+        if (!contentId.matches("(?:\\d+|csv-[0-9a-f]{20})")) {
             throw new IllegalArgumentException("콘텐츠 ID 형식을 확인해 주세요.");
         }
     }

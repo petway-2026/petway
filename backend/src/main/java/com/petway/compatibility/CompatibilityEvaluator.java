@@ -172,8 +172,8 @@ public class CompatibilityEvaluator {
     ) {
         if (limit.minWeightKg() != null && petWeight.compareTo(limit.minWeightKg()) < 0) {
             assessment.unavailable(
-                    "諛섎젮寃?泥댁쨷 " + formatWeight(petWeight) + "kg? "
-                            + formatWeight(limit.minWeightKg()) + "kg ?댁긁 ?댁슜 議곌굔??異⑹”?섏? ?딆뒿?덈떎."
+                    "반려견 체중 " + formatWeight(petWeight) + "kg은 "
+                            + formatWeight(limit.minWeightKg()) + "kg 이상 이용 조건을 충족하지 않습니다."
             );
             return;
         }

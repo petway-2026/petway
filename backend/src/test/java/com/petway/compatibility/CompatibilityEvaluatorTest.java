@@ -73,6 +73,27 @@ class CompatibilityEvaluatorTest {
     }
 
     @Test
+    void rejectsWeightBelowMinimumWithReadableMessage() {
+        PetRule rule = rule(
+                List.of(new WeightLimit(
+                        new BigDecimal("10"),
+                        WeightOperator.LESS_THAN_OR_EQUAL,
+                        SpaceScope.UNSPECIFIED,
+                        source(PetRuleSourceField.ETC_ACMPY_INFO),
+                        new BigDecimal("5")
+                )),
+                List.of(), List.of(), List.of(), List.of(), List.of()
+        );
+
+        CompatibilityResult result = evaluate(pet("4.5", PetSizeType.SMALL), rule);
+
+        assertThat(result.status()).isEqualTo(CompatibilityStatus.UNAVAILABLE);
+        assertThat(result.reasons()).contains(
+                "반려견 체중 4.5kg은 5kg 이상 이용 조건을 충족하지 않습니다."
+        );
+    }
+
+    @Test
     void needsConfirmationWhenPetWeightIsMissing() {
         CompatibilityResult result = evaluate(
                 pet(null, PetSizeType.SMALL),

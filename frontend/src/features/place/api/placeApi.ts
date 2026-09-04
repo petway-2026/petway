@@ -109,7 +109,7 @@ export async function searchPlaces(
 export async function searchAllPlaces(areaCode: string): Promise<PlaceSearchResponse> {
     const pageSize = 100;
     const firstPage = await searchPlaces(areaCode, pageSize, 1);
-    const pageCount = Math.min(Math.ceil(firstPage.totalCount / pageSize), 50);
+    const pageCount = Math.min(Math.ceil(firstPage.totalCount / pageSize), 5);
     const items = [...firstPage.items];
 
     for (let page = 2; page <= pageCount; page += 1) {

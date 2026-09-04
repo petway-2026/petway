@@ -7,6 +7,7 @@ import com.petway.place.dto.PlacePetDetailResponse;
 import com.petway.compatibility.CompatibilityStatus;
 import com.petway.place.service.PlaceCompatibilityService;
 import com.petway.place.service.PlaceQueryService;
+import com.petway.global.exception.GlobalExceptionHandler;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -20,6 +21,7 @@ import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -42,6 +44,7 @@ class PlaceControllerTest {
                         placeQueryService,
                         placeCompatibilityService
                 ))
+                .setControllerAdvice(new GlobalExceptionHandler())
                 .build();
     }
 
@@ -131,5 +134,42 @@ class PlaceControllerTest {
                         .value("목줄"))
                 .andExpect(jsonPath("$.officialInformation.accompanimentType")
                         .value("전구역 동반가능"));
+    }
+
+    @Test
+    void acceptsCsvFacilityIdForDetailLookup() throws Exception {
+        String contentId = "csv-0123456789abcdefabcd";
+        when(placeQueryService.getPetDetail(contentId)).thenReturn(new PlacePetDetailResponse(
+                "모든 견종 동반 가능", "모든 견종 동반 가능", null, null, null
+        ));
+
+        mockMvc.perform(get("/api/places/{contentId}/pet-detail", contentId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accompanimentType").value("모든 견종 동반 가능"));
+
+        verify(placeQueryService).getPetDetail(contentId);
+    }
+
+    @Test
+    void acceptsCsvFacilityIdForCompatibilityLookup() throws Exception {
+        String contentId = "csv-0123456789abcdefabcd";
+
+        mockMvc.perform(get("/api/places/{contentId}/compatibility", contentId)
+                        .principal(new TestingAuthenticationToken(
+                                "owner@petway.test",
+                                null
+                        )))
+                .andExpect(status().isOk());
+
+        verify(placeCompatibilityService).getCompatibility(
+                "owner@petway.test",
+                contentId
+        );
+    }
+
+    @Test
+    void rejectsUnknownContentIdFormat() throws Exception {
+        mockMvc.perform(get("/api/places/{contentId}/pet-detail", "csv-invalid"))
+                .andExpect(status().isBadRequest());
     }
 }

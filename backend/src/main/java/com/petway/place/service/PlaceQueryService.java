@@ -79,17 +79,24 @@ public class PlaceQueryService {
             return response(place.contentId(), place.contentTypeId(), place.areaCode(), place.sigunguCode(), place.title(), place.address(),
                     place.latitude(), place.longitude(), place.thumbnailUrl(), metadata, "한국관광공사");
         }).toList();
-        int from = Math.min((page - 1) * size, localFacilities.size());
-        int to = Math.min(from + size, localFacilities.size());
-        var local = localFacilities.subList(from, to).stream()
+        var availableLocal = localFacilities.stream()
                 .filter(f -> !matchedLocalIds.contains(f.id()))
-                .map(f -> response(f.id(), f.contentTypeId(), null, null, f.name(), f.address(), f.latitude(), f.longitude(), null, f, "한국문화정보원"))
                 .toList();
         var items = new java.util.ArrayList<PlaceSummaryResponse>(external);
-        items.addAll(local);
+        int externalStart = (page - 1) * size;
+        boolean reachedExternalEnd = externalStart + external.size() >= result.totalCount();
+        if (reachedExternalEnd && items.size() < size) {
+            int localOffset = Math.max(0, externalStart - result.totalCount());
+            int localTo = Math.min(localOffset + (size - items.size()), availableLocal.size());
+            if (localOffset < localTo) {
+                items.addAll(availableLocal.subList(localOffset, localTo).stream()
+                        .map(f -> response(f.id(), f.contentTypeId(), null, null, f.name(), f.address(), f.latitude(), f.longitude(), null, f, "한국문화정보원"))
+                        .toList());
+            }
+        }
         return new PlaceSearchResponse(
-                result.page(),
-                result.size(),
+                page,
+                size,
                 result.totalCount() + localFacilities.size(),
                 items
         );

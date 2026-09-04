@@ -19,6 +19,7 @@ import { resolveWeatherRegion } from "../utils/resolveWeatherRegion";
 import FavoriteButton from "../../../shared/components/FavoriteButton";
 import ReviewButton from "../../../shared/components/ReviewButton";
 import RadiusPicker, { RADIUS_OPTIONS, type RadiusOption } from "../../../shared/components/RadiusPicker";
+import { useAuth } from "../../auth/context/AuthContext";
 
 import "../styles/nearby.css";
 
@@ -102,6 +103,7 @@ export default function NearbyPlacesSection({
     enableWeatherSelection = false,
 }: NearbyPlacesSectionProps) {
     const navigate = useNavigate();
+    const { user } = useAuth();
     const [currentLocation, setCurrentLocation] = useState(DEFAULT_LOCATION);
     // Programmatic map moves and the center reported by a user drag must not
     // share one state value. Feeding the reported center straight back into
@@ -420,7 +422,7 @@ export default function NearbyPlacesSection({
         setExpandedPlaceId(place.contentId);
         selectPlace(place);
         void loadPlaceDetail(place);
-        void loadCompatibility(place);
+        if (user) void loadCompatibility(place);
     };
 
     const loadCompatibility = async (place: PlaceSummary) => {
@@ -587,7 +589,7 @@ export default function NearbyPlacesSection({
                                             <span>{CONTENT_TYPE_NAMES[place.contentTypeId] ?? "동반 장소"}</span>
                                             <strong>{formatDistance(distanceInMeters(searchOrigin, place))}</strong>
                                         </div>
-                                        <div className="nearby-place-title"><h3>{place.title}</h3><div><ReviewButton targetType="PLACE" targetId={place.contentId} title={place.title}/><FavoriteButton targetType="PLACE" targetId={place.contentId} title={place.title} address={place.address} thumbnailUrl={place.thumbnailUrl} /></div></div>
+                                        <div className="nearby-place-title"><h3>{place.title}</h3>{user && <div><ReviewButton targetType="PLACE" targetId={place.contentId} title={place.title}/><FavoriteButton targetType="PLACE" targetId={place.contentId} title={place.title} address={place.address} thumbnailUrl={place.thumbnailUrl} /></div>}</div>
                                         <p>{place.address ?? "주소 정보가 제공되지 않습니다."}</p>
                                         {place.operatingHours && <small>운영시간 · {place.operatingHours}</small>}
                                         {place.closedDays && <small>휴무일 · {place.closedDays}</small>}
@@ -598,9 +600,11 @@ export default function NearbyPlacesSection({
                                             onClick={() => toggleDetail(place)}
                                             aria-expanded={detailExpanded}
                                         >
-                                            {detailExpanded ? "상세정보 닫기" : "마이펫 기준 동반 가능 여부"}
+                                            {detailExpanded
+                                                ? "상세정보 닫기"
+                                                : user ? "마이펫 기준 동반 가능 여부" : "동반 상세정보"}
                                         </button>
-                                        {detailExpanded && !compatibility && !compatibilityLoading && (
+                                        {user && detailExpanded && !compatibility && !compatibilityLoading && (
                                             <button
                                                 type="button"
                                                 className="nearby-compatibility-button"

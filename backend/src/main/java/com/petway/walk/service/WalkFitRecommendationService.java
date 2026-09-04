@@ -37,6 +37,8 @@ import java.util.stream.Collectors;
 public class WalkFitRecommendationService {
 
     static final int CANDIDATE_LIMIT = 8;
+    static final int NEARBY_POOL_LIMIT = 24;
+    private static final int NEAREST_CANDIDATE_COUNT = 3;
     private static final int RECOMMENDATION_LIMIT = CANDIDATE_LIMIT;
     private static final int SEARCH_RADIUS_METERS = 20_000;
 
@@ -61,11 +63,11 @@ public class WalkFitRecommendationService {
                         longitude,
                         SEARCH_RADIUS_METERS,
                         1,
-                        CANDIDATE_LIMIT
+                        NEARBY_POOL_LIMIT
                 )
         );
 
-        List<PlaceSummary> candidates = nearby.items().stream()
+        List<PlaceSummary> candidatePool = nearby.items().stream()
                 .collect(Collectors.toMap(
                         PlaceSummary::contentId,
                         Function.identity(),
@@ -74,8 +76,8 @@ public class WalkFitRecommendationService {
                 ))
                 .values()
                 .stream()
-                .limit(CANDIDATE_LIMIT)
                 .toList();
+        List<PlaceSummary> candidates = selectCandidates(candidatePool, targetDate);
         if (candidates.isEmpty()) {
             return emptyResponse(
                     targetDate,
@@ -173,6 +175,26 @@ public class WalkFitRecommendationService {
                 recommendations,
                 primaryPet.getPetName() + "과 산책하기 좋은 후보를 찾았어요."
         );
+    }
+
+    static List<PlaceSummary> selectCandidates(
+            List<PlaceSummary> candidatePool,
+            LocalDate targetDate
+    ) {
+        if (candidatePool.size() <= CANDIDATE_LIMIT) {
+            return List.copyOf(candidatePool);
+        }
+
+        List<PlaceSummary> selected = new ArrayList<>(CANDIDATE_LIMIT);
+        int nearestCount = Math.min(NEAREST_CANDIDATE_COUNT, candidatePool.size());
+        selected.addAll(candidatePool.subList(0, nearestCount));
+
+        List<PlaceSummary> rotatingPool = candidatePool.subList(nearestCount, candidatePool.size());
+        int start = Math.floorMod(targetDate.toEpochDay(), rotatingPool.size());
+        for (int offset = 0; selected.size() < CANDIDATE_LIMIT; offset++) {
+            selected.add(rotatingPool.get((start + offset) % rotatingPool.size()));
+        }
+        return List.copyOf(selected);
     }
 
     private boolean isRateLimited(Throwable throwable) {

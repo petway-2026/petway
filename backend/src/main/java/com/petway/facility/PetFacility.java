@@ -40,7 +40,6 @@ public record PetFacility(
 
     public String normalizedAdditionalInformation() {
         StringBuilder value = new StringBuilder();
-        append(value, description);
         if ("Y".equalsIgnoreCase(indoor)) append(value, "실내 동반 가능");
         if ("Y".equalsIgnoreCase(outdoor)) append(value, "실외 동반 가능");
         append(value, cleanDelimited(restrictions));
@@ -62,6 +61,8 @@ public record PetFacility(
         for (String token : value.split(",")) {
             String clean = token.trim();
             if (clean.isEmpty() || clean.equalsIgnoreCase("false") || clean.equalsIgnoreCase("<unset>")) continue;
+            if (clean.equals("없음") || clean.equals("해당없음") || clean.equals("정보없음")
+                    || clean.equals("제한사항 없음") || clean.equals("제한 없음")) continue;
             if (clean.contains("루프탑 외 입장 불가")) clean = "테라스만 입장 가능";
             if (clean.equals("마당")) clean = "실외만 입장 가능";
             if (!result.isEmpty()) result.append(", ");

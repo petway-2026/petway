@@ -315,15 +315,20 @@ export default function PetForm({
 
                 <input
                     id="weightKg"
-                    type="text"
+                    type="number"
                     inputMode="numeric"
-                    pattern="[0-9]*"
+                    min="1"
+                    max="999"
+                    step="1"
                     value={
                         form.weightKg || ""
                     }
                     onChange={(event) => {
-                        const digits = event.target.value.replace(/\D/g, "");
-                        setForm({ ...form, weightKg: digits ? Number(digits) : 0 });
+                        const value = event.target.value;
+                        setForm({
+                            ...form,
+                            weightKg: value === "" ? 0 : Number(value),
+                        });
                     }}
                     onWheel={(event) => event.currentTarget.blur()}
                     required
