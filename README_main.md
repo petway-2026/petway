@@ -384,12 +384,12 @@ Compatibility는 입장 가능 여부를 판단하고, PetFit/WalkFit은 이용 
 - [x] 문화정보원 CSV 보조 Catalog 코드
 - [x] 관광공사·문화정보원 출처 필드 응답
 - [ ] `detailCommon2` 장소 공통 상세 조회
-- [ ] `csv-*` 장소 ID의 상세 및 Compatibility 계약 수정
+- [x] `csv-*` 장소 ID의 상세 및 Compatibility 계약 수정
 - [ ] 관광공사·문화정보원 혼합 결과의 중복 제거
 - [ ] 혼합 결과의 `page`, `size`, `totalCount` 계약 정리
 - [ ] 문화정보원 CSV의 로컬·CI·배포 공급 방식 확정
-- [ ] Frontend `/places` 비로그인 Route 분리
-- [ ] 공개 장소·날씨와 로그인 필요 맞춤 기능의 UI 분리
+- [x] Frontend `/places` 비로그인 Route 분리
+- [x] 공개 장소·날씨와 로그인 필요 맞춤 기능의 UI 분리
 
 ### PetRule Parser
 
@@ -411,6 +411,7 @@ Compatibility는 입장 가능 여부를 판단하고, PetFit/WalkFit은 이용 
 - [x] 체중·크기·공간 범위 판정
 - [x] 준비사항과 판정 근거 응답
 - [x] 모호한 규정의 `NEED_CONFIRMATION` 처리
+- [x] 명확한 판정 근거가 있을 때 미해석 부가 문구의 `NEED_CONFIRMATION` 오탐 방지
 - [x] 공식정보와 PetWay 판정 분리 UI
 - [ ] 최소 체중 미달 안내 문구 인코딩 수정
 - [ ] 실제 등록 견종과 위험견 제한 비교
@@ -430,6 +431,7 @@ Compatibility는 입장 가능 여부를 판단하고, PetFit/WalkFit은 이용 
 - [x] 비로그인 `GET /api/weather`
 - [x] 대표 반려견·Compatibility·거리·장소 유형·날씨 기반 WalkFit
 - [x] WalkFit 최대 8개 후보 평가 및 반환
+- [x] 가까운 후보 유지와 날짜별 순환 후보 다양화
 - [x] 일부 외부 실패와 전체 429 구분
 - [ ] 실제 기상청 운영 Key 기반 배포 smoke test
 - [ ] 위치 권한 거부 시 지역 직접 선택 흐름 검증
@@ -445,7 +447,7 @@ Compatibility는 입장 가능 여부를 판단하고, PetFit/WalkFit은 이용 
 - [x] AI 장애 시 규칙 기반 fallback
 - [x] 저장 일정 Backend API와 목록·상세·삭제 화면
 - [ ] 여행 코스 화면의 저장 버튼과 `saveCurrentTrip` 연결
-- [ ] 실제 AI 결과와 fallback 결과의 상태 구분
+- [x] 실제 AI 결과와 fallback 결과의 상태 구분
 - [ ] 서버가 실제 TourAPI 후보와 Compatibility를 재검증한 뒤 AI에 전달
 - [ ] 장소별 Compatibility Snapshot 저장
 - [ ] 저장 일정 수정
@@ -459,8 +461,8 @@ Compatibility는 입장 가능 여부를 판단하고, PetFit/WalkFit은 이용 
 - [x] 동물병원·동물약국 화면과 API
 - [x] 행정안전부 동물병원 API Client
 - [x] 문화정보원 병원·약국 Catalog 코드
-- [ ] Frontend `facilityType`과 Backend 데이터 Source 분기 수정
-- [ ] CSV가 없는 환경의 동물병원 fallback
+- [x] Frontend `facilityType`과 Backend 데이터 Source 분기 수정
+- [x] CSV가 없는 환경의 동물병원 공공 API fallback
 - [ ] CSV가 없는 환경의 동물약국 처리
 - [ ] 장소 2~3개 규정 비교
 - [ ] 실제 방문 기록과 방문 반려견 Snapshot
@@ -484,7 +486,8 @@ Compatibility는 입장 가능 여부를 판단하고, PetFit/WalkFit은 이용 
 - [ ] 자동배포와 제출 URL 반복 검증
 - [ ] 운영 Secret 공급 절차 문서화
 - [ ] 공모전용 API 호출 로그 구현
-- [ ] Git 추적 설정에 포함된 Secret 형태의 기본값 제거 및 노출된 Key 교체
+- [x] Git 추적 설정에 포함된 Secret 형태의 기본값 제거
+- [ ] 과거 노출 가능성이 있는 외부 API Key 교체 확인
 
 ---
 
@@ -531,16 +534,16 @@ Compatibility는 입장 가능 여부를 판단하고, PetFit/WalkFit은 이용 
 ### 충돌 5. 장소 식별자와 문화정보원 CSV
 
 - **노션과 `PETWAY_CODEX_CONTEXT.md`:** 관광공사 `contentId`를 장소 식별자로 유지하고 관광공사 OpenAPI를 Source of Truth로 사용합니다.
-- **현재 코드:** 문화정보원 보조 데이터에는 `csv-*` 형식의 ID를 생성합니다. Service는 CSV ID를 조회할 수 있지만 `PlaceController`는 숫자 ID만 허용하여 상세·Compatibility 요청을 400으로 차단합니다.
+- **현재 코드:** 문화정보원 보조 데이터에는 `csv-*` 형식의 ID를 생성합니다. Controller와 Service가 해당 ID의 상세·Compatibility 조회를 지원하고, 응답에서 KTO 장소와 CSV 보조 데이터를 구분합니다.
 
-**최선의 방안:** `contentId`라는 필드에 서로 다른 출처의 ID를 무조건 혼합하지 않습니다. `source + sourcePlaceId` 계약 또는 출처별 라우팅 규칙을 먼저 정한 뒤 Controller 검증을 수정합니다. KTO 장소에서는 원래 `contentId`를 그대로 유지하고 CSV는 보조 데이터임을 응답과 UI에서 구분합니다.
+**현재 반영:** KTO 장소에서는 원래 `contentId`를 유지하고 안전한 `csv-*` ID를 별도로 허용합니다. CSV 장소는 Catalog에서 상세를 조회하고 기존 Parser·Compatibility 흐름을 재사용합니다.
 
 ### 충돌 6. 장소·날씨의 비로그인 접근
 
 - **최근 사용자 결정과 Backend Security:** 장소 조회와 `GET /api/weather/**`는 비로그인 접근을 허용합니다. Compatibility와 WalkFit 등 사용자 Pet이 필요한 기능은 인증을 요구합니다.
-- **현재 Frontend:** `/places` Route 전체가 `ProtectedRoute` 아래에 있습니다.
+- **현재 Frontend:** `/places`는 공개 Route이며, 장소 지도와 날씨는 비로그인 상태에서도 조회할 수 있습니다. WalkFit 등 마이펫 기반 기능은 로그인 사용자에게만 노출합니다.
 
-**최선의 방안:** `/places`의 지도·장소·날씨 화면은 공개 Route로 이동하고, Compatibility·WalkFit·즐겨찾기·일정 저장 버튼만 로그인 상태에 따라 안내 또는 보호합니다. Backend의 사용자 데이터 보호 범위는 유지합니다.
+**현재 반영:** `/places`의 지도·장소·날씨 화면은 공개 Route로 분리하고, Compatibility·WalkFit·즐겨찾기·일정 저장 등 사용자 데이터가 필요한 기능은 인증 상태에 따라 안내 또는 보호합니다.
 
 ### 충돌 7. 여행 일정 저장 UI 상태
 
@@ -562,17 +565,17 @@ Compatibility는 입장 가능 여부를 판단하고, PetFit/WalkFit은 이용 
 ### 충돌 9. Secret 관리 원칙과 현재 설정
 
 - **노션, `PETWAY_CODEX_CONTEXT.md`, `README.md`:** API Key와 DB 비밀번호를 Git에 저장하지 않고 환경변수 또는 외부 설정으로 관리해야 합니다.
-- **현재 추적 중인 `backend/src/main/resources/application.yml`:** 여러 Secret 형태의 값이 환경변수 기본값으로 포함되어 있습니다.
+- **현재 코드:** `backend/src/main/resources/application.yml`은 Git에서 제외되며, 추적 중인 `application.properties`는 `TOUR_API_KEY`의 빈 환경변수 기본값만 사용합니다.
 
-**최선의 방안:** 값을 문서에 복사하지 않습니다. 노출된 Key는 각 제공기관에서 교체하고, 추적 파일에는 비밀이 아닌 local 기본값 또는 빈 기본값만 남깁니다. 팀 실행값은 OS 환경변수, IDE Run Configuration, 배포 Secret으로 공급합니다.
+**남은 방안:** 값을 문서에 복사하지 않습니다. 추적 설정 정리는 완료됐으며, 과거 노출 가능성이 있는 Key의 제공기관별 교체 여부를 확인하고 팀 실행값은 OS 환경변수, IDE Run Configuration, 배포 Secret으로 공급합니다.
 
 ### 충돌 10. 병원·약국 데이터 Source
 
 - **기획서:** 동물병원·약국 등 생활 인프라 연계를 발전 방향으로 제시합니다.
-- **현재 코드:** Frontend는 병원과 약국 모두 `facilityType`을 전달하고, Backend는 값이 존재하면 문화정보원 CSV Catalog만 조회합니다. 행정안전부 동물병원 Client도 별도로 존재합니다.
-- **현재 문서 체크리스트:** CSV가 없는 환경에서 병원·약국이 빈 결과가 될 수 있음을 미완료로 표시합니다.
+- **현재 코드:** 병원은 행정안전부 API를 기본 Source로 사용하고 문화정보원 CSV를 보강·fallback으로 사용합니다. 약국은 문화정보원 CSV를 사용합니다.
+- **현재 문서 체크리스트:** 병원의 CSV 미존재·공공 API 실패 경로는 처리됐지만, CSV가 없는 환경의 약국 처리 방식은 미완료입니다.
 
-**최선의 방안:** 병원은 공공 API를 기본 Source로 하고 CSV는 보강 또는 fallback으로 사용할지, 약국은 어떤 Source를 기본으로 할지 계약을 먼저 명시합니다. 이후 `facilityType`만으로 CSV 전용 분기로 들어가는 현재 로직을 출처 정책에 맞게 수정합니다.
+**남은 방안:** 약국의 기본 Source와 CSV가 없는 배포 환경의 빈 결과 처리 계약을 별도 이슈로 확정합니다.
 
 ### 충돌 11. 기능 우선순위
 
@@ -840,7 +843,7 @@ Compatibility는 입장 가능 여부를 판단하고, PetFit/WalkFit은 이용 
 - [x] `NFR-TOUR-03` KTO `contentId` 유지
 - [ ] `NFR-TOUR-04` 저장 장소의 최신정보 재조회
 - [ ] `NFR-TOUR-05` 기능별 API 활용 추적 로그
-- [ ] `NFR-TOUR-06` 현재 추적 설정에 포함된 Secret 형태 기본값 제거 및 Key 교체
+- [x] `NFR-TOUR-06` 현재 추적 설정에 포함된 Secret 형태 기본값 제거 / [ ] 과거 노출 Key 교체 확인
 - [x] `NFR-TOUR-07` 관광공사 출처 표시 UI 존재
 
 ### 판정 정확성
@@ -901,7 +904,7 @@ Compatibility는 입장 가능 여부를 판단하고, PetFit/WalkFit은 이용 
 
 - [x] `NFR-SEC-01` BCrypt 비밀번호 저장
 - [x] `NFR-SEC-02` 사용자 Pet·일정 API 인증 및 소유자 검증 구조
-- [ ] `NFR-SEC-03` 추적 설정의 Secret 형태 기본값 제거와 Key 교체
+- [x] `NFR-SEC-03` 추적 설정의 Secret 형태 기본값 제거 / [ ] 과거 노출 Key 교체 확인
 - [ ] `NFR-SEC-04` local·운영 Secret 공급 절차 확정
 - [x] `NFR-SEC-05` 주요 Request의 서버 Validation
 - [ ] `NFR-SEC-06` 운영 HTTPS 검증
@@ -920,7 +923,7 @@ Compatibility는 입장 가능 여부를 판단하고, PetFit/WalkFit은 이용 
 - [x] `NFR-EXP-02` 현재 지원 규칙의 조건별 결과 표시
 - [ ] `NFR-EXP-03` 다견 개별 결과
 - [x] `NFR-EXP-04` 확인 필요 이유
-- [ ] `NFR-EXP-05` AI 성공과 heuristic fallback의 명시적 UI 구분
+- [x] `NFR-EXP-05` AI 성공과 heuristic fallback의 명시적 UI 구분
 
 ### 유지보수성
 
@@ -1448,9 +1451,11 @@ npm run build
 
 ### P0 — 심사 시연 흐름 안정화
 
-- [ ] Git 추적 설정에서 Secret 형태의 기본값 제거 및 노출된 Key 교체
-- [ ] `csv-*` 장소 상세·Compatibility 400 문제 해결
-- [ ] 병원·약국 데이터 Source와 CSV 없는 환경의 fallback 해결
+- [x] Git 추적 설정에서 Secret 형태의 기본값 제거
+- [ ] 과거 노출 가능성이 있는 외부 API Key 교체 확인
+- [x] `csv-*` 장소 상세·Compatibility 400 문제 해결
+- [x] 동물병원 공공 API·CSV Source 분기와 fallback 해결
+- [ ] CSV가 없는 환경의 동물약국 Source와 처리 방식 확정
 - [ ] 여행 코스 저장 버튼 연결
 - [ ] 외부 API Key와 팀 실행 환경 통일
 - [ ] 로그인부터 일정 저장까지 핵심 E2E 반복 검증
@@ -1466,7 +1471,7 @@ npm run build
 - [ ] 서버 검증 후보만 AI에 전달
 - [ ] 저장 당시 Compatibility Snapshot
 - [ ] 출발 전 최신 규정 재검증과 변경 안내
-- [ ] 공개 장소·날씨와 인증 필요 맞춤 기능의 Frontend Route 분리
+- [x] 공개 장소·날씨와 인증 필요 맞춤 기능의 Frontend Route 분리
 
 ### P2 — 반복 사용과 발전 기능
 
