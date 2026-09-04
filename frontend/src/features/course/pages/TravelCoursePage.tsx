@@ -579,10 +579,10 @@ export default function TravelCoursePage() {
                 .filter((place): place is Recommendation => place !== undefined)
                 .slice(0, targetCount);
             distributeCourse(selected);
-            setAiSummary(result.summary);
+            setAiSummary(`OpenAI 추천 적용됨 · ${result.summary}`);
         } catch {
             distributeCourse(buildBalancedFallback(candidates, targetCount));
-            setAiSummary("AI 연결을 사용할 수 없어 동반 적합성, 거리, 장소 유형의 균형을 기준으로 코스 초안을 만들었어요.");
+            setAiSummary("규칙 기반 대체 추천 적용됨 · OpenAI 연결을 사용할 수 없어 동반 적합성, 거리, 장소 유형의 균형을 기준으로 코스 초안을 만들었어요.");
         } finally {
             setAiLoading(false);
         }

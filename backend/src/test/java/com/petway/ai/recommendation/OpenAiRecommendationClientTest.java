@@ -22,6 +22,7 @@ class OpenAiRecommendationClientTest {
 
         RecommendationResult result = client.recommend(RecommendationFixtures.validInput());
 
+        assertThat(result.source()).isEqualTo("OPENAI");
         assertThat(result.recommendations()).hasSize(2);
         assertThat(result.recommendations().get(1).requiresConfirmation()).isTrue();
     }
@@ -82,7 +83,7 @@ class OpenAiRecommendationClientTest {
 
     @Test
     void portCanBeReplacedWithFake() {
-        AiRecommendationPort fake = input -> new RecommendationResult("fake", java.util.List.of());
+        AiRecommendationPort fake = input -> new RecommendationResult("OPENAI", "fake", java.util.List.of());
 
         assertThat(fake.recommend(RecommendationFixtures.validInput()).summary()).isEqualTo("fake");
     }

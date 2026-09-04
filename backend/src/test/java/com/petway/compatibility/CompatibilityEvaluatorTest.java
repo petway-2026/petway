@@ -380,7 +380,7 @@ class CompatibilityEvaluatorTest {
     }
 
     @Test
-    void decisionRelevantUnparsedFragmentNeedsConfirmation() {
+    void parsedAllowanceIsNotRaisedByAdditionalUnparsedFragment() {
         PetRule rule = rule(
                 List.of(),
                 List.of(),
@@ -391,7 +391,45 @@ class CompatibilityEvaluatorTest {
         );
 
         assertThat(evaluate(pet("5", PetSizeType.SMALL), rule).status())
-                .isEqualTo(CompatibilityStatus.NEED_CONFIRMATION);
+                .isEqualTo(CompatibilityStatus.AVAILABLE);
+    }
+
+    @Test
+    void unparsedFragmentWithoutConcreteOutcomeNeedsConfirmation() {
+        PetRule rule = rule(
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(unparsed(PetRuleSourceField.ETC_ACMPY_INFO))
+        );
+
+        CompatibilityResult result = evaluate(pet("5", PetSizeType.SMALL), rule);
+
+        assertThat(result.status()).isEqualTo(CompatibilityStatus.NEED_CONFIRMATION);
+        assertThat(result.reasons())
+                .contains("기타 동반 규정에 확인되지 않은 내용이 있어 방문 전 확인이 필요합니다.");
+    }
+
+    @Test
+    void indoorAllowanceRemainsAvailableWithUnparsedPetAndEtcText() {
+        PetRule rule = rule(
+                List.of(),
+                List.of(),
+                List.of(space(SpaceCondition.INDOOR_ALLOWED)),
+                List.of(),
+                List.of(),
+                List.of(
+                        unparsed(PetRuleSourceField.ACMPY_PSBL_CPAM),
+                        unparsed(PetRuleSourceField.ETC_ACMPY_INFO)
+                )
+        );
+
+        CompatibilityResult result = evaluate(pet("5", PetSizeType.SMALL), rule);
+
+        assertThat(result.status()).isEqualTo(CompatibilityStatus.AVAILABLE);
+        assertThat(result.reasons()).containsExactly("실내 동반이 허용됩니다.");
     }
 
     @Test

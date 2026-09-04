@@ -90,7 +90,7 @@ public class RecommendationValidator {
         }
 
         validatedItems.sort(Comparator.comparingInt(RecommendationItem::rank));
-        return new RecommendationResult(response.summary.trim(), validatedItems);
+        return new RecommendationResult("OPENAI", response.summary.trim(), validatedItems);
     }
 
     private void validateCandidate(RecommendationCandidate candidate) {
