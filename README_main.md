@@ -403,7 +403,8 @@ Compatibility는 입장 가능 여부를 판단하고, PetFit/WalkFit은 이용 
 - [x] 파싱하지 못한 원문 조각 보존
 - [x] `relaPosesFclty`, `relaFrnshPrdlst`, `relaPurcPrdlst`, `relaRntlPrdlst` 보존
 - [ ] 보호자 수 대비 반려견 마릿수와 팀당 최대 마릿수 파싱
-- [ ] 예방접종·사전 예약·문의·추가 요금·연령 조건 파싱
+- [x] 사전 예약·문의 조건 파싱
+- [ ] 예방접종·추가 요금·연령 조건 파싱
 
 ### Compatibility
 
@@ -714,7 +715,7 @@ Compatibility는 입장 가능 여부를 판단하고, PetFit/WalkFit은 이용 
 | FR-ENTRY-04 | 최소·최대 연령 | 확장 | [ ] 미구현 |
 | FR-ENTRY-05 | 중성화 조건 | 확장 | [ ] 미구현 |
 | FR-ENTRY-06 | 반려견당 추가요금 | 중요 | [ ] 미구현 |
-| FR-ENTRY-07 | 사전예약·문의 | 중요 | [ ] 미구현 |
+| FR-ENTRY-07 | 사전예약·문의 | 중요 | [x] 명확한 필수·필요·후 이용 가능 표현 구현 |
 
 ### Parser
 
@@ -1465,9 +1466,10 @@ npm run build
 ### P1 — 지정과제 핵심 완결
 
 - [ ] `detailCommon2` 장소 공통 상세
-- [ ] 누락된 `detailPetTour2` 원본 필드 보존
+- [x] 누락된 `detailPetTour2` 원본 필드 보존
 - [ ] 보호자 수·반려견 수 규칙 파싱과 다견 동시 Compatibility
-- [ ] 예방접종·견종·예약·문의·추가 요금 규칙
+- [x] 사전 예약·문의 규칙
+- [ ] 예방접종·견종·추가 요금 규칙
 - [ ] 서버 검증 후보만 AI에 전달
 - [ ] 저장 당시 Compatibility Snapshot
 - [ ] 출발 전 최신 규정 재검증과 변경 안내

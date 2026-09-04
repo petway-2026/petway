@@ -3,6 +3,8 @@ package com.petway.petrule;
 import com.petway.petrule.PetRule.BreedGroup;
 import com.petway.petrule.PetRule.BreedRule;
 import com.petway.petrule.PetRule.BreedRuleType;
+import com.petway.petrule.PetRule.ConfirmationCondition;
+import com.petway.petrule.PetRule.ConfirmationType;
 import com.petway.petrule.PetRule.PetRuleSource;
 import com.petway.petrule.PetRule.PetRuleSourceField;
 import com.petway.petrule.PetRule.PetSize;
@@ -175,6 +177,16 @@ public final class PetRuleParser {
                     + "동반\\s*(?:가능|허용)"
     );
 
+    private static final Pattern RESERVATION_REQUIRED_PATTERN = Pattern.compile(
+            "(?:사전\\s*)?예약\\s*(?:이|가)?\\s*"
+                    + "(?:필수|필요|후\\s*(?:이용|동반|출입)?\\s*(?:가능|허용))"
+    );
+
+    private static final Pattern INQUIRY_REQUIRED_PATTERN = Pattern.compile(
+            "(?:(?:사전|전화|개별|현장)\\s*)?문의\\s*(?:이|가)?\\s*"
+                    + "(?:필수|필요|후\\s*(?:이용|동반|출입)?\\s*(?:가능|허용))"
+    );
+
     public PetRule parse(String rawText) {
         return parse(new PetRuleSource(
                 PetRuleSourceField.UNSPECIFIED,
@@ -234,6 +246,7 @@ public final class PetRuleParser {
         parseBreeds(source, recognized, result.breedRules);
         parseSpaces(source, recognized, result.spaceRules);
         parseRequirements(source, recognized, result.requirements);
+        parseConfirmationConditions(source, recognized, result.confirmationConditions);
 
         if (result.parsedConditionCount() > parsedCountBefore) {
             markAllMatches(GENERIC_ALLOWANCE_PATTERN, rawText, recognized);
@@ -604,6 +617,44 @@ public final class PetRuleParser {
         return new PrefixContext(target, scope, recognizedStart);
     }
 
+    private void parseConfirmationConditions(
+            PetRuleSource source,
+            boolean[] recognized,
+            List<ConfirmationCondition> confirmationConditions
+    ) {
+        parseConfirmationCondition(
+                RESERVATION_REQUIRED_PATTERN,
+                ConfirmationType.RESERVATION_REQUIRED,
+                source,
+                recognized,
+                confirmationConditions
+        );
+        parseConfirmationCondition(
+                INQUIRY_REQUIRED_PATTERN,
+                ConfirmationType.INQUIRY_REQUIRED,
+                source,
+                recognized,
+                confirmationConditions
+        );
+    }
+
+    private void parseConfirmationCondition(
+            Pattern pattern,
+            ConfirmationType type,
+            PetRuleSource source,
+            boolean[] recognized,
+            List<ConfirmationCondition> confirmationConditions
+    ) {
+        Matcher matcher = pattern.matcher(source.rawText());
+        while (matcher.find()) {
+            if (overlaps(recognized, matcher.start(), matcher.end())) {
+                continue;
+            }
+            confirmationConditions.add(new ConfirmationCondition(type, source));
+            mark(recognized, matcher.start(), matcher.end());
+        }
+    }
+
     private List<UnparsedFragment> extractUnparsedFragments(
             PetRuleSource source,
             boolean[] recognized
@@ -805,6 +856,7 @@ public final class PetRuleParser {
         private final List<SpaceRule> spaceRules = new ArrayList<>();
         private final List<Requirement> requirements = new ArrayList<>();
         private final List<BreedRule> breedRules = new ArrayList<>();
+        private final List<ConfirmationCondition> confirmationConditions = new ArrayList<>();
         private final List<UnparsedFragment> unparsedFragments = new ArrayList<>();
 
         private int parsedConditionCount() {
@@ -812,7 +864,8 @@ public final class PetRuleParser {
                     + sizeConditions.size()
                     + spaceRules.size()
                     + requirements.size()
-                    + breedRules.size();
+                    + breedRules.size()
+                    + confirmationConditions.size();
         }
 
         private PetRule toPetRule() {
@@ -823,6 +876,7 @@ public final class PetRuleParser {
                     spaceRules,
                     requirements,
                     breedRules,
+                    confirmationConditions,
                     unparsedFragments
             );
         }

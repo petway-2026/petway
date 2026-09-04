@@ -2,6 +2,7 @@ package com.petway.petrule;
 
 import com.petway.petrule.PetRule.BreedGroup;
 import com.petway.petrule.PetRule.BreedRuleType;
+import com.petway.petrule.PetRule.ConfirmationType;
 import com.petway.petrule.PetRule.PetRuleSource;
 import com.petway.petrule.PetRule.PetRuleSourceField;
 import com.petway.petrule.PetRule.PetSize;
@@ -188,17 +189,19 @@ class PetRuleParserTest {
     }
 
     @Test
-    void doesNotInferIndoorAllowanceFromInquiryText() {
+    void parsesInquiryWithoutInferringIndoorAllowance() {
         PetRule rule = parser.parse(source(
                 PetRuleSourceField.ETC_ACMPY_INFO,
                 "실내 시설 이용은 개별 문의 필요"
         ));
 
         assertThat(rule.spaceRules()).isEmpty();
-        assertThat(rule.hasParsedCondition()).isFalse();
+        assertThat(rule.confirmationConditions())
+                .extracting(PetRule.ConfirmationCondition::type)
+                .containsExactly(ConfirmationType.INQUIRY_REQUIRED);
         assertThat(rule.unparsedFragments())
                 .extracting(PetRule.UnparsedFragment::rawText)
-                .containsExactly("실내 시설 이용은 개별 문의 필요");
+                .containsExactly("실내 시설 이용은");
     }
 
     @ParameterizedTest
@@ -520,6 +523,59 @@ class PetRuleParserTest {
                 .isEqualTo(PetRuleSourceField.RELA_ACDNT_RISK_MTR);
         assertThat(rule.unparsedFragments().get(0).rawText())
                 .isEqualTo("자세한 사항은 현장 문의");
+    }
+
+    @ParameterizedTest
+    @MethodSource("confirmationCases")
+    void parsesExplicitReservationAndInquiryConditions(
+            String rawText,
+            ConfirmationType expectedType
+    ) {
+        PetRule rule = parser.parse(source(
+                PetRuleSourceField.ETC_ACMPY_INFO,
+                rawText
+        ));
+
+        assertThat(rule.confirmationConditions())
+                .extracting(PetRule.ConfirmationCondition::type)
+                .containsExactly(expectedType);
+        assertThat(rule.confirmationConditions().get(0).source().rawText())
+                .isEqualTo(rawText);
+        assertThat(rule.unparsedFragments()).isEmpty();
+    }
+
+    private static Stream<Arguments> confirmationCases() {
+        return Stream.of(
+                Arguments.of("사전 예약 필수", ConfirmationType.RESERVATION_REQUIRED),
+                Arguments.of("사전예약 후 이용 가능", ConfirmationType.RESERVATION_REQUIRED),
+                Arguments.of("예약이 필요", ConfirmationType.RESERVATION_REQUIRED),
+                Arguments.of("사전 문의 필수", ConfirmationType.INQUIRY_REQUIRED),
+                Arguments.of("전화 문의 후 이용 가능", ConfirmationType.INQUIRY_REQUIRED),
+                Arguments.of("문의가 필요", ConfirmationType.INQUIRY_REQUIRED),
+                Arguments.of("개별 문의 필요", ConfirmationType.INQUIRY_REQUIRED)
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource("ambiguousConfirmationCases")
+    void doesNotInventRequiredConfirmationFromAmbiguousText(String rawText) {
+        PetRule rule = parser.parse(source(
+                PetRuleSourceField.ETC_ACMPY_INFO,
+                rawText
+        ));
+
+        assertThat(rule.confirmationConditions()).isEmpty();
+        assertThat(rule.unparsedFragments())
+                .extracting(PetRule.UnparsedFragment::rawText)
+                .containsExactly(rawText);
+    }
+
+    private static Stream<String> ambiguousConfirmationCases() {
+        return Stream.of(
+                "예약 가능",
+                "문의 02-1234-5678",
+                "자세한 사항은 현장 문의"
+        );
     }
 
     @Test
