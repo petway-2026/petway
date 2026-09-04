@@ -2280,10 +2280,10 @@ PetWay는 한국관광공사 KorPetTourService2의 실제 반려동물 동반 �
 - [x] 전구역·일부구역·실내·야외·테라스 범위
 - [x] 목줄·입마개·배변봉투·배변처리·이동장·유모차·매너벨트
 - [x] source field와 unparsed fragment 보존
-- [ ] `relaPosesFclty` source 보존
-- [ ] `relaFrnshPrdlst` source 보존
-- [ ] `relaPurcPrdlst` source 보존
-- [ ] `relaRntlPrdlst` source 보존
+- [x] `relaPosesFclty` source 보존
+- [x] `relaFrnshPrdlst` source 보존
+- [x] `relaPurcPrdlst` source 보존
+- [x] `relaRntlPrdlst` source 보존
 - [ ] 보호자 1인당 반려견 마릿수 제한
 - [ ] 예방접종
 - [ ] 사전 예약
