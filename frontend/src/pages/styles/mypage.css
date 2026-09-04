@@ -377,6 +377,8 @@
 .mypage-menu-card::after {
     content: "";
 
+    pointer-events: none;
+
     position: absolute;
 
     right:
@@ -696,4 +698,8 @@
         text-align:
                 left;
     }
+}
+
+.favorite-item-card:hover {
+    transform: none;
 }

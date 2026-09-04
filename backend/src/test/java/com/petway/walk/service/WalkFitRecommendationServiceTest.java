@@ -183,13 +183,40 @@ class WalkFitRecommendationServiceTest {
                 ArgumentCaptor.forClass(NearbyPlaceSearchCondition.class);
         verify(placeQueryService).findNearby(condition.capture());
         assertThat(condition.getValue().size())
-                .isEqualTo(WalkFitRecommendationService.CANDIDATE_LIMIT);
+                .isEqualTo(WalkFitRecommendationService.NEARBY_POOL_LIMIT);
         verify(placeCompatibilityService, times(8))
                 .getCompatibility(eq(primaryPet), anyString());
         assertThat(response.recommendations()).hasSize(8);
         assertThat(response.recommendations())
                 .extracting(WalkFitRecommendationResponse.Recommendation::rank)
                 .containsExactly(1, 2, 3, 4, 5, 6, 7, 8);
+    }
+
+    @Test
+    void keepsNearestCandidatesButRotatesTheRestByTargetDate() {
+        List<PlaceSummary> places = java.util.stream.IntStream.rangeClosed(1, 24)
+                .mapToObj(index -> place(
+                        String.valueOf(100 + index),
+                        index % 2 == 0 ? "28" : "12",
+                        LATITUDE,
+                        LONGITUDE
+                ))
+                .toList();
+
+        List<String> firstDay = WalkFitRecommendationService
+                .selectCandidates(places, TARGET_DATE).stream()
+                .map(PlaceSummary::contentId)
+                .toList();
+        List<String> nextDay = WalkFitRecommendationService
+                .selectCandidates(places, TARGET_DATE.plusDays(1)).stream()
+                .map(PlaceSummary::contentId)
+                .toList();
+
+        assertThat(firstDay).hasSize(8);
+        assertThat(nextDay).hasSize(8);
+        assertThat(firstDay.subList(0, 3)).containsExactly("101", "102", "103");
+        assertThat(nextDay.subList(0, 3)).containsExactly("101", "102", "103");
+        assertThat(firstDay.subList(3, 8)).isNotEqualTo(nextDay.subList(3, 8));
     }
 
     @Test
