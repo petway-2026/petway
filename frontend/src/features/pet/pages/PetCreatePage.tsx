@@ -1,11 +1,18 @@
 import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 
 import { createPet } from "../api/petApi";
 import PetForm from "../components/PetForm";
-import type { PetCreateRequest } from "../types/pet";
+import PetRegistrationLookup from "../components/PetRegistrationLookup";
+import type {
+    PetCreateRequest,
+    PetRegistrationLookupResponse,
+} from "../types/pet";
 
 export default function PetCreatePage() {
     const navigate = useNavigate();
+    const [registrationLookupResult, setRegistrationLookupResult] =
+        useState<PetRegistrationLookupResponse | null>(null);
 
     const handleCreate = async (data: PetCreateRequest) => {
         await createPet(data);
@@ -24,7 +31,12 @@ export default function PetCreatePage() {
                         </p>
                     </header>
 
+                    <PetRegistrationLookup
+                        onApply={setRegistrationLookupResult}
+                    />
+
                     <PetForm
+                        registrationLookupResult={registrationLookupResult}
                         submitText="등록 완료"
                         onSubmit={handleCreate}
                     />

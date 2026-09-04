@@ -1,4 +1,5 @@
 import {
+    useEffect,
     useState,
     type FormEvent,
 } from "react";
@@ -10,6 +11,7 @@ import type {
     PetSizeType,
     DogBreed,
     PlacePreference,
+    PetRegistrationLookupResponse,
     SocialityLevel,
 } from "../types/pet";
 
@@ -17,6 +19,7 @@ import "../styles/pet.css";
 
 interface PetFormProps {
     initialData?: PetCreateRequest;
+    registrationLookupResult?: PetRegistrationLookupResponse | null;
     submitText: string;
     onSubmit: (
         data: PetCreateRequest
@@ -81,6 +84,7 @@ const defaultData: PetCreateRequest = {
 
 export default function PetForm({
                                     initialData = defaultData,
+                                    registrationLookupResult = null,
                                     submitText,
                                     onSubmit,
                                 }: PetFormProps) {
@@ -99,6 +103,31 @@ export default function PetForm({
         DOG_BREEDS.find((breed) => breed.value === initialData.breed)?.label ?? ""
     );
     const [breedSelectionOpen, setBreedSelectionOpen] = useState(!initialData.breed);
+
+    useEffect(() => {
+        if (!registrationLookupResult) {
+            return;
+        }
+
+        setForm((current) => ({
+            ...current,
+            petName: registrationLookupResult.petName,
+            birthDate: registrationLookupResult.birthDate ?? current.birthDate,
+            breed: registrationLookupResult.breed,
+            breedDetail: registrationLookupResult.breedDetail ?? "",
+            neutered: registrationLookupResult.neutered ?? current.neutered,
+            animalRegistered: true,
+        }));
+
+        const matchedBreed = DOG_BREEDS.find(
+            (breed) => breed.value === registrationLookupResult.breed
+        );
+        setBreedSearch(
+            matchedBreed?.label ?? registrationLookupResult.breedDetail ?? ""
+        );
+        setBreedSelectionOpen(!matchedBreed);
+        setError("");
+    }, [registrationLookupResult]);
 
     const filteredBreeds = DOG_BREEDS.filter((breed) =>
         breed.label.replace(/\s/g, "").includes(breedSearch.replace(/\s/g, ""))
