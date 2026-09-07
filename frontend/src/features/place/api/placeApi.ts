@@ -1,5 +1,5 @@
-const API_URL =
-    import.meta.env.VITE_API_URL ?? "http://localhost:8080";
+import { apiFetch } from "../../../shared/api/client";
+import { API_URL } from "../../../shared/api/config";
 
 export interface PlaceSummary {
     contentId: string;
@@ -92,7 +92,7 @@ export async function searchPlaces(
         page: String(page),
         size: String(size),
     });
-    const response = await fetch(`${API_URL}/api/places?${query}`);
+    const response = await apiFetch(`${API_URL}/api/places?${query}`);
 
     if (!response.ok) {
         let message = "반려동물 동반 장소를 불러오지 못했습니다.";
@@ -138,7 +138,8 @@ export async function searchNearbyPlaces(
     longitude: number,
     radius = 20000,
     page = 1,
-    size = 100
+    size = 100,
+    signal?: AbortSignal
 ): Promise<PlaceSearchResponse> {
     const query = new URLSearchParams({
         latitude: String(latitude),
@@ -147,7 +148,7 @@ export async function searchNearbyPlaces(
         page: String(page),
         size: String(size),
     });
-    const response = await fetch(`${API_URL}/api/places/nearby?${query}`);
+    const response = await apiFetch(`${API_URL}/api/places/nearby?${query}`, { signal });
 
     if (!response.ok) {
         let message = "주변 반려동물 동반 장소를 불러오지 못했습니다.";
@@ -168,7 +169,8 @@ export async function searchAllNearbyPlaces(
     longitude: number,
     radius = 20000,
     onProgress?: (response: PlaceSearchResponse) => void,
-    limits: NearbySearchLimits = {}
+    limits: NearbySearchLimits = {},
+    signal?: AbortSignal
 ): Promise<PlaceSearchResponse> {
     const pageSize = 100;
     const targetUniqueCount = Math.max(1, limits.targetUniqueCount ?? 200);
@@ -178,8 +180,10 @@ export async function searchAllNearbyPlaces(
         longitude,
         radius,
         1,
-        pageSize
+        pageSize,
+        signal
     );
+    signal?.throwIfAborted();
     const pageCount = Math.min(Math.ceil(firstPage.totalCount / pageSize), maxPages);
     const items = [...firstPage.items];
     const uniqueItems = () => Array.from(
@@ -192,7 +196,8 @@ export async function searchAllNearbyPlaces(
     progress();
 
     for (let page = 2; page <= pageCount && uniqueItems().length < targetUniqueCount; page += 1) {
-        const response = await searchNearbyPlaces(latitude, longitude, radius, page, pageSize);
+        const response = await searchNearbyPlaces(latitude, longitude, radius, page, pageSize, signal);
+        signal?.throwIfAborted();
         items.push(...response.items);
         progress();
     }
@@ -211,7 +216,7 @@ export async function getPlacePetDetail(
     contentId: string,
     signal?: AbortSignal
 ): Promise<PlacePetDetail> {
-    const response = await fetch(`${API_URL}/api/places/${contentId}/pet-detail`, {
+    const response = await apiFetch(`${API_URL}/api/places/${contentId}/pet-detail`, {
         signal,
     });
     if (!response.ok) throw new Error("반려동물 동반 상세정보를 불러오지 못했습니다.");
@@ -222,7 +227,7 @@ export async function getPlaceCompatibility(
     contentId: string,
     signal?: AbortSignal
 ): Promise<PlaceCompatibility> {
-    const response = await fetch(
+    const response = await apiFetch(
         `${API_URL}/api/places/${contentId}/compatibility`,
         {
             credentials: "include",

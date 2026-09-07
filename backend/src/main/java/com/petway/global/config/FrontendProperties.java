@@ -5,6 +5,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.Arrays;
 import java.util.List;
+import java.net.URI;
 
 @Component
 public class FrontendProperties {
@@ -12,7 +13,7 @@ public class FrontendProperties {
     private final List<String> origins;
 
     public FrontendProperties(
-            @Value("${FRONTEND_ORIGINS:http://localhost:5173,http://localhost:5174}")
+            @Value("${frontend.origins:${FRONTEND_ORIGINS:http://localhost:5173,http://localhost:5174}}")
             String configuredOrigins
     ) {
         this.origins = Arrays.stream(configuredOrigins.split(","))
@@ -25,6 +26,15 @@ public class FrontendProperties {
             throw new IllegalArgumentException(
                     "FRONTEND_ORIGINS에 하나 이상의 origin이 필요합니다."
             );
+        }
+        for (String origin : origins) {
+            URI uri = URI.create(origin);
+            if (!("http".equals(uri.getScheme()) || "https".equals(uri.getScheme()))
+                    || uri.getHost() == null || uri.getUserInfo() != null
+                    || uri.getQuery() != null || uri.getFragment() != null
+                    || !uri.getPath().isEmpty()) {
+                throw new IllegalArgumentException("FRONTEND_ORIGINS에는 정확한 HTTP(S) origin만 지정할 수 있습니다.");
+            }
         }
     }
 

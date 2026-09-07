@@ -275,19 +275,19 @@ public class CompatibilityEvaluator {
     private void evaluateRequirements(
             Pet pet,
             PetRule rule,
-        Assessment assessment
+            Assessment assessment
     ) {
         for (Requirement requirement : rule.requirements()) {
-            if (requirement.type() == RequirementType.VACCINATION_STATUS) {
-                evaluateVaccinationStatus(pet, assessment);
-                continue;
-            }
-
             if (requirement.target().breedGroup() == BreedGroup.DANGEROUS_BREEDS) {
-                assessment.confirm(
-                        "대상 견종에만 적용되는 준비사항은 방문 전 확인이 필요합니다."
-                );
-                continue;
+                if (pet.getBreed() == null) {
+                    assessment.confirm(
+                            "견종 정보가 없어 맹견 대상 준비사항의 적용 여부를 확인해야 합니다."
+                    );
+                    continue;
+                }
+                if (!pet.getBreed().isDangerous()) {
+                    continue;
+                }
             }
 
             if (!requirement.target().sizes().isEmpty()) {
@@ -302,6 +302,10 @@ public class CompatibilityEvaluator {
                 }
             }
 
+            if (requirement.type() == RequirementType.VACCINATION_STATUS) {
+                evaluateVaccinationStatus(pet, assessment);
+                continue;
+            }
             assessment.require(requirement, requirementReason(requirement));
         }
     }

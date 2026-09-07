@@ -1,4 +1,5 @@
-const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8080";
+import { apiFetch } from "../../../shared/api/client";
+import { API_URL } from "../../../shared/api/config";
 
 export interface DrivingRoute {
     totalDistanceMeters: number;
@@ -44,7 +45,7 @@ export async function getDrivingRoute(
     stops: RouteStopInput[],
     signal?: AbortSignal,
 ): Promise<DrivingRoute> {
-    const response = await fetch(`${API_URL}/api/routes/driving`, {
+    const response = await apiFetch(`${API_URL}/api/routes/driving`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -56,7 +57,7 @@ export async function getDrivingRoute(
 }
 
 export async function getTransitRoute(stops: RouteStopInput[], signal?: AbortSignal): Promise<TransitRoute> {
-    const response = await fetch(`${API_URL}/api/routes/transit`, {
+    const response = await apiFetch(`${API_URL}/api/routes/transit`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

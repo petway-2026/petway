@@ -1,9 +1,10 @@
+import { apiFetch } from "../../../shared/api/client";
 import type {
   WeatherForecastRequest,
   WeatherForecastResponse,
 } from "../types/weather";
 
-const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8080";
+import { API_URL } from "../../../shared/api/config";
 
 export class WeatherApiError extends Error {
   readonly status: number;
@@ -45,7 +46,7 @@ export async function getWeather(
     region: request.region,
   });
 
-  const response = await fetch(`${API_URL}/api/weather?${params.toString()}`, {
+  const response = await apiFetch(`${API_URL}/api/weather?${params.toString()}`, {
     method: "GET",
     credentials: "include",
     signal,

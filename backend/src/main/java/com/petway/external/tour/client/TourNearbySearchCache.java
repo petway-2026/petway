@@ -7,7 +7,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -22,7 +21,6 @@ public class TourNearbySearchCache {
 
     static final Duration DEFAULT_TTL = Duration.ofMinutes(2);
     static final int DEFAULT_MAX_ENTRIES = 256;
-    private static final int COORDINATE_SCALE = 3;
 
     private final ConcurrentMap<Key, Entry> entries = new ConcurrentHashMap<>();
     private final Clock clock;
@@ -73,16 +71,12 @@ public class TourNearbySearchCache {
 
     private Key key(NearbyPlaceSearchCondition condition) {
         return new Key(
-                rounded(condition.latitude()),
-                rounded(condition.longitude()),
+                condition.latitude().stripTrailingZeros(),
+                condition.longitude().stripTrailingZeros(),
                 condition.radius(),
                 condition.page(),
                 condition.size()
         );
-    }
-
-    private BigDecimal rounded(BigDecimal coordinate) {
-        return coordinate.setScale(COORDINATE_SCALE, RoundingMode.HALF_UP);
     }
 
     private void removeExpired(Instant now) {

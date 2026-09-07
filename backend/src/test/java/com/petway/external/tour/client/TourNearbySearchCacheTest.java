@@ -19,7 +19,7 @@ class TourNearbySearchCacheTest {
     private static final PlaceSearchResult RESULT = new PlaceSearchResult(1, 100, 0, List.of());
 
     @Test
-    void reusesMinorCoordinateMovementButKeepsRequestParametersDistinct() {
+    void preservesExactSearchCenterWhileIgnoringDecimalScale() {
         TourNearbySearchCache cache = new TourNearbySearchCache(
                 Clock.fixed(Instant.parse("2026-09-01T00:00:00Z"), ZoneOffset.UTC),
                 Duration.ofMinutes(2),
@@ -27,11 +27,13 @@ class TourNearbySearchCacheTest {
         );
         cache.put(condition("37.56651", "126.97801", 5000, 1, 100), RESULT);
 
-        assertThat(cache.get(condition("37.56654", "126.97804", 5000, 1, 100)))
+        assertThat(cache.get(condition("37.566510", "126.978010", 5000, 1, 100)))
                 .contains(RESULT);
-        assertThat(cache.get(condition("37.56654", "126.97804", 5001, 1, 100)))
+        assertThat(cache.get(condition("37.56654", "126.97804", 5000, 1, 100)))
                 .isEmpty();
-        assertThat(cache.get(condition("37.56654", "126.97804", 5000, 2, 100)))
+        assertThat(cache.get(condition("37.56651", "126.97801", 5001, 1, 100)))
+                .isEmpty();
+        assertThat(cache.get(condition("37.56651", "126.97801", 5000, 2, 100)))
                 .isEmpty();
     }
 

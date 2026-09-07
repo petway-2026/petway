@@ -1,8 +1,7 @@
+import { apiFetch } from "../../../shared/api/client";
 import type { HospitalPageResponse } from "../types/hospital";
 
-const API_URL =
-    import.meta.env.VITE_API_URL ??
-    "http://localhost:8080";
+import { API_URL } from "../../../shared/api/config";
 
 export async function getHospitals(
     address?: string,
@@ -24,7 +23,7 @@ export async function getHospitals(
         query.set("name", name);
     }
 
-    const response = await fetch(
+    const response = await apiFetch(
         `${API_URL}/api/hospitals?${query.toString()}`,
         {
             method: "GET",

@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../shared/api/client";
 import type {
     ApiError,
     LoginRequest,
@@ -7,8 +8,7 @@ import type {
     User,
 } from "../types/auth";
 
-const API_URL =
-    import.meta.env.VITE_API_URL ?? "http://localhost:8080";
+import { API_URL } from "../../../shared/api/config";
 
 export function loginWithKakao(): void {
     window.location.href = `${API_URL}/oauth2/authorization/kakao`;
@@ -27,7 +27,7 @@ async function parseError(response: Response): Promise<string> {
 export async function signup(
     request: SignupRequest
 ): Promise<SignupResponse> {
-    const response = await fetch(
+    const response = await apiFetch(
         `${API_URL}/api/auth/signup`,
         {
             method: "POST",
@@ -52,7 +52,7 @@ export async function signup(
 export async function login(
     request: LoginRequest
 ): Promise<LoginResponse> {
-    const response = await fetch(
+    const response = await apiFetch(
         `${API_URL}/api/auth/login`,
         {
             method: "POST",
@@ -77,7 +77,7 @@ export async function login(
 export async function linkKakaoAccount(
     request: LoginRequest
 ): Promise<LoginResponse> {
-    const response = await fetch(
+    const response = await apiFetch(
         `${API_URL}/api/auth/oauth/kakao/link`,
         {
             method: "POST",
@@ -97,7 +97,7 @@ export async function linkKakaoAccount(
 }
 
 export async function getMe(): Promise<User> {
-    const response = await fetch(
+    const response = await apiFetch(
         `${API_URL}/api/auth/me`,
         {
             method: "GET",
@@ -114,7 +114,7 @@ export async function getMe(): Promise<User> {
 }
 
 export async function logout(): Promise<void> {
-    const response = await fetch(
+    const response = await apiFetch(
         `${API_URL}/api/auth/logout`,
         {
             method: "POST",

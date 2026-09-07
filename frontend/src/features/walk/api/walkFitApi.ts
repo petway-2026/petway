@@ -1,6 +1,7 @@
+import { apiFetch } from "../../../shared/api/client";
 import type { WalkFitRecommendationResponse } from "../types/walkFit";
 
-const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8080";
+import { API_URL } from "../../../shared/api/config";
 
 export class WalkFitApiError extends Error {
   readonly status: number;
@@ -25,7 +26,7 @@ export async function getWalkFitRecommendations(
     longitude: String(longitude),
     targetDate,
   });
-  const response = await fetch(`${API_URL}/api/walk/recommendations?${query}`, {
+  const response = await apiFetch(`${API_URL}/api/walk/recommendations?${query}`, {
     credentials: "include",
     signal,
   });

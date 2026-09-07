@@ -1,4 +1,5 @@
-const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8080";
+import { apiFetch } from "../../../shared/api/client";
+import { API_URL } from "../../../shared/api/config";
 
 export interface AiCourseCandidate {
     candidateId: string;
@@ -29,7 +30,7 @@ export async function createAiCourse(input: {
     weatherSummary: string | null;
     candidates: AiCourseCandidate[];
 }): Promise<AiCourseRecommendation> {
-    const response = await fetch(`${API_URL}/api/recommendations/travel-course`, {
+    const response = await apiFetch(`${API_URL}/api/recommendations/travel-course`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

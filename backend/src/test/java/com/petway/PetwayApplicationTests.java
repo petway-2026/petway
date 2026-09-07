@@ -54,10 +54,10 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @AutoConfigureMockMvc
+@org.springframework.test.context.ActiveProfiles("test")
 @SpringBootTest(properties = {
         "spring.autoconfigure.exclude="
-                + "org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration,"
-                + "org.springframework.boot.autoconfigure.security.oauth2.client.servlet.OAuth2ClientAutoConfiguration"
+                + "org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration"
 })
 class PetwayApplicationTests {
 
@@ -125,16 +125,48 @@ class PetwayApplicationTests {
     @DisplayName("기존 보호 API는 인증 없이 접근할 수 없다")
     void protectedApiStillRequiresAuthentication() throws Exception {
         mockMvc.perform(get("/api/pets"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void anonymousMeReturnsUnauthorized() throws Exception {
+        mockMvc.perform(get("/api/auth/me"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void authenticatedNonAdminStillReceivesForbidden() throws Exception {
+        mockMvc.perform(get("/api/admin/test").with(user("member").roles("USER")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void corsAllowsConfiguredOriginWithCredentials() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options("/api/auth/me")
+                        .header("Origin", "http://localhost:5173")
+                        .header("Access-Control-Request-Method", "GET"))
+                .andExpect(status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .header().string("Access-Control-Allow-Origin", "http://localhost:5173"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .header().string("Access-Control-Allow-Credentials", "true"));
+    }
+
+    @Test
+    void corsRejectsUnconfiguredOrigin() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options("/api/auth/me")
+                        .header("Origin", "https://untrusted.example")
+                        .header("Access-Control-Request-Method", "GET"))
                 .andExpect(status().isForbidden());
     }
 
     @Test
     @DisplayName("동물등록정보 조회는 로그인 사용자만 사용할 수 있다")
     void animalRegistrationLookupRequiresAuthentication() throws Exception {
-        mockMvc.perform(post("/api/pets/registration-lookup")
+        mockMvc.perform(post("/api/pets/registration-lookup").with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(registrationLookupRequest()))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -157,7 +189,7 @@ class PetwayApplicationTests {
                 )
         );
 
-        mockMvc.perform(post("/api/pets/registration-lookup")
+        mockMvc.perform(post("/api/pets/registration-lookup").with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf())
                         .with(user("owner@petway.test"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(registrationLookupRequest()))
@@ -178,7 +210,7 @@ class PetwayApplicationTests {
     @Test
     @DisplayName("동물등록정보 조회 조건이 잘못되면 외부 API를 호출하지 않는다")
     void invalidAnimalRegistrationLookupIsRejectedBeforeProviderCall() throws Exception {
-        mockMvc.perform(post("/api/pets/registration-lookup")
+        mockMvc.perform(post("/api/pets/registration-lookup").with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf())
                         .with(user("owner@petway.test"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -204,7 +236,7 @@ class PetwayApplicationTests {
                         "provider detail"
                 ));
 
-        mockMvc.perform(post("/api/pets/registration-lookup")
+        mockMvc.perform(post("/api/pets/registration-lookup").with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf())
                         .with(user("owner@petway.test"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(registrationLookupRequest()))
@@ -222,7 +254,7 @@ class PetwayApplicationTests {
                         "provider detail"
                 ));
 
-        mockMvc.perform(post("/api/pets/registration-lookup")
+        mockMvc.perform(post("/api/pets/registration-lookup").with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf())
                         .with(user("owner@petway.test"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(registrationLookupRequest()))
@@ -240,7 +272,7 @@ class PetwayApplicationTests {
                         "provider detail"
                 ));
 
-        mockMvc.perform(post("/api/pets/registration-lookup")
+        mockMvc.perform(post("/api/pets/registration-lookup").with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf())
                         .with(user("owner@petway.test"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(registrationLookupRequest()))
@@ -311,15 +343,15 @@ class PetwayApplicationTests {
     @Test
     @DisplayName("날씨 API의 GET 이외 요청은 인증 없이 접근할 수 없다")
     void weatherNonGetRequestRequiresAuthentication() throws Exception {
-        mockMvc.perform(post("/api/weather"))
-                .andExpect(status().isForbidden());
+        mockMvc.perform(post("/api/weather").with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf()))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
     @DisplayName("사용자별 장소 동반 가능 판정 API는 인증 없이 접근할 수 없다")
     void placeCompatibilityRequiresAuthentication() throws Exception {
         mockMvc.perform(get("/api/places/125266/compatibility"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -329,7 +361,7 @@ class PetwayApplicationTests {
                         .param("latitude", "37.5665")
                         .param("longitude", "126.9780")
                         .param("targetDate", "2026-09-01"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -399,7 +431,8 @@ class PetwayApplicationTests {
                 .thenReturn(Optional.of(localAuth));
 
         MockHttpSession session = new MockHttpSession();
-        mockMvc.perform(post("/api/auth/login")
+        String originalSessionId = session.getId();
+        mockMvc.perform(post("/api/auth/login").with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf())
                         .session(session)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -407,9 +440,115 @@ class PetwayApplicationTests {
                                 """))
                 .andExpect(status().isOk());
 
+        assertNotEquals(originalSessionId, session.getId());
         mockMvc.perform(get("/api/auth/me").session(session))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.email").value("active@petway.test"));
+
+        // Real CSRF bootstrap, rather than the test helper, must work after login rotation.
+        var tokenResponse = mockMvc.perform(get("/api/auth/csrf").session(session))
+                .andExpect(status().isOk()).andReturn();
+        var token = new com.fasterxml.jackson.databind.ObjectMapper()
+                .readTree(tokenResponse.getResponse().getContentAsString());
+        mockMvc.perform(post("/api/auth/logout").session(session)
+                        .header(token.path("headerName").asText(), token.path("token").asText()))
+                .andExpect(status().isOk());
+        assertTrue(session.isInvalid());
+        mockMvc.perform(get("/api/auth/me")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void csrfBlocksUnauthenticatedLoginAndAuthenticatedMutationWithoutToken() throws Exception {
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"test@example.com\",\"password\":\"password123\"}"))
+                .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("CSRF_INVALID"));
+        mockMvc.perform(post("/api/favorites").with(user("member")))
+                .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("CSRF_INVALID"));
+    }
+
+    @Test
+    void csrfBootstrapTokenIsSessionBoundAndCannotBeReusedByAnotherSession() throws Exception {
+        var tokenResponse = mockMvc.perform(get("/api/auth/csrf"))
+                .andExpect(status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .header().string("Cache-Control", "no-store"))
+                .andReturn();
+        var session = (MockHttpSession) tokenResponse.getRequest().getSession(false);
+        assertNotNull(session);
+        var token = new com.fasterxml.jackson.databind.ObjectMapper()
+                .readTree(tokenResponse.getResponse().getContentAsString());
+        // Invalid credentials return 401 only after the actual CSRF header was accepted.
+        mockMvc.perform(post("/api/auth/login").session(session)
+                        .header(token.path("headerName").asText(), token.path("token").asText())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"unknown@example.com\",\"password\":\"password123\"}"))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(post("/api/auth/login").session(new MockHttpSession())
+                        .header(token.path("headerName").asText(), token.path("token").asText()))
+                .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("CSRF_INVALID"));
+    }
+
+    @Test
+    void oauthAuthorizationCallbackAndSessionFlowWithControlledProvider() throws Exception {
+        var provider = com.sun.net.httpserver.HttpServer.create(new java.net.InetSocketAddress("127.0.0.1", 0), 0);
+        var tokenCalls = new java.util.concurrent.atomic.AtomicInteger();
+        provider.createContext("/token", exchange -> {
+            tokenCalls.incrementAndGet();
+            byte[] body = "{\"access_token\":\"test-only-access-token\",\"token_type\":\"Bearer\",\"expires_in\":3600}"
+                    .getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().add("Content-Type", "application/json");
+            exchange.sendResponseHeaders(200, body.length);
+            try (var output = exchange.getResponseBody()) { output.write(body); }
+        });
+        provider.createContext("/userinfo", exchange -> {
+            byte[] body = "{\"id\":\"kakao-test-101\"}".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().add("Content-Type", "application/json");
+            exchange.sendResponseHeaders(200, body.length);
+            try (var output = exchange.getResponseBody()) { output.write(body); }
+        });
+        provider.start();
+        try {
+            String base = "http://127.0.0.1:" + provider.getAddress().getPort();
+            var registration = org.springframework.security.oauth2.client.registration.ClientRegistration
+                    .withRegistrationId("kakao").clientId("test-client").clientSecret("test-secret")
+                    .clientAuthenticationMethod(org.springframework.security.oauth2.core.ClientAuthenticationMethod.CLIENT_SECRET_POST)
+                    .authorizationGrantType(org.springframework.security.oauth2.core.AuthorizationGrantType.AUTHORIZATION_CODE)
+                    .redirectUri("http://localhost/login/oauth2/code/kakao")
+                    .authorizationUri(base + "/authorize").tokenUri(base + "/token")
+                    .userInfoUri(base + "/userinfo").userNameAttributeName("id").build();
+            when(clientRegistrationRepository.findByRegistrationId("kakao")).thenReturn(registration);
+            User oauthUser = User.createOAuthUser("oauth-session@petway.test", "카카오 테스트");
+            when(userAuthRepository.findByProviderAndProviderUserId("kakao", "kakao-test-101"))
+                    .thenReturn(Optional.of(UserAuth.createKakao(oauthUser, "kakao-test-101")));
+            when(userRepository.findByEmail(oauthUser.getEmail())).thenReturn(Optional.of(oauthUser));
+
+            var start = mockMvc.perform(get("/oauth2/authorization/kakao"))
+                    .andExpect(status().is3xxRedirection()).andReturn();
+            var session = (MockHttpSession) start.getRequest().getSession(false);
+            assertNotNull(session);
+            String oldId = session.getId();
+            var params = org.springframework.web.util.UriComponentsBuilder
+                    .fromUriString(start.getResponse().getRedirectedUrl()).build().getQueryParams();
+            assertEquals("login", params.getFirst("prompt"));
+            String state = java.net.URLDecoder.decode(params.getFirst("state"), java.nio.charset.StandardCharsets.UTF_8);
+            mockMvc.perform(get("/login/oauth2/code/kakao").session(session)
+                            .param("code", "test-code").param("state", state))
+                    .andExpect(status().is3xxRedirection())
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                            .redirectedUrl("http://localhost:5173/"));
+            assertNotEquals(oldId, session.getId());
+            mockMvc.perform(get("/api/auth/me").session(session)).andExpect(status().isOk())
+                    .andExpect(jsonPath("$.email").value(oauthUser.getEmail()));
+            assertEquals(1, tokenCalls.get());
+
+            // An unbound callback must not exchange its code or create an authenticated session.
+            mockMvc.perform(get("/login/oauth2/code/kakao").param("code", "test-code").param("state", state))
+                    .andExpect(status().is3xxRedirection());
+            assertEquals(1, tokenCalls.get());
+        } finally {
+            provider.stop(0);
+        }
     }
 
     @Test
