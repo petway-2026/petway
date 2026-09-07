@@ -292,11 +292,19 @@ class PetRuleParserTest {
         assertThat(rule.unparsedFragments()).isEmpty();
     }
 
-    @Test
-    void keepsDangerousBreedAsRequirementTargetInsteadOfBlockingWholePlace() {
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {
+            "맹견의 경우 입마개 착용 필수",
+            "맹견의 경우, 입마개 착용 필수",
+            "맹견 의 경우, 입마개 착용 필수",
+            "맹견의 경우: 입마개 착용 필수",
+            "실내에서 맹견의 경우, 입마개 착용 필수",
+            "맹견의 경우, 실내에서 입마개 착용 필수"
+    })
+    void keepsDangerousBreedAsRequirementTargetInsteadOfBlockingWholePlace(String text) {
         PetRule rule = parser.parse(source(
                 PetRuleSourceField.ACMPY_NEED_MTR,
-                "맹견의 경우 입마개 착용 필수"
+                text
         ));
 
         assertThat(rule.requirements()).hasSize(1);

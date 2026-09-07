@@ -134,6 +134,7 @@ export default function NearbyPlacesSection({
     const [locationMessage, setLocationMessage] = useState(INITIAL_LOCATION_MESSAGE);
     const [mapAreaSearch, setMapAreaSearch] = useState(false);
     const detailRequestRef = useRef<{ id: number; controller: AbortController } | null>(null);
+    const nearbyRequestRef = useRef<AbortController | null>(null);
     const compatibilityRequestRef = useRef<AbortController | null>(null);
     const detailRequestIdRef = useRef(0);
     const locationStatusMessageRef = useRef(INITIAL_LOCATION_MESSAGE);
@@ -174,6 +175,7 @@ export default function NearbyPlacesSection({
     }, [restoreLocationMessage]);
 
     useEffect(() => () => {
+        nearbyRequestRef.current?.abort();
         detailRequestRef.current?.controller.abort();
         compatibilityRequestRef.current?.abort();
     }, []);
@@ -212,6 +214,9 @@ export default function NearbyPlacesSection({
     };
 
     const searchAt = async (location: MapCenter, areaSearch = false, radiusOption?: RadiusOption, targetBounds?: MapBounds | null) => {
+        nearbyRequestRef.current?.abort();
+        const controller = new AbortController();
+        nearbyRequestRef.current = controller;
         setMapAreaSearch(areaSearch);
         setLocationLoading(true);
         updateLocationMessage("선택한 지도 영역의 장소를 찾고 있어요.");
@@ -223,10 +228,16 @@ export default function NearbyPlacesSection({
                 location.latitude,
                 location.longitude,
                 policy.radius,
-                (partial) => setPlaces([...partial.items].sort((left, right) =>
-                    (distanceInMeters(location, left) ?? Number.MAX_VALUE)
-                    - (distanceInMeters(location, right) ?? Number.MAX_VALUE)))
+                (partial) => {
+                    if (controller.signal.aborted) return;
+                    setPlaces([...partial.items].sort((left, right) =>
+                        (distanceInMeters(location, left) ?? Number.MAX_VALUE)
+                        - (distanceInMeters(location, right) ?? Number.MAX_VALUE)));
+                },
+                {},
+                controller.signal
             );
+            if (controller.signal.aborted) return;
             const sortedPlaces = [...response.items].sort((left, right) =>
                 (distanceInMeters(location, left) ?? Number.MAX_VALUE)
                 - (distanceInMeters(location, right) ?? Number.MAX_VALUE)
@@ -240,13 +251,17 @@ export default function NearbyPlacesSection({
             setRadiusPolicy(policy);
             updateLocationMessage(
                 sortedPlaces.length > 0
-                    ? `${areaSearch ? "현재 지도 영역" : policy.label}에서 총 ${sortedPlaces.length}곳을 찾았어요. 가까운 순으로 확인해보세요.`
+                    ? `${areaSearch ? "현재 지도 영역" : policy.label}에서 ${response.totalCount > sortedPlaces.length ? `${response.totalCount}곳 중 ` : "총 "}${sortedPlaces.length}곳을 표시해요. 가까운 순으로 확인해보세요.`
                     : `${policy.label} 범위에서 등록된 동반 장소를 찾지 못했어요.`
             );
         } catch (cause) {
+            if (controller.signal.aborted) return;
             updateLocationMessage(cause instanceof Error ? cause.message : "주변 장소를 불러오지 못했습니다.");
         } finally {
-            setLocationLoading(false);
+            if (nearbyRequestRef.current === controller) {
+                nearbyRequestRef.current = null;
+                setLocationLoading(false);
+            }
         }
     };
 

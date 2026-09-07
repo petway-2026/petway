@@ -180,7 +180,7 @@ public final class PetRuleParser {
 
     private static final Pattern REQUIREMENT_TARGET_PATTERN = Pattern.compile(
             "(중소형견|소형견|중형견|대형견|맹견)"
-                    + "(?:의\\s*경우|은|는|이|가)?\\s*$"
+                    + "\\s*(?:의\\s*경우|은|는|이|가)?\\s*[:：]?\\s*$"
     );
 
     private static final Pattern REQUIREMENT_SCOPE_PATTERN = Pattern.compile(
@@ -676,6 +676,15 @@ public final class PetRuleParser {
             int requirementStart
     ) {
         int clauseStart = findClauseStart(rawText, requirementStart);
+        // A comma after a subject header does not end its condition:
+        // "맹견의 경우, 입마개 착용 필수". Other commas remain clause boundaries.
+        if (clauseStart > 0 && rawText.charAt(clauseStart - 1) == ',') {
+            int previousStart = findClauseStart(rawText, clauseStart - 1);
+            String header = rawText.substring(previousStart, clauseStart - 1);
+            if (REQUIREMENT_TARGET_PATTERN.matcher(header).find()) {
+                clauseStart = previousStart;
+            }
+        }
         String prefix = rawText.substring(clauseStart, requirementStart);
         int recognizedStart = requirementStart;
         SpaceScope scope = SpaceScope.UNSPECIFIED;
@@ -690,12 +699,15 @@ public final class PetRuleParser {
             );
         }
 
-        Matcher targetMatcher = REQUIREMENT_TARGET_PATTERN.matcher(prefix);
+        // Space qualifiers can follow the subject without changing the target.
+        String targetPrefix = REQUIREMENT_SCOPE_PATTERN.matcher(prefix).replaceAll("")
+                .replace(',', ' ');
+        Matcher targetMatcher = REQUIREMENT_TARGET_PATTERN.matcher(targetPrefix);
         while (targetMatcher.find()) {
             target = toPetSubject(targetMatcher.group(1));
             recognizedStart = Math.min(
                     recognizedStart,
-                    clauseStart + targetMatcher.start()
+                    clauseStart + prefix.lastIndexOf(targetMatcher.group(1))
             );
         }
 

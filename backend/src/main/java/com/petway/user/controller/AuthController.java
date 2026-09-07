@@ -9,6 +9,9 @@ import com.petway.user.service.UserService;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.security.web.csrf.CsrfToken;
+import org.springframework.security.web.csrf.HttpSessionCsrfTokenRepository;
 
 import jakarta.validation.Valid;
 
@@ -36,6 +39,14 @@ public class AuthController {
 
     private final UserService userService;
     private final AuthService authService;
+    private final HttpSessionCsrfTokenRepository csrfTokenRepository;
+
+    @GetMapping("/csrf")
+    public ResponseEntity<?> csrf(CsrfToken token) {
+        return ResponseEntity.ok()
+                .cacheControl(org.springframework.http.CacheControl.noStore())
+                .body(Map.of("token", token.getToken(), "headerName", token.getHeaderName()));
+    }
 
 
     /**
@@ -70,7 +81,8 @@ public class AuthController {
             @RequestBody
             LoginRequest request,
 
-            HttpServletRequest httpRequest
+            HttpServletRequest httpRequest,
+            HttpServletResponse httpResponse
     ) {
 
         /*
@@ -78,6 +90,8 @@ public class AuthController {
          */
         Authentication authentication =
                 authService.login(request);
+
+        rotateSession(httpRequest, httpResponse);
 
 
         /*
@@ -137,11 +151,14 @@ public class AuthController {
     @PostMapping("/oauth/kakao/link")
     public ResponseEntity<?> confirmKakaoLink(
             @Valid @RequestBody LoginRequest request,
-            HttpServletRequest httpRequest
+            HttpServletRequest httpRequest,
+            HttpServletResponse httpResponse
     ) {
         HttpSession session = httpRequest.getSession(false);
         Authentication authentication =
                 authService.confirmAndLinkKakao(request, session);
+
+        rotateSession(httpRequest, httpResponse);
 
         SecurityContext securityContext =
                 SecurityContextHolder.createEmptyContext();
@@ -222,5 +239,10 @@ public class AuthController {
                         "로그아웃되었습니다."
                 )
         );
+    }
+
+    private void rotateSession(HttpServletRequest request, HttpServletResponse response) {
+        if (request.getSession(false) != null) request.changeSessionId();
+        csrfTokenRepository.saveToken(null, request, response);
     }
 }

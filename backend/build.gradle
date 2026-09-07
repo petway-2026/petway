@@ -66,3 +66,12 @@ dependencies {
 tasks.named('test') {
     useJUnitPlatform()
 }
+
+// Opt-in read-only live verification; requires TOUR_API_KEY and caps KTO requests at 15.
+tasks.register('verifyNearbyPagination', JavaExec) {
+    group = 'verification'
+    description = 'Verify merged nearby pagination against KTO, without a database or user data writes.'
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.petway.place.service.NearbyPaginationLiveCheck'
+}

@@ -18,7 +18,9 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
+import org.springframework.security.web.csrf.CsrfException;
+import org.springframework.security.web.csrf.HttpSessionCsrfTokenRepository;
+import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.oauth2.client.web.DefaultOAuth2AuthorizationRequestResolver;
 import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestResolver;
@@ -54,16 +56,7 @@ public class SecurityConfig {
 
         http
 
-                /*
-                 * 개발 단계
-                 *
-                 * Session 방식이라 최종 배포 전에는
-                 * CSRF 전략을 다시 잡는 게 좋음.
-                 */
-                .csrf(
-                        csrf ->
-                                csrf.disable()
-                )
+                .csrf(csrf -> csrf.csrfTokenRepository(csrfTokenRepository()))
 
 
                 .cors(
@@ -85,6 +78,7 @@ public class SecurityConfig {
 
                                 .requestMatchers(
                                         "/api/auth/signup",
+                                        "/api/auth/csrf",
                                         "/api/auth/login",
                                         "/api/auth/oauth/kakao/link",
                                         "/api/places/**",
@@ -110,11 +104,18 @@ public class SecurityConfig {
 
                 .exceptionHandling(
                         exception -> exception
+                                .accessDeniedHandler((request, response, denied) -> {
+                                    response.setStatus(HttpStatus.FORBIDDEN.value());
+                                    response.setContentType("application/json;charset=UTF-8");
+                                    response.getWriter().write(denied instanceof CsrfException
+                                            ? "{\"code\":\"CSRF_INVALID\",\"message\":\"보안 토큰이 만료되었습니다. 다시 시도해 주세요.\"}"
+                                            : "{\"code\":\"ACCESS_DENIED\",\"message\":\"접근 권한이 없습니다.\"}");
+                                })
                                 .defaultAuthenticationEntryPointFor(
                                         new HttpStatusEntryPoint(
-                                                HttpStatus.FORBIDDEN
+                                                HttpStatus.UNAUTHORIZED
                                         ),
-                                        new AntPathRequestMatcher(
+                                        PathPatternRequestMatcher.withDefaults().matcher(
                                                 "/api/**"
                                         )
                                 )
@@ -187,6 +188,11 @@ public class SecurityConfig {
         return resolver;
     }
 
+
+    @Bean
+    public HttpSessionCsrfTokenRepository csrfTokenRepository() {
+        return new HttpSessionCsrfTokenRepository();
+    }
 
     @Bean
     public PasswordEncoder passwordEncoder() {

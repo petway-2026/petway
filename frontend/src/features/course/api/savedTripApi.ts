@@ -1,4 +1,5 @@
-const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8080";
+import { apiFetch } from "../../../shared/api/client";
+import { API_URL } from "../../../shared/api/config";
 
 export interface SavedTripPlace {
     contentId: string;
@@ -28,7 +29,7 @@ export interface SavedTrip {
 }
 
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
-    const response = await fetch(`${API_URL}${url}`, { credentials: "include", ...options });
+    const response = await apiFetch(`${API_URL}${url}`, { credentials: "include", ...options });
     if (!response.ok) {
         let message = "저장한 여행일정을 처리하지 못했습니다.";
         try { message = ((await response.json()) as { message?: string }).message ?? message; } catch { /* noop */ }

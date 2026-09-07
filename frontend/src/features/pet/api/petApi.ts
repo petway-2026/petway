@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../shared/api/client";
 import type {
     Pet,
     PetCreateRequest,
@@ -6,9 +7,7 @@ import type {
     PetUpdateRequest,
 } from "../types/pet";
 
-const API_URL =
-    import.meta.env.VITE_API_URL ??
-    "http://localhost:8080";
+import { API_URL } from "../../../shared/api/config";
 
 async function parseError(
     response: Response
@@ -39,7 +38,7 @@ export async function lookupPetRegistration(
     data: PetRegistrationLookupRequest,
     signal?: AbortSignal
 ): Promise<PetRegistrationLookupResponse> {
-    const response = await fetch(
+    const response = await apiFetch(
         `${API_URL}/api/pets/registration-lookup`,
         {
             method: "POST",
@@ -63,7 +62,7 @@ export async function lookupPetRegistration(
 }
 
 export async function getPets(): Promise<Pet[]> {
-    const response = await fetch(
+    const response = await apiFetch(
         `${API_URL}/api/pets`,
         {
             method: "GET",
@@ -83,7 +82,7 @@ export async function getPets(): Promise<Pet[]> {
 export async function getPet(
     petId: number
 ): Promise<Pet> {
-    const response = await fetch(
+    const response = await apiFetch(
         `${API_URL}/api/pets/${petId}`,
         {
             method: "GET",
@@ -103,7 +102,7 @@ export async function getPet(
 export async function createPet(
     data: PetCreateRequest
 ): Promise<Pet> {
-    const response = await fetch(
+    const response = await apiFetch(
         `${API_URL}/api/pets`,
         {
             method: "POST",
@@ -128,7 +127,7 @@ export async function updatePet(
     petId: number,
     data: PetUpdateRequest
 ): Promise<Pet> {
-    const response = await fetch(
+    const response = await apiFetch(
         `${API_URL}/api/pets/${petId}`,
         {
             method: "PUT",
@@ -152,7 +151,7 @@ export async function updatePet(
 export async function setPrimaryPet(
     petId: number
 ): Promise<Pet> {
-    const response = await fetch(
+    const response = await apiFetch(
         `${API_URL}/api/pets/${petId}/primary`,
         {
             method: "PATCH",
@@ -172,7 +171,7 @@ export async function setPrimaryPet(
 export async function deletePet(
     petId: number
 ): Promise<void> {
-    const response = await fetch(
+    const response = await apiFetch(
         `${API_URL}/api/pets/${petId}`,
         {
             method: "DELETE",
