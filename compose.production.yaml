@@ -16,8 +16,8 @@ services:
       WEATHER_MID_TERM_API_KEY: ${WEATHER_MID_TERM_API_KEY:?WEATHER_MID_TERM_API_KEY is required}
       KAKAO_REST_API_KEY: ${KAKAO_REST_API_KEY:?KAKAO_REST_API_KEY is required}
       KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET:?KAKAO_CLIENT_SECRET is required}
-      KAKAO_REDIRECT_URI: https://${APP_DOMAIN:?APP_DOMAIN is required}/login/oauth2/code/kakao
       FRONTEND_ORIGINS: https://${APP_DOMAIN:?APP_DOMAIN is required}
+      SESSION_COOKIE_SECURE: "true"
       SESSION_COOKIE_SAME_SITE: lax
 
   frontend:
