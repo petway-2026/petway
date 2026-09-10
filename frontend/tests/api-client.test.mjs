@@ -123,6 +123,37 @@ test('production relative API URL stays on the browser origin', async () => {
     assert.equal((await apiFetch('/api/auth/me')).status, 401);
 });
 
+test('production relative login completes after CSRF rejection and retry', async () => {
+    const { apiFetch } = await client('');
+    globalThis.window = { location: { origin: 'https://petway.test' } };
+    const calls = [];
+    let bootstraps = 0;
+    let logins = 0;
+    globalThis.fetch = async (url, init) => {
+        if (url === '/api/auth/csrf') {
+            calls.push('csrf:200');
+            return token(`token-${++bootstraps}`);
+        }
+        if (url === '/api/reviews') return json({ ok: true });
+        assert.equal(url, '/api/auth/login');
+        logins++;
+        if (logins === 1) {
+            calls.push('login:403');
+            return json({ code: 'CSRF_INVALID' }, 403);
+        }
+        calls.push('login:200');
+        assert.equal(init.headers.get('X-CSRF-TOKEN'), 'token-2');
+        return json({ user: { id: 1 } });
+    };
+
+    await apiFetch('/api/reviews', { method: 'POST' });
+    calls.length = 0;
+    const response = await apiFetch('/api/auth/login', { method: 'POST' });
+
+    assert.equal(response.status, 200);
+    assert.deepEqual(calls, ['login:403', 'csrf:200', 'login:200']);
+});
+
 test('never sends session tokens to another origin', async () => {
     const { apiFetch } = await client();
     globalThis.fetch = () => { throw new Error('must not fetch'); };
