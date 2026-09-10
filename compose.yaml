@@ -1,0 +1,107 @@
+name: petway
+
+services:
+  mysql:
+    image: mysql:8.0.36
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-petway}
+      MYSQL_USER: ${MYSQL_USER:-petway}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-petway-local-password}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-petway-local-root-password}
+      TZ: Asia/Seoul
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+    expose:
+      - "3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./deploy/mysql/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root --password=\"$${MYSQL_ROOT_PASSWORD}\" --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    networks:
+      - petway-internal
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SERVER_PORT: "8081"
+      SERVER_FORWARD_HEADERS_STRATEGY: framework
+      DB_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE:-petway}?serverTimezone=Asia/Seoul&characterEncoding=UTF-8&useUnicode=true&useSSL=false&allowPublicKeyRetrieval=true
+      DB_USERNAME: ${MYSQL_USER:-petway}
+      DB_PASSWORD: ${MYSQL_PASSWORD:-petway-local-password}
+      TOUR_API_KEY: ${TOUR_API_KEY:-}
+      WEATHER_SHORT_TERM_API_KEY: ${WEATHER_SHORT_TERM_API_KEY:-local-placeholder}
+      WEATHER_MID_TERM_API_KEY: ${WEATHER_MID_TERM_API_KEY:-local-placeholder}
+      KAKAO_REST_API_KEY: ${KAKAO_REST_API_KEY:-local-placeholder}
+      KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET:-local-placeholder}
+      KAKAO_REDIRECT_URI: ${KAKAO_REDIRECT_URI:-https://localhost/login/oauth2/code/kakao}
+      FRONTEND_ORIGINS: ${FRONTEND_ORIGINS:-https://localhost}
+      SESSION_COOKIE_SAME_SITE: lax
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4.1-mini}
+      OPENAI_TIMEOUT_SECONDS: ${OPENAI_TIMEOUT_SECONDS:-20}
+      ODSAY_API_KEY: ${ODSAY_API_KEY:-}
+      ODSAY_CACHE_MINUTES: ${ODSAY_CACHE_MINUTES:-360}
+      ODSAY_CACHE_MAX_ENTRIES: ${ODSAY_CACHE_MAX_ENTRIES:-1000}
+      ANIMAL_HOSPITAL_API_KEY: ${ANIMAL_HOSPITAL_API_KEY:-}
+      ANIMAL_REGISTRATION_API_KEY: ${ANIMAL_REGISTRATION_API_KEY:-}
+      JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:--Xms128m -Xmx512m}
+      TZ: Asia/Seoul
+    expose:
+      - "8081"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "status=$$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:8081/api/auth/me); [ \"$$status\" = \"401\" ]"]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 45s
+    networks:
+      - petway-internal
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost}
+        VITE_KAKAO_MAP_KEY: ${VITE_KAKAO_MAP_KEY:-local-placeholder}
+    restart: unless-stopped
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:-localhost}
+      NGINX_ENVSUBST_FILTER: ^APP_DOMAIN$
+    ports:
+      - "80:80"
+    volumes:
+      - ./deploy/certbot/www:/var/www/certbot:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1/healthz"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+    networks:
+      - petway-internal
+
+networks:
+  petway-internal:
+    driver: bridge
+
+volumes:
+  mysql_data:
+    name: ${MYSQL_VOLUME_NAME:-petway_mysql_data}
