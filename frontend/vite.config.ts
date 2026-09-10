@@ -7,8 +7,11 @@ export default defineConfig(({ mode }) => {
   if (!apiUrl) {
     throw new Error('VITE_API_URL 환경변수에 백엔드 주소를 설정해 주세요.')
   }
+  if (mode === 'production' && apiUrl === '/') {
+    return { plugins: [react()] }
+  }
   if (!/^https?:\/\/(?:[a-z0-9.-]+|\[[a-f0-9:]+\])(?::\d{1,5})?\/?$/i.test(apiUrl)) {
-    throw new Error('VITE_API_URL은 경로가 없는 HTTP(S) origin이어야 합니다.')
+    throw new Error('VITE_API_URL은 경로가 없는 HTTP(S) origin이어야 합니다. production에서는 /를 사용할 수 있습니다.')
   }
   return { plugins: [react()] }
 })

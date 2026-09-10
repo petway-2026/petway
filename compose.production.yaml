@@ -23,7 +23,7 @@ services:
   frontend:
     build:
       args:
-        VITE_API_URL: https://${APP_DOMAIN:?APP_DOMAIN is required}
+        VITE_API_URL: /
         VITE_KAKAO_MAP_KEY: ${VITE_KAKAO_MAP_KEY:?VITE_KAKAO_MAP_KEY is required}
     environment:
       APP_DOMAIN: ${APP_DOMAIN:?APP_DOMAIN is required}

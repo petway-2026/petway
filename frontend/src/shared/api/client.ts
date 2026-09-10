@@ -23,7 +23,8 @@ function csrfToken(): Promise<Csrf> {
 
 /** Adds the session CSRF token to mutations; retries only a rejected CSRF check. */
 export async function apiFetch(url: string, init: RequestInit = {}): Promise<Response> {
-    if (new URL(url).origin !== API_URL) throw new Error("허용되지 않은 API 주소입니다.");
+    const allowedOrigin = API_URL || window.location.origin;
+    if (new URL(url, allowedOrigin).origin !== allowedOrigin) throw new Error("허용되지 않은 API 주소입니다.");
     const method = (init.method ?? "GET").toUpperCase();
     if (["GET", "HEAD", "OPTIONS"].includes(method)) return fetch(url, init);
 
