@@ -44,8 +44,8 @@ services:
       WEATHER_MID_TERM_API_KEY: ${WEATHER_MID_TERM_API_KEY:-local-placeholder}
       KAKAO_REST_API_KEY: ${KAKAO_REST_API_KEY:-local-placeholder}
       KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET:-local-placeholder}
-      KAKAO_REDIRECT_URI: ${KAKAO_REDIRECT_URI:-https://localhost/login/oauth2/code/kakao}
-      FRONTEND_ORIGINS: ${FRONTEND_ORIGINS:-https://localhost}
+      FRONTEND_ORIGINS: ${FRONTEND_ORIGINS:-http://${APP_DOMAIN:-localhost}}
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
       SESSION_COOKIE_SAME_SITE: lax
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4.1-mini}

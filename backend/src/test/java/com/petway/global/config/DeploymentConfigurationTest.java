@@ -1,5 +1,6 @@
 package com.petway.global.config;
 
+import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.orm.jpa.HibernateProperties;
 import org.springframework.boot.autoconfigure.web.ServerProperties;
@@ -8,6 +9,17 @@ import org.springframework.boot.test.context.ConfigDataApplicationContextInitial
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.security.oauth2.client.registration.ClientRegistration;
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
+import org.springframework.security.oauth2.client.registration.InMemoryClientRegistrationRepository;
+import org.springframework.security.oauth2.client.web.DefaultOAuth2AuthorizationRequestResolver;
+import org.springframework.security.oauth2.core.AuthorizationGrantType;
+import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
+import org.springframework.web.filter.ForwardedHeaderFilter;
+
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -17,7 +29,6 @@ class DeploymentConfigurationTest {
             .withInitializer(new ConfigDataApplicationContextInitializer())
             .withUserConfiguration(PropertiesConfig.class)
             .withPropertyValues("spring.profiles.active=prod",
-                    "KAKAO_REDIRECT_URI=https://api.example.com/login/oauth2/code/kakao",
                     "FRONTEND_ORIGINS=https://app.example.com");
 
     @Test
@@ -45,6 +56,51 @@ class DeploymentConfigurationTest {
     }
 
     @Test
+    void httpBootstrapUsesNonSecureSessionCookie() {
+        runner.withPropertyValues(
+                "FRONTEND_ORIGINS=http://petway2026.duckdns.org",
+                "SESSION_COOKIE_SECURE=false"
+        ).run(context -> {
+            assertThat(context).hasNotFailed();
+            assertThat(context.getBean(ServerProperties.class).getServlet().getSession().getCookie().getSecure())
+                    .isFalse();
+        });
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({"http,80", "https,443"})
+    void forwardedOriginBuildsKakaoRedirectUri(String scheme, int port) throws Exception {
+        ClientRegistration kakao = ClientRegistration.withRegistrationId("kakao")
+                .clientId("test-client")
+                .clientSecret("test-secret")
+                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_POST)
+                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+                .redirectUri("{baseUrl}/login/oauth2/code/{registrationId}")
+                .authorizationUri("https://kauth.kakao.com/oauth/authorize")
+                .tokenUri("https://kauth.kakao.com/oauth/token")
+                .userInfoUri("https://kapi.kakao.com/v2/user/me")
+                .userNameAttributeName("id")
+                .clientName("Kakao")
+                .build();
+        ClientRegistrationRepository registrations = new InMemoryClientRegistrationRepository(kakao);
+        var resolver = new DefaultOAuth2AuthorizationRequestResolver(registrations, "/oauth2/authorization");
+
+        var request = new MockHttpServletRequest("GET", "/oauth2/authorization/kakao");
+        request.setScheme("http");
+        request.setServerName("backend");
+        request.setServerPort(8081);
+        request.addHeader("X-Forwarded-Proto", scheme);
+        request.addHeader("X-Forwarded-Host", "petway2026.duckdns.org");
+        request.addHeader("X-Forwarded-Port", Integer.toString(port));
+        var forwardedRequest = new AtomicReference<HttpServletRequest>();
+        new ForwardedHeaderFilter().doFilter(request, new MockHttpServletResponse(),
+                (wrappedRequest, response) -> forwardedRequest.set((HttpServletRequest) wrappedRequest));
+
+        assertThat(resolver.resolve(forwardedRequest.get(), "kakao").getRedirectUri())
+                .isEqualTo(scheme + "://petway2026.duckdns.org/login/oauth2/code/kakao");
+    }
+
+    @Test
     void productionRejectsEmptyOrigins() {
         runner.withPropertyValues("FRONTEND_ORIGINS=").run(context -> assertThat(context).hasFailed());
     }
@@ -52,8 +108,6 @@ class DeploymentConfigurationTest {
     @org.junit.jupiter.params.ParameterizedTest
     @org.junit.jupiter.params.provider.ValueSource(strings = {
             "FRONTEND_ORIGINS=http://app.example.com",
-            "KAKAO_REDIRECT_URI=http://api.example.com/login/oauth2/code/kakao",
-            "KAKAO_REDIRECT_URI=https://api.example.com/wrong-path",
             "server.servlet.session.cookie.secure=false",
             "server.servlet.session.cookie.http-only=false",
             "SESSION_COOKIE_SAME_SITE=strict"

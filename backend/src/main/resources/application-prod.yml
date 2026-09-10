@@ -5,18 +5,12 @@ spring:
   jpa:
     hibernate:
       ddl-auto: validate
-  security:
-    oauth2:
-      client:
-        registration:
-          kakao:
-            redirect-uri: ${KAKAO_REDIRECT_URI}
 
 server:
   servlet:
     session:
       cookie:
-        secure: true
+        secure: ${SESSION_COOKIE_SECURE:true}
         same-site: ${SESSION_COOKIE_SAME_SITE:lax}
 
 frontend:
