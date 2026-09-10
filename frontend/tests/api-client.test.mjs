@@ -4,11 +4,16 @@ import { readFile } from 'node:fs/promises';
 import { stripTypeScriptTypes } from 'node:module';
 
 const nativeFetch = globalThis.fetch;
-afterEach(() => { globalThis.fetch = nativeFetch; });
+const nativeWindow = globalThis.window;
+afterEach(() => {
+    globalThis.fetch = nativeFetch;
+    if (nativeWindow === undefined) delete globalThis.window;
+    else globalThis.window = nativeWindow;
+});
 let moduleId = 0;
-async function client() {
+async function client(apiUrl = 'https://api.petway.test') {
     const source = (await readFile(new URL('../src/shared/api/client.ts', import.meta.url), 'utf8'))
-        .replace('import { API_URL } from "./config";', 'const API_URL = "https://api.petway.test";');
+        .replace('import { API_URL } from "./config";', `const API_URL = ${JSON.stringify(apiUrl)};`);
     const code = stripTypeScriptTypes(source);
     return import(`data:text/javascript;base64,${Buffer.from(code).toString('base64')}#${moduleId++}`);
 }
@@ -106,6 +111,16 @@ test('GET keeps the abort signal and does not create an anonymous session', asyn
     };
     await apiFetch(`${api}/api/places`, { signal: controller.signal });
     assert.equal(requests, 1);
+});
+
+test('production relative API URL stays on the browser origin', async () => {
+    const { apiFetch } = await client('');
+    globalThis.window = { location: { origin: 'https://petway.test' } };
+    globalThis.fetch = async (url) => {
+        assert.equal(url, '/api/auth/me');
+        return new Response(null, { status: 401 });
+    };
+    assert.equal((await apiFetch('/api/auth/me')).status, 401);
 });
 
 test('never sends session tokens to another origin', async () => {
