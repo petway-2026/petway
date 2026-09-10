@@ -1,0 +1,9 @@
+.env
+.env.*
+!.env.example
+.gradle
+build
+out
+*.iml
+.idea
+src/main/resources/application-local.yml

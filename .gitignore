@@ -20,15 +20,12 @@ frontend/dist/
 .env.*
 !.env.example
 !**/.env.example
+!.env.production.example
 application-secret.yml
 application-local.yml
-backend/src/main/resources/한국문화정보원_전국 반려동물 동반 가능 문화시설 위치 데이터_20250324.csv
 **/application-secret.yml
 **/application-local.yml
 
 # OS
 .DS_Store
 Thumbs.db
-
-
-/backend/src/main/resources/한국문화정보원_전국 반려동물 동반 가능 문화시설 위치 데이터_20250324.csv
