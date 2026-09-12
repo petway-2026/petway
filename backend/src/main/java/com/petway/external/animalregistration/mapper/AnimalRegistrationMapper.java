@@ -92,23 +92,26 @@ public class AnimalRegistrationMapper {
     public RegisteredPetProfile toRegisteredPetProfile(
             AnimalRegistrationApiResponse response
     ) {
-        if (response == null || response.header() == null) {
+        if (response == null
+                || response.response() == null
+                || response.response().header() == null) {
             throw invalidResponse();
         }
-        if (!SUCCESS_CODES.contains(trim(response.header().resultCode()))) {
+        AnimalRegistrationApiResponse.Response providerResponse = response.response();
+        if (!SUCCESS_CODES.contains(trim(providerResponse.header().resultCode()))) {
             throw new AnimalRegistrationException(
                     AnimalRegistrationErrorType.API_ERROR,
                     "동물등록정보 제공기관에서 요청을 처리하지 못했습니다."
             );
         }
-        if (response.body() == null || response.body().item() == null) {
+        if (providerResponse.body() == null || providerResponse.body().item() == null) {
             throw new AnimalRegistrationException(
                     AnimalRegistrationErrorType.NOT_FOUND,
                     "일치하는 동물등록정보를 찾을 수 없습니다."
             );
         }
 
-        AnimalRegistrationApiResponse.Item item = response.body().item();
+        AnimalRegistrationApiResponse.Item item = providerResponse.body().item();
         String petName = trimToNull(item.dogNm());
         if (petName == null) {
             throw invalidResponse();

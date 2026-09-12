@@ -83,13 +83,15 @@ class AnimalRegistrationMapperTest {
             AnimalRegistrationApiResponse.Item item
     ) {
         return new AnimalRegistrationApiResponse(
-                new AnimalRegistrationApiResponse.Header(
-                        "request-number",
-                        resultCode,
-                        "OK",
-                        null
-                ),
-                new AnimalRegistrationApiResponse.Body(item)
+                new AnimalRegistrationApiResponse.Response(
+                        new AnimalRegistrationApiResponse.Header(
+                                "request-number",
+                                resultCode,
+                                "OK",
+                                null
+                        ),
+                        new AnimalRegistrationApiResponse.Body(item)
+                )
         );
     }
 
