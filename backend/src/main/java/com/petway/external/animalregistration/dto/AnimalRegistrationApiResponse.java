@@ -4,9 +4,15 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record AnimalRegistrationApiResponse(
+        Response response
+) {
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record Response(
         Header header,
         Body body
-) {
+    ) {
+    }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record Header(

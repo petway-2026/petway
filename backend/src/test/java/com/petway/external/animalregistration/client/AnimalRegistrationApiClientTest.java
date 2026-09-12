@@ -218,25 +218,27 @@ class AnimalRegistrationApiClientTest {
     private String successResponse() {
         return """
                 {
-                  "header": {
-                    "reqNo": "request-number",
-                    "resultCode": "00",
-                    "resultMsg": "NORMAL SERVICE",
-                    "errorMsg": null
-                  },
-                  "body": {
-                    "item": {
-                      "dogRegNo": "410123456789012",
-                      "rfidCd": "900123456789012",
-                      "rfidGubun": "Y",
-                      "birthDt": "20210510",
-                      "dogNm": "보리",
-                      "sexNm": "수컷",
-                      "kindNm": "말티즈",
-                      "neuterYn": "Y",
-                      "orgNm": "관할기관",
-                      "regTm": "20210510",
-                      "aprTm": "20210511"
+                  "response": {
+                    "header": {
+                      "reqNo": "request-number",
+                      "resultCode": "00",
+                      "resultMsg": "NORMAL SERVICE",
+                      "errorMsg": null
+                    },
+                    "body": {
+                      "item": {
+                        "dogRegNo": "410123456789012",
+                        "rfidCd": "900123456789012",
+                        "rfidGubun": "Y",
+                        "birthDt": "20210510",
+                        "dogNm": "보리",
+                        "sexNm": "수컷",
+                        "kindNm": "말티즈",
+                        "neuterYn": "Y",
+                        "orgNm": "관할기관",
+                        "regTm": "20210510",
+                        "aprTm": "20210511"
+                      }
                     }
                   }
                 }
