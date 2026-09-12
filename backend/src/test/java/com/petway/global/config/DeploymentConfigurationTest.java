@@ -32,9 +32,23 @@ class DeploymentConfigurationTest {
                     "FRONTEND_ORIGINS=https://app.example.com");
 
     @Test
+    void developmentLoadsLocalDefaultsAndTourApiMapping() {
+        runner.withPropertyValues("spring.profiles.active=dev", "TOUR_API_KEY=test-tour-key")
+                .run(context -> {
+                    assertThat(context).hasNotFailed();
+                    assertThat(context.getBean(HibernateProperties.class).getDdlAuto()).isEqualTo("update");
+                    assertThat(context.getBean(ServerProperties.class).getServlet().getSession().getCookie().getSecure())
+                            .isFalse();
+                    assertThat(context.getEnvironment().getProperty("tour-api.service-key")).isEqualTo("test-tour-key");
+                });
+    }
+
+    @Test
     void productionUsesSchemaValidationAndSecureSameSiteCookies() {
         runner.run(context -> {
             assertThat(context).hasNotFailed();
+            assertThat(context.getEnvironment().getPropertySources().stream()
+                    .noneMatch(source -> source.getName().contains(".env.dev.properties"))).isTrue();
             assertThat(context.getBean(HibernateProperties.class).getDdlAuto()).isEqualTo("validate");
             var cookie = context.getBean(ServerProperties.class).getServlet().getSession().getCookie();
             assertThat(cookie.getSecure()).isTrue();

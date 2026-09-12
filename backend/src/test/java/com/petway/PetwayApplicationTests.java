@@ -118,7 +118,13 @@ class PetwayApplicationTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.info.title")
                         .value("PetWay Backend API"))
-                .andExpect(jsonPath("$.info.version").value("v1"));
+                .andExpect(jsonPath("$.info.version").value("v1"))
+                .andExpect(jsonPath("$.paths['/api/auth/signup'].post.parameters[0].name")
+                        .value("X-CSRF-TOKEN"))
+                .andExpect(jsonPath("$.paths['/api/auth/signup'].post.parameters[0].in")
+                        .value("header"))
+                .andExpect(jsonPath("$.paths['/api/auth/signup'].post.parameters[0].required")
+                        .value(true));
     }
 
     @Test
