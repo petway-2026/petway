@@ -1,3 +1,4 @@
+# 운영 HTTPS 설정: 인증서 검증 경로는 HTTP로 열고 나머지 요청은 HTTPS로 전환한다.
 server {
     listen 80;
     listen [::]:80;

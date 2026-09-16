@@ -1,3 +1,4 @@
+# 공통 애플리케이션 설정이다. 환경별 값은 프로필과 환경변수로 공급한다.
 spring:
   application:
     name: petway-backend

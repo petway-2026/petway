@@ -1,3 +1,4 @@
+# 프론트엔드 정적 파일을 빌드한 뒤 웹 서버 이미지에 복사해 서비스한다.
 FROM node:24-alpine AS build
 
 WORKDIR /workspace

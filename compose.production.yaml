@@ -1,3 +1,4 @@
+# 운영 서비스의 이미지·환경변수·네트워크·볼륨 및 기동 조건을 구성한다.
 services:
   mysql:
     environment:
