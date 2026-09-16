@@ -1,3 +1,4 @@
+/* 반려견 프로필과 파싱된 규정을 비교하는 규칙 기반 판정기다. AI 호출 없이 사유와 준비사항을 모은다. */
 package com.petway.compatibility;
 
 import com.petway.pet.entity.Pet;
@@ -45,6 +46,7 @@ public class CompatibilityEvaluator {
         Objects.requireNonNull(pet, "pet must not be null");
         Objects.requireNonNull(rule, "rule must not be null");
 
+        // 공간 범위를 먼저 해석해야 실내·야외에 한정된 체중 조건의 적용 여부를 정할 수 있다.
         Assessment assessment = new Assessment();
         SpaceContext spaceContext = evaluateSpaces(rule, assessment);
 
@@ -84,7 +86,18 @@ public class CompatibilityEvaluator {
             );
         }
 
+        boolean indoorAndOutdoorAllowed = conditions.contains(SpaceCondition.INDOOR_ALLOWED)
+                && conditions.contains(SpaceCondition.OUTDOOR_ALLOWED);
+        if (indoorAndOutdoorAllowed) {
+            assessment.positive("전 구역에서 반려견과 동반할 수 있습니다.");
+        }
+
         for (SpaceCondition condition : conditions) {
+            if (indoorAndOutdoorAllowed
+                    && (condition == SpaceCondition.INDOOR_ALLOWED
+                    || condition == SpaceCondition.OUTDOOR_ALLOWED)) {
+                continue;
+            }
             switch (condition) {
                 case ALL_AREAS_ALLOWED -> assessment.positive(
                         "전 구역에서 반려견과 동반할 수 있습니다."
@@ -101,13 +114,13 @@ public class CompatibilityEvaluator {
                 case OUTDOOR_PROHIBITED -> assessment.conditional(
                         "야외에서는 동반할 수 없습니다."
                 );
-                case OUTDOOR_ONLY -> assessment.conditional(
+                case OUTDOOR_ONLY -> assessment.positive(
                         "야외에서만 동반할 수 있습니다."
                 );
-                case TERRACE_ONLY -> assessment.conditional(
+                case TERRACE_ONLY -> assessment.positive(
                         "테라스에서만 동반할 수 있습니다."
                 );
-                case PARTIAL_AREA_ONLY -> assessment.conditional(
+                case PARTIAL_AREA_ONLY -> assessment.positive(
                         "일부 구역에서만 동반할 수 있습니다."
                 );
             }
@@ -141,6 +154,7 @@ public class CompatibilityEvaluator {
         return allAreasConflict || indoorConflict || outdoorConflict || outdoorOnlyConflict;
     }
 
+    // 공간이 불명확한 체중 조건을 장소 전체의 입장 제한으로 확대하지 않고 확인 필요로 남긴다.
     private void evaluateWeights(
             Pet pet,
             PetRule rule,
@@ -184,6 +198,7 @@ public class CompatibilityEvaluator {
             );
             return;
         }
+        // 같은 경계 체중이라도 '이하'는 허용하고 '미만'은 거부하므로 연산자를 구분한다.
         int comparison = petWeight.compareTo(limit.maxWeightKg());
         boolean matches = limit.operator() == WeightOperator.LESS_THAN_OR_EQUAL
                 ? comparison <= 0
@@ -204,6 +219,7 @@ public class CompatibilityEvaluator {
         );
     }
 
+    // 크기는 사용자가 등록한 sizeType으로 비교한다. 체중에서 크기를 추정하지 않는다.
     private void evaluateSizes(
             Pet pet,
             PetRule rule,
@@ -229,6 +245,7 @@ public class CompatibilityEvaluator {
             }
         }
 
+        // 허용과 금지가 동시에 기재된 크기는 어느 한쪽을 임의로 우선하지 않고 확인 대상으로 남긴다.
         Set<PetSize> conflicts = EnumSet.noneOf(PetSize.class);
         conflicts.addAll(allowed);
         conflicts.retainAll(disallowed);
@@ -248,13 +265,13 @@ public class CompatibilityEvaluator {
         }
 
         if (!allowed.isEmpty() && !allowed.contains(petSize)) {
-            assessment.confirm(
-                    "장소의 반려견 크기 기준이 명확하지 않아 방문 전 확인이 필요합니다."
+            assessment.unavailable(
+                    "장소에서 등록된 반려견 크기와 다른 크기의 동반을 허용하지 않습니다."
             );
             return;
         }
 
-        if (allowed.contains(petSize)) {
+        if (allowed.contains(petSize) && rule.weightLimits().isEmpty()) {
             assessment.conditional(
                     "등록된 크기는 장소의 허용 표현에 해당하지만, 장소별 크기 기준을 확인해 주세요."
             );
@@ -272,6 +289,7 @@ public class CompatibilityEvaluator {
         }
     }
 
+    // 견종·크기로 한정된 준비사항은 해당 반려견에게만 적용한다. 대상 정보가 없으면 확인을 요구한다.
     private void evaluateRequirements(
             Pet pet,
             PetRule rule,
@@ -306,7 +324,11 @@ public class CompatibilityEvaluator {
                 evaluateVaccinationStatus(pet, assessment);
                 continue;
             }
-            assessment.require(requirement, requirementReason(requirement));
+            if (requirement.type() == RequirementType.VACCINATION_CERTIFICATE) {
+                assessment.require(requirement, requirementReason(requirement));
+            } else {
+                assessment.requirePreparation(requirement);
+            }
         }
     }
 
@@ -355,14 +377,25 @@ public class CompatibilityEvaluator {
             PetRule rule,
             Assessment assessment
     ) {
+        // 기존에 얻은 판정 근거와 원문 출처에 따라 미해석 문장이 최종 확인 필요 상태에 영향을 줄지 정한다.
         boolean hasConcreteOutcome = assessment.hasOutcomeEvidence();
         for (UnparsedFragment fragment : rule.unparsedFragments()) {
+            if (isInformationalAvailability(fragment)) {
+                assessment.positive("반려견 동반 가능 여부는 점포마다 다를 수 있습니다.");
+                continue;
+            }
             if (isDecisionRelevant(fragment)
                     && (!hasConcreteOutcome
                     || fragment.sourceField() == PetRuleSourceField.ACMPY_PSBL_CPAM)) {
                 assessment.confirm(unparsedReason(fragment.sourceField()));
             }
         }
+    }
+
+    private boolean isInformationalAvailability(UnparsedFragment fragment) {
+        String normalized = fragment.rawText().replaceAll("\\s+", "");
+        return normalized.contains("가능(점포마다다름)")
+                && !normalized.contains("불가능(점포마다다름)");
     }
 
     private boolean isDecisionRelevant(UnparsedFragment fragment) {
@@ -456,13 +489,21 @@ public class CompatibilityEvaluator {
             conditional(reason);
         }
 
+        // 현재 정책에서는 일반 준비물은 목록에만 추가한다. 이것만으로 CONDITIONAL 상태를 만들지는 않는다.
+        private void requirePreparation(Requirement requirement) {
+            requirements.add(requirement);
+        }
+
         private boolean hasOutcomeEvidence() {
             return !unavailableReasons.isEmpty()
                     || !confirmationReasons.isEmpty()
                     || !conditionalReasons.isEmpty()
-                    || !positiveReasons.isEmpty();
+                    || !positiveReasons.isEmpty()
+                    || !requirements.isEmpty();
         }
 
+        // 최종 우선순위는 명확한 불가 → 확인 필요 → 조건부 → 가능이다.
+        // 여러 조건을 모두 평가한 근거는 상태와 별도로 함께 반환한다.
         private CompatibilityResult toResult() {
             CompatibilityStatus status;
             if (!unavailableReasons.isEmpty()) {

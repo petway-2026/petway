@@ -1,3 +1,4 @@
+/* PetRuleParser의 동작을 검증하는 테스트다. 검증 대상: 원문 필드의 문맥을 유지하면서 정규식으로 동반 규정을 추출한다. 최종 동반 가능 판정은 하지 않는다. */
 package com.petway.petrule;
 
 import com.petway.petrule.PetRule.BreedGroup;
@@ -11,6 +12,8 @@ import com.petway.petrule.PetRule.RequirementType;
 import com.petway.petrule.PetRule.SizeConditionType;
 import com.petway.petrule.PetRule.SpaceCondition;
 import com.petway.petrule.PetRule.SpaceScope;
+import com.petway.petrule.PetRule.SizeCondition;
+import com.petway.petrule.PetRule.WeightLimit;
 import com.petway.petrule.PetRule.WeightOperator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -19,6 +22,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Stream;
@@ -247,6 +251,18 @@ class PetRuleParserTest {
     }
 
     @Test
+    void parsesKtoMediumSmallAbbreviation() {
+        PetRule rule = parser.parse("중, 소형견 (10kg 이하)");
+
+        assertThat(rule.sizeConditions()).singleElement()
+                .extracting(SizeCondition::sizes)
+                .isEqualTo(Set.of(PetSize.SMALL, PetSize.MEDIUM));
+        assertThat(rule.weightLimits()).singleElement()
+                .extracting(WeightLimit::maxWeightKg)
+                .isEqualTo(new BigDecimal("10"));
+    }
+
+    @Test
     void parsesExplicitlyProhibitedSize() {
         PetRule rule = parser.parse("대형견 동반 불가");
 
@@ -384,6 +400,45 @@ class PetRuleParserTest {
         assertThat(rule.requirements())
                 .extracting(PetRule.Requirement::type)
                 .containsExactly(
+                        RequirementType.WASTE_BAG,
+                        RequirementType.WASTE_DISPOSAL
+                );
+        assertThat(rule.unparsedFragments()).isEmpty();
+    }
+
+    @Test
+    void classifiesOfficialNoticeAndMaleMannerBeltWithoutUnknownFragments() {
+        PetRule rule = parser.parse(source(
+                PetRuleSourceField.ETC_ACMPY_INFO,
+                "공식 안내 · 실내 동반 가능, 실외 동반 가능, 수컷 매너벨트 필수"
+        ));
+
+        assertThat(rule.spaceRules())
+                .extracting(PetRule.SpaceRule::condition)
+                .containsExactlyInAnyOrder(
+                        SpaceCondition.INDOOR_ALLOWED,
+                        SpaceCondition.OUTDOOR_ALLOWED
+                );
+        assertThat(rule.requirements())
+                .extracting(PetRule.Requirement::type)
+                .containsExactly(RequirementType.MANNER_BELT);
+        assertThat(rule.unparsedFragments()).isEmpty();
+    }
+
+    @Test
+    void consumesOfficialInquiryLeadInSeparatelyFromPreparationNotices() {
+        PetRule rule = parser.parse(source(
+                PetRuleSourceField.ETC_ACMPY_INFO,
+                "공식 안내 · 거리 내 매장은 개별 정책이 상이하므로 개별 문의 필요 - 맹견의 경우, 입마개 착용 필수 - 배변봉투 지참 및 배변처리 필수"
+        ));
+
+        assertThat(rule.confirmationConditions())
+                .extracting(PetRule.ConfirmationCondition::type)
+                .containsExactly(ConfirmationType.INQUIRY_REQUIRED);
+        assertThat(rule.requirements())
+                .extracting(PetRule.Requirement::type)
+                .containsExactlyInAnyOrder(
+                        RequirementType.MUZZLE,
                         RequirementType.WASTE_BAG,
                         RequirementType.WASTE_DISPOSAL
                 );

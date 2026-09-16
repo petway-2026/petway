@@ -1,3 +1,4 @@
+/* 실제 관광공사 응답 표본을 이용해 동반 규정 파싱과 판정 결과의 회귀를 검사한다. */
 package com.petway.compatibility;
 
 import com.petway.pet.entity.Pet;
@@ -70,7 +71,7 @@ class CompatibilitySourceRegressionTest {
         PetRule rule = parser.parse(adapter.adapt(detail));
         CompatibilityResult result = evaluator.evaluate(pet, rule);
 
-        assertThat(result.status()).isEqualTo(CompatibilityStatus.CONDITIONAL);
+        assertThat(result.status()).isEqualTo(CompatibilityStatus.AVAILABLE);
         assertThat(result.requirements()).extracting(r -> r.type().name())
                 .contains("LEASH", "WASTE_BAG");
         assertThat(result.requirements().stream()
@@ -122,10 +123,29 @@ class CompatibilitySourceRegressionTest {
                 detail("모든 견종 동반 가능", "이동장 필수", "실내 동반 가능")
         );
 
-        assertThat(result.status()).isEqualTo(CompatibilityStatus.CONDITIONAL);
+        assertThat(result.status()).isEqualTo(CompatibilityStatus.AVAILABLE);
         assertThat(result.requirements())
                 .extracting(requirement -> requirement.type().name())
                 .containsExactly("CARRIER");
+    }
+
+    @Test
+    void mediumSmallWeightRuleAndIndoorLeashKeepAllAreasAvailable() {
+        CompatibilityResult result = evaluate(
+                pet("8", PetSizeType.MEDIUM),
+                detail(
+                        "중, 소형견(10kg 이하)",
+                        "실내 목줄 필수",
+                        "실내 동반 가능, 실외 동반 가능"
+                )
+        );
+
+        assertThat(result.status()).isEqualTo(CompatibilityStatus.AVAILABLE);
+        assertThat(result.requirements()).extracting(r -> r.type().name())
+                .containsExactly("LEASH");
+        assertThat(result.reasons())
+                .contains("전 구역에서 반려견과 동반할 수 있습니다.")
+                .doesNotContain("등록된 크기는 장소의 허용 표현에 해당하지만, 장소별 크기 기준을 확인해 주세요.");
     }
 
     @Test
