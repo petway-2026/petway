@@ -1,3 +1,4 @@
+/* 방문 순서에 따른 자동차 경로를 카카오 모빌리티에서 받아 구간 거리·시간·선 좌표를 구성한다. */
 package com.petway.route;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;

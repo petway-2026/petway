@@ -1,3 +1,4 @@
+/* 대상별 리뷰 조회와 로그인 사용자의 리뷰 저장 요청을 처리한다. */
 package com.petway.review.controller;
 import com.petway.review.dto.*; import com.petway.review.service.ReviewService; import jakarta.validation.Valid; import lombok.RequiredArgsConstructor; import org.springframework.http.*; import org.springframework.security.core.Authentication; import org.springframework.web.bind.annotation.*; import java.util.*;
 @RestController @RequestMapping("/api/reviews") @RequiredArgsConstructor public class ReviewController{

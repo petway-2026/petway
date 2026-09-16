@@ -1,3 +1,4 @@
+/* 자동차·대중교통 경로 요청을 해당 제공자 클라이언트에 전달하고 경로 오류를 응답으로 바꾼다. */
 package com.petway.route;
 
 import com.petway.route.dto.RouteRequest;

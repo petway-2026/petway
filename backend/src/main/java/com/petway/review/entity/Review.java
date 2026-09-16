@@ -1,3 +1,4 @@
+/* 사용자의 대상별 평점과 리뷰 내용, 작성·수정 시각을 저장한다. */
 package com.petway.review.entity;
 import com.petway.user.entity.User;
 import jakarta.persistence.*; import lombok.*; import java.time.LocalDateTime;

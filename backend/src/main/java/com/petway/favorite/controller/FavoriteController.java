@@ -1,3 +1,4 @@
+/* 로그인 사용자의 즐겨찾기 목록 조회와 등록·해제 토글 요청을 처리한다. */
 package com.petway.favorite.controller;
 import com.petway.favorite.dto.*;
 import com.petway.favorite.service.FavoriteService;

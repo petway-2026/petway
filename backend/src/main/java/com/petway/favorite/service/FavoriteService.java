@@ -1,3 +1,4 @@
+/* 사용자를 확인하고 같은 대상이 이미 있으면 삭제, 없으면 저장하는 토글을 수행한다. */
 package com.petway.favorite.service;
 import com.petway.favorite.dto.*;
 import com.petway.favorite.entity.Favorite;

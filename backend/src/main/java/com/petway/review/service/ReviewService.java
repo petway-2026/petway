@@ -1,3 +1,4 @@
+/* 리뷰를 조회하고 같은 사용자의 기존 리뷰가 있으면 수정하며 없으면 새로 저장한다. */
 package com.petway.review.service;
 import com.petway.review.dto.*; import com.petway.review.entity.Review; import com.petway.review.repository.ReviewRepository; import com.petway.user.entity.User; import com.petway.user.repository.UserRepository; import lombok.RequiredArgsConstructor; import org.springframework.stereotype.Service; import org.springframework.transaction.annotation.Transactional; import java.util.*;
 @Service @RequiredArgsConstructor public class ReviewService{

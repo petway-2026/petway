@@ -1,3 +1,4 @@
+/* 대중교통 구간별 시간·요금·환승 및 도보·버스·철도 이동 단계를 반환한다. */
 package com.petway.route.dto;
 
 import java.util.List;
