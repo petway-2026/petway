@@ -1,3 +1,4 @@
+/* 리뷰 목록·평점·작성 폼을 열고 저장 후 화면의 리뷰 상태를 갱신한다. */
 import { useEffect, useId, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 

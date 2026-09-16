@@ -1,3 +1,4 @@
+/* 브라우저·fetch 대역으로 CSRF 토큰 공유, 재발급, 요청 출처 및 재시도 범위를 검증한다. */
 import { test, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';

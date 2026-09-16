@@ -1,3 +1,4 @@
+/* 즐겨찾기 목록과 등록·해제 토글 API다. 토글의 204 응답은 해제 완료를 뜻한다. */
 import { apiFetch } from "./client";
 import { API_URL } from "./config";
 export type Favorite = { id:number; targetType:string; targetId:string; title:string; address?:string; thumbnailUrl?:string; createdAt:string };

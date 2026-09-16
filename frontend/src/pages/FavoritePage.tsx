@@ -1,3 +1,4 @@
+/* 사용자의 즐겨찾기 목록을 표시하고 저장된 대상의 기본 정보를 보여 준다. */
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { fetchFavorites, toggleFavorite, type Favorite } from "../shared/api/favoriteApi";

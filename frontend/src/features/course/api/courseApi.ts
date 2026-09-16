@@ -1,3 +1,4 @@
+/* 검증된 후보 스냅샷과 여행 의도를 백엔드 AI 추천 API에 보내 순위·설명을 받는다. */
 import { apiFetch } from "../../../shared/api/client";
 import { API_URL } from "../../../shared/api/config";
 
