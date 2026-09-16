@@ -1,3 +1,4 @@
+/* 내부 날씨 모델을 수치·발표 정보·화면용 문구가 포함된 API 응답으로 변환한다. */
 package com.petway.weather.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;

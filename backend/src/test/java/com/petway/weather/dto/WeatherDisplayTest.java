@@ -1,3 +1,4 @@
+/* WeatherDisplay의 동작을 검증하는 테스트다. 검증 대상: 일별 예보와 월별 전망을 구분해 사용자에게 표시할 한국어 설명을 만든다. */
 package com.petway.weather.dto;
 
 import com.petway.weather.domain.ForecastType;

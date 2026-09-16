@@ -1,3 +1,4 @@
+/* 장소 좌표·방문일·예보 권역을 받아 날씨 조회 서비스로 전달한다. */
 package com.petway.weather.controller;
 
 import com.petway.weather.domain.WeatherRegion;

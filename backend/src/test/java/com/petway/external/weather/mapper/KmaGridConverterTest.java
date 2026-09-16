@@ -1,3 +1,4 @@
+/* KmaGridConverter의 동작을 검증하는 테스트다. 검증 대상: 위도·경도를 기상청 단기예보용 격자 좌표 nx, ny로 변환한다. */
 package com.petway.external.weather.mapper;
 
 import org.junit.jupiter.api.Test;

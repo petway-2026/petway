@@ -1,3 +1,4 @@
+/* KmaWeatherClient의 동작을 검증하는 테스트다. 검증 대상: 단기·중기·계절 전망을 조회하고 발표 시각과 제공자별 응답 형식 차이를 처리한다. */
 package com.petway.external.weather.client;
 
 import com.petway.external.weather.config.WeatherApiProperties;

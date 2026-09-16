@@ -1,3 +1,4 @@
+/* 위도·경도를 기상청 단기예보용 격자 좌표 nx, ny로 변환한다. */
 package com.petway.external.weather.mapper;
 
 import org.springframework.stereotype.Component;

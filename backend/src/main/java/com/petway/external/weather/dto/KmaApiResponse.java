@@ -1,3 +1,4 @@
+/* 기상청 API의 공통 응답 봉투다. 예보별 항목 형식은 제네릭 타입으로 구분한다. */
 package com.petway.external.weather.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;

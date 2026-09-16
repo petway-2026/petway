@@ -1,3 +1,4 @@
+/* WeatherController의 동작을 검증하는 테스트다. 검증 대상: 장소 좌표·방문일·예보 권역을 받아 날씨 조회 서비스로 전달한다. */
 package com.petway.weather.controller;
 
 import com.petway.global.exception.GlobalExceptionHandler;

@@ -1,3 +1,4 @@
+/* 일별 예보와 계절 전망을 함께 표현하는 내부 날씨 모델이다. */
 package com.petway.weather.domain;
 
 import java.time.LocalDate;

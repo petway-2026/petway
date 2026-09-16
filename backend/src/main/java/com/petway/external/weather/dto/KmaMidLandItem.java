@@ -1,3 +1,4 @@
+/* 중기 육상예보의 날짜별 강수확률과 날씨 설명을 읽는 응답 모델이다. */
 package com.petway.external.weather.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;

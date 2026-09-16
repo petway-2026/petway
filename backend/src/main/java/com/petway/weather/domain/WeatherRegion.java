@@ -1,3 +1,4 @@
+/* 서비스 예보 권역을 기상청 육상·기온 코드 및 계절 전망 지역명과 연결한다. */
 package com.petway.weather.domain;
 
 import java.util.Arrays;

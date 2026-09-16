@@ -1,3 +1,4 @@
+/* 좌표·날짜를 검증하고 방문일까지 남은 기간에 맞는 예보를 선택하며 성공 응답을 캐시한다. */
 package com.petway.weather.service;
 
 import com.petway.weather.domain.ForecastType;
@@ -54,6 +55,7 @@ public class WeatherQueryService {
                     : weatherForecastGateway.getSeasonalOutlook(region, targetDate);
         }
         WeatherForecastResponse response = WeatherForecastResponse.from(forecast);
+        // 정상 조회·변환이 완료된 응답만 캐시에 넣는다. 조회 실패는 이후 요청에서 다시 시도한다.
         weatherForecastCache.put(latitude, longitude, targetDate, region, forecastType, response);
         return response;
     }
@@ -73,6 +75,7 @@ public class WeatherQueryService {
         return forecastType(days);
     }
 
+    // 오늘~3일은 단기, 4~10일은 중기, 이후 허용 범위는 계절 전망으로 분기한다.
     private ForecastType forecastType(long days) {
         if (days <= 3) {
             return ForecastType.SHORT_TERM;
