@@ -1,3 +1,4 @@
+/* 환경변수에서 AI API 키, 모델, 제한 시간을 읽는다. 키가 없으면 추천 기능만 미설정 상태로 둔다. */
 package com.petway.ai.recommendation;
 
 import java.time.Duration;

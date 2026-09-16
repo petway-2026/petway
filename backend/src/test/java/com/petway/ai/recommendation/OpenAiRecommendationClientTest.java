@@ -1,3 +1,4 @@
+/* OpenAiRecommendationClient의 동작을 검증하는 테스트다. 검증 대상: 입력을 검증한 뒤 프롬프트를 구성하고 AI를 호출하며, 반환된 후보 ID와 순위를 다시 검증한다. */
 package com.petway.ai.recommendation;
 
 import static org.assertj.core.api.Assertions.assertThat;

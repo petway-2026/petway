@@ -1,3 +1,4 @@
+/* AI 키 설정 유무에 따른 Spring 추천 빈 구성과 기능 미설정 처리를 검증한다. */
 package com.petway.ai.recommendation;
 
 import static org.assertj.core.api.Assertions.assertThat;
