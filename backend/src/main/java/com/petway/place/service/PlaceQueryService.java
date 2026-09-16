@@ -1,3 +1,4 @@
+/* 관광공사 검색과 문화정보원 보조 목록을 통합하고 중복·정렬·페이지 및 출처별 상세 조회를 처리한다. */
 package com.petway.place.service;
 
 import com.petway.place.dto.PlaceSearchRequest;
@@ -47,6 +48,7 @@ public class PlaceQueryService {
         this(tourPlaceGateway, new PetFacilityCatalog());
     }
 
+    // 외부 목록과 보조 목록을 먼저 완성·통합한 뒤 페이지를 자른다. 전체 건수와 페이지 경계를 일치시키기 위한 순서다.
     public PlaceSearchResponse searchByArea(PlaceSearchRequest request) {
         PlaceSearchCondition condition = new PlaceSearchCondition(
                 request.getAreaCode(),
@@ -65,6 +67,7 @@ public class PlaceQueryService {
         return page(items, request.getPage(), request.getSize());
     }
 
+    // 통합 결과를 반경으로 다시 걸러 거리순으로 정렬한다. 동일 검색 조건의 페이지는 같은 스냅샷을 재사용한다.
     public PlaceSearchResponse searchNearby(NearbyPlaceSearchRequest request) {
         NearbyPlaceSearchCondition condition = new NearbyPlaceSearchCondition(
                 request.getLatitude().stripTrailingZeros(),
@@ -89,6 +92,41 @@ public class PlaceQueryService {
         return tourPlaceGateway.searchNearby(condition);
     }
 
+    /**
+     * Nearby candidates for recommendation flows.  Unlike the paginated
+     * provider-only lookup above, this merges the local CSV catalog so a
+     * temporary tourism API outage does not remove all local recommendations.
+     */
+    public PlaceSearchResult findNearbyIncludingCatalog(NearbyPlaceSearchCondition condition) {
+        var merged = new LinkedHashMap<String, PlaceSummary>();
+        // 추천용 조회에서는 관광공사 실패를 잠시 보존하고 독립된 CSV 후보를 확인한다. 양쪽 모두 비면 원래 오류를 전달한다.
+        RuntimeException providerFailure = null;
+        try {
+            PlaceSearchResult external = findNearby(condition);
+            if (external != null) {
+                external.items().forEach(place -> merged.putIfAbsent(place.contentId(), place));
+            }
+        } catch (RuntimeException exception) {
+            // The local catalog is an independent source. Keep using it when
+            // the tourism provider is rate limited or temporarily unavailable.
+            providerFailure = exception;
+        }
+        catalog().placeSummariesNearby(condition.latitude(), condition.longitude(), condition.radius())
+                .forEach(place -> merged.putIfAbsent(place.contentId(), place));
+
+        if (merged.isEmpty() && providerFailure != null) {
+            throw providerFailure;
+        }
+
+        var sorted = merged.values().stream()
+                .filter(place -> place.latitude() != null && place.longitude() != null)
+                .sorted(java.util.Comparator
+                        .comparingDouble((PlaceSummary place) -> distance(condition, place))
+                        .thenComparing(PlaceSummary::contentId))
+                .toList();
+        return new PlaceSearchResult(1, sorted.size(), sorted.size(), sorted);
+    }
+
     public PlacePetDetailResponse getPetDetail(String contentId) {
         var csv = catalog().byId(contentId);
         if (csv.isPresent()) {
@@ -100,6 +138,7 @@ public class PlaceQueryService {
         return PlacePetDetailResponse.from(detail);
     }
 
+    // 페이지 중간에 전체 건수가 달라지거나 예상 개수가 누락되면 불완전한 목록을 정상 결과로 캐시하지 않는다.
     private List<PlaceSummary> loadAll(IntFunction<PlaceSearchResult> fetchPage) {
         var items = new ArrayList<PlaceSummary>();
         int expectedTotal = -1;
@@ -141,6 +180,18 @@ public class PlaceQueryService {
         return 6371000 * 2 * Math.asin(Math.sqrt(Math.min(1, a)));
     }
 
+    private double distance(NearbyPlaceSearchCondition condition, PlaceSummary place) {
+        if (place.latitude() == null || place.longitude() == null) return Double.POSITIVE_INFINITY;
+        double latitude = Math.toRadians(condition.latitude().doubleValue());
+        double otherLatitude = Math.toRadians(place.latitude().doubleValue());
+        double deltaLatitude = otherLatitude - latitude;
+        double deltaLongitude = Math.toRadians(place.longitude().subtract(condition.longitude()).doubleValue());
+        double a = Math.pow(Math.sin(deltaLatitude / 2), 2)
+                + Math.cos(latitude) * Math.cos(otherLatitude) * Math.pow(Math.sin(deltaLongitude / 2), 2);
+        return 6371000 * 2 * Math.asin(Math.sqrt(Math.min(1, a)));
+    }
+
+    // 관광공사 항목을 기준으로 같은 시설의 CSV 메타데이터를 보강하고, 연결되지 않은 CSV 시설만 추가한다.
     private List<PlaceSummaryResponse> merge(List<PlaceSummary> externalPlaces, List<PetFacility> localFacilities) {
         var matchedLocalIds = new java.util.HashSet<String>();
         var items = new LinkedHashMap<String, PlaceSummaryResponse>();

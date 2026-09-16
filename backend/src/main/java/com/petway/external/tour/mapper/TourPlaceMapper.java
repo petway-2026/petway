@@ -1,3 +1,4 @@
+/* 관광공사 결과 코드를 확인하고 장소 목록·동반 상세를 내부 모델로 변환한다. */
 package com.petway.external.tour.mapper;
 
 import com.fasterxml.jackson.databind.JsonNode;

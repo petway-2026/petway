@@ -1,3 +1,4 @@
+/* 관광공사 장소·동반정보 API를 호출한다. 주변 검색 캐시와 상세 조회의 동시 요청 공유로 호출량을 줄인다. */
 package com.petway.external.tour.client;
 
 import com.petway.external.tour.config.TourApiProperties;
@@ -142,6 +143,7 @@ public class TourApiClient implements TourPlaceGateway {
                     .body(TourApiResponse.class);
 
             PlaceSearchResult result = tourPlaceMapper.toPlaceSearchResult(response);
+            // HTTP 응답과 본문 매핑이 성공한 결과만 캐시한다. 호출 제한·통신 실패는 캐시에 남기지 않는다.
             nearbySearchCache.put(condition, result);
             return result;
         } catch (ResourceAccessException e) {
@@ -189,6 +191,7 @@ public class TourApiClient implements TourPlaceGateway {
         if (cached != null) {
             return cached;
         }
+        // 상세 캐시가 없는 같은 장소의 동시 요청은 하나의 Future로 합쳐 관광공사 호출을 공유한다.
         CompletableFuture<PlacePetDetail> request = new CompletableFuture<>();
         CompletableFuture<PlacePetDetail> existing = petDetailInFlight.putIfAbsent(contentId, request);
         if (existing != null) {
@@ -243,6 +246,7 @@ public class TourApiClient implements TourPlaceGateway {
             request.completeExceptionally(e);
             throw e;
         } finally {
+            // 성공·실패와 무관하게 자신의 진행 중 요청만 제거한다. 실패한 Future를 이후 요청이 계속 재사용하지 않게 한다.
             petDetailInFlight.remove(contentId, request);
         }
     }

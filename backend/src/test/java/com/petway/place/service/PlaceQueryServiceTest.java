@@ -1,3 +1,4 @@
+/* PlaceQueryService의 동작을 검증하는 테스트다. 검증 대상: 관광공사 검색과 문화정보원 보조 목록을 통합하고 중복·정렬·페이지 및 출처별 상세 조회를 처리한다. */
 package com.petway.place.service;
 
 import com.petway.place.dto.PlaceSearchRequest;

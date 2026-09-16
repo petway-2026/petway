@@ -1,3 +1,4 @@
+/* 동물등록 API의 응답 봉투와 등록정보 필드를 역직렬화하는 외부 응답 모델이다. */
 package com.petway.external.animalregistration.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;

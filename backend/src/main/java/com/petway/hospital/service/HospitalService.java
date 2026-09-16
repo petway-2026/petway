@@ -1,3 +1,4 @@
+/* 시설 유형과 검색 조건에 따라 병원·약국 후보를 모으고 위치 필터와 페이지를 적용한다. */
 package com.petway.hospital.service;
 
 import com.petway.hospital.client.AnimalHospitalClient;
@@ -44,6 +45,7 @@ public class HospitalService {
             String address,
             String name
     ) {
+        // 행정안전부 조회 실패 시에도 문화정보원에 등록된 병원 후보를 반환할 수 있도록 보조 목록을 준비한다.
         List<PetFacility> csvAll = facilityCatalog.hospitals(address, name);
         AnimalHospitalApiResponse.Body body;
         try {
@@ -133,6 +135,7 @@ public class HospitalService {
         );
     }
 
+    // 시설 유형을 지정한 검색은 문화정보원 병원·약국 카탈로그에서 조회한다.
     public HospitalPageResponse findMedicalFacilities(int page, int size, String address, String name, String facilityType) {
         return csvResponse(facilityCatalog.medicalFacilities(facilityType, address, name), page, size);
     }

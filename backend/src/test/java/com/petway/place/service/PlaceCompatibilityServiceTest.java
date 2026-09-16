@@ -1,3 +1,4 @@
+/* PlaceCompatibilityService의 동작을 검증하는 테스트다. 검증 대상: 출처에 맞게 동반 상세를 얻고 원문 변환, 규정 파싱, 반려견 판정을 순서대로 실행한다. */
 package com.petway.place.service;
 
 import com.petway.compatibility.CompatibilityEvaluator;

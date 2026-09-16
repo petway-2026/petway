@@ -1,3 +1,4 @@
+/* 지역·이름·시설 유형과 지도 조회 조건을 받아 병원 검색 서비스로 전달한다. */
 package com.petway.hospital.controller;
 
 import com.petway.hospital.dto.HospitalPageResponse;

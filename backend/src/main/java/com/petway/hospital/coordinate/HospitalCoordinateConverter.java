@@ -1,3 +1,4 @@
+/* 병원 원본 좌표계를 지도 표시용 WGS84 위도·경도로 변환한다. */
 package com.petway.hospital.coordinate;
 
 import org.locationtech.proj4j.CRSFactory;

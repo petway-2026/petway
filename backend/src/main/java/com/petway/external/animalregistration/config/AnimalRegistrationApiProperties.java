@@ -1,3 +1,4 @@
+/* 동물등록 API 주소, 인증키와 연결·응답 제한 시간을 설정값으로 관리한다. */
 package com.petway.external.animalregistration.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;

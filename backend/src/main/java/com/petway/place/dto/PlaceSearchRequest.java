@@ -1,3 +1,4 @@
+/* 지역·시군구·콘텐츠 유형과 페이지 조건을 받는 장소 검색 요청이다. */
 package com.petway.place.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;

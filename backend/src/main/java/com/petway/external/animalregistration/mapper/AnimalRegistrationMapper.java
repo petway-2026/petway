@@ -1,3 +1,4 @@
+/* 외부 등록정보를 반려견 입력용 프로필로 변환하고 품종, 생년월일, 중성화 표기를 정규화한다. */
 package com.petway.external.animalregistration.mapper;
 
 import com.petway.external.animalregistration.dto.AnimalRegistrationApiResponse;

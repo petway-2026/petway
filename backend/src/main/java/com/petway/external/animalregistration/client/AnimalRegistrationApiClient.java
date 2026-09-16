@@ -1,3 +1,4 @@
+/* 동물등록 조회 조건을 공공 API로 보내고, 통신·응답 오류를 내부 예외로 변환한다. */
 package com.petway.external.animalregistration.client;
 
 import com.petway.external.animalregistration.config.AnimalRegistrationApiProperties;

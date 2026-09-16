@@ -1,3 +1,4 @@
+/* 행정안전부 동물병원 API의 응답과 사업장 항목을 담는 외부 데이터 모델이다. */
 package com.petway.hospital.client.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;

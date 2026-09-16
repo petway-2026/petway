@@ -1,3 +1,4 @@
+/* 동물등록 API 전용 HTTP 클라이언트와 연결·응답 제한 시간을 설정한다. */
 package com.petway.external.animalregistration.config;
 
 import org.springframework.boot.context.properties.EnableConfigurationProperties;

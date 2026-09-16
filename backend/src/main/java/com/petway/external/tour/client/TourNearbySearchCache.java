@@ -1,3 +1,4 @@
+/* 좌표·반경·페이지 조건별 주변 검색 성공 결과를 제한된 크기와 유효기간으로 보관한다. */
 
 package com.petway.external.tour.client;
 

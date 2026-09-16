@@ -1,3 +1,4 @@
+/* 관광공사 API 전용 RestClient에 기본 주소와 연결·응답 제한 시간을 적용한다. */
 package com.petway.external.tour.config;
 
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
