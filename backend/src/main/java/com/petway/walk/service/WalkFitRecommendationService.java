@@ -1,3 +1,4 @@
+/* 주변 후보에서 동반 불가를 제외하고 규칙 점수와 거리로 산책 장소를 정렬한다. 여행 AI 추천과 별도 흐름이다. */
 package com.petway.walk.service;
 
 import com.petway.compatibility.CompatibilityStatus;
@@ -36,11 +37,12 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class WalkFitRecommendationService {
 
+    // 주변 목록 전체에 상세·날씨 API를 호출하지 않도록 실제 평가 후보 수를 제한한다.
     static final int CANDIDATE_LIMIT = 8;
-    static final int NEARBY_POOL_LIMIT = 24;
+    static final int NEARBY_POOL_LIMIT = 100;
     private static final int NEAREST_CANDIDATE_COUNT = 2;
     private static final int RECOMMENDATION_LIMIT = CANDIDATE_LIMIT;
-    private static final int SEARCH_RADIUS_METERS = 20_000;
+    private static final int SEARCH_RADIUS_METERS = 5_000;
 
     private final PrimaryPetQueryService primaryPetQueryService;
     private final PlaceQueryService placeQueryService;
@@ -57,7 +59,7 @@ public class WalkFitRecommendationService {
     ) {
         ForecastType forecastType = weatherQueryService.resolveForecastType(targetDate);
         Pet primaryPet = primaryPetQueryService.findByUserEmail(email);
-        PlaceSearchResult nearby = placeQueryService.findNearby(
+        PlaceSearchResult nearby = placeQueryService.findNearbyIncludingCatalog(
                 new NearbyPlaceSearchCondition(
                         latitude,
                         longitude,
@@ -66,6 +68,12 @@ public class WalkFitRecommendationService {
                         NEARBY_POOL_LIMIT
                 )
         );
+        // Keeps the service resilient to a mocked/legacy query implementation;
+        // the production query service always returns the merged result.
+        if (nearby == null) {
+            nearby = placeQueryService.findNearby(new NearbyPlaceSearchCondition(
+                    latitude, longitude, SEARCH_RADIUS_METERS, 1, NEARBY_POOL_LIMIT));
+        }
 
         List<PlaceSummary> candidatePool = nearby.items().stream()
                 .collect(Collectors.toMap(
@@ -76,6 +84,10 @@ public class WalkFitRecommendationService {
                 ))
                 .values()
                 .stream()
+                // 오늘의 산책은 실제로 걸어볼 만한 관광지 중심으로만
+                // 구성한다. PlaceQueryService가 관광공사와 CSV를 먼저
+                // 합치므로 두 데이터 출처 모두 이 필터를 통과한다.
+                .filter(place -> "12".equals(place.contentTypeId()))
                 .toList();
         List<PlaceSummary> candidates = selectCandidates(candidatePool, targetDate);
         if (candidates.isEmpty()) {
@@ -86,6 +98,7 @@ public class WalkFitRecommendationService {
             );
         }
 
+        // 중기·계절 전망은 같은 권역의 후보끼리 재사용한다. 단기예보는 장소별 좌표로 조회한다.
         Map<WeatherRegion, WeatherLookup> regionalWeather =
                 new EnumMap<>(WeatherRegion.class);
         List<EvaluatedCandidate> evaluated = new ArrayList<>();
@@ -108,6 +121,7 @@ public class WalkFitRecommendationService {
                 continue;
             }
 
+            // 동반 불가 장소는 적합도 점수가 높아질 가능성이 있어도 추천 대상에서 먼저 제거한다.
             if (compatibility.petwayAssessment().status()
                     == CompatibilityStatus.UNAVAILABLE) {
                 unavailableCount++;
@@ -135,11 +149,12 @@ public class WalkFitRecommendationService {
             ));
         }
 
+        // 후보가 실제로 부적합한 경우와 정보 조회 자체가 실패한 경우를 구분해 안내한다.
         if (evaluated.isEmpty() && compatibilityFailureCount > 0
                 && unavailableCount == 0) {
             if (compatibilityRateLimitCount == candidates.size()) {
                 throw new WalkFitRateLimitedException(
-                        "관광정보 제공기관의 일시적인 요청 한도로 추천을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."
+                        "주변 장소의 반려견 동반 정보를 확인하지 못했어요. 잠시 후 다시 시도해 주세요."
                 );
             }
             throw new WalkFitRecommendationException(
@@ -154,6 +169,7 @@ public class WalkFitRecommendationService {
             return emptyResponse(targetDate, primaryPet, message);
         }
 
+        // 점수 내림차순 → 거리 오름차순 → 장소 ID 순으로 정렬해 동점 결과도 일정하게 유지한다.
         List<EvaluatedCandidate> sorted = evaluated.stream()
                 .sorted(Comparator
                         .comparingInt((EvaluatedCandidate item) -> item.walkFit().score())
@@ -177,6 +193,8 @@ public class WalkFitRecommendationService {
         );
     }
 
+    // 가까운 두 후보는 유지하고 나머지는 방문일을 기준으로 순환 선택한다.
+    // 같은 날짜에는 동일하게 선택하면서 날짜가 바뀌면 다른 주변 장소도 평가한다.
     static List<PlaceSummary> selectCandidates(
             List<PlaceSummary> candidatePool,
             LocalDate targetDate
@@ -314,6 +332,7 @@ public class WalkFitRecommendationService {
         );
     }
 
+    // 위·경도 사이의 직선 거리를 미터 단위로 계산한다. 실제 보행 경로나 이동시간은 아니다.
     private double distanceMeters(
             BigDecimal latitude,
             BigDecimal longitude,

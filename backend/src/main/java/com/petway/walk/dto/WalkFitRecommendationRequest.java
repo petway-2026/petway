@@ -1,3 +1,4 @@
+/* 산책 추천의 좌표와 날짜 입력을 표현하고 좌표 범위를 검증한다. */
 package com.petway.walk.dto;
 
 import jakarta.validation.constraints.DecimalMax;

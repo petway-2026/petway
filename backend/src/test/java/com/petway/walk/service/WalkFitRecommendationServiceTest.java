@@ -1,3 +1,4 @@
+/* WalkFitRecommendationService의 동작을 검증하는 테스트다. 검증 대상: 주변 후보에서 동반 불가를 제외하고 규칙 점수와 거리로 산책 장소를 정렬한다. 여행 AI 추천과 별도 흐름이다. */
 package com.petway.walk.service;
 
 import com.petway.compatibility.CompatibilityStatus;

@@ -1,3 +1,4 @@
+/* 위치·날짜로 규칙 기반 산책 추천 API를 호출하고 호출 제한 등 오류 코드를 보존한다. */
 import { apiFetch } from "../../../shared/api/client";
 import type { WalkFitRecommendationResponse } from "../types/walkFit";
 

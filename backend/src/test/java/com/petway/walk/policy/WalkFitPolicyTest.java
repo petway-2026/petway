@@ -1,3 +1,4 @@
+/* WalkFitPolicy의 동작을 검증하는 테스트다. 검증 대상: 동반 조건·장소 유형·반려견 성향·날씨를 점수화한다. AI를 호출하지 않는 결정론적 평가 정책이다. */
 package com.petway.walk.policy;
 
 import com.petway.compatibility.CompatibilityStatus;
