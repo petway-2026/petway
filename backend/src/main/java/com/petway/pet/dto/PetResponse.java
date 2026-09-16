@@ -1,3 +1,4 @@
+/* 반려견 엔티티에서 화면 표시와 추천에 필요한 정보 및 대표견 여부를 반환한다. */
 package com.petway.pet.dto;
 
 import com.petway.pet.entity.Pet;

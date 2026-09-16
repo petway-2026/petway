@@ -1,3 +1,4 @@
+/* PetwayApplication의 동작을 검증하는 테스트다. 검증 대상: Spring Boot를 시작하고 com.petway 하위의 API, 서비스, 설정 빈을 등록하는 실행 진입점이다. */
 package com.petway;
 
 import com.petway.external.animalregistration.exception.AnimalRegistrationErrorType;

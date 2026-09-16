@@ -1,3 +1,4 @@
+/* 일반 비밀번호 인증과 카카오 인증 식별자를 회원에 연결하는 엔티티다. */
 package com.petway.user.entity;
 
 import com.petway.user.enums.AuthType;

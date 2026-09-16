@@ -1,3 +1,4 @@
+/* 카카오 사용자 정보를 PetWay 회원·인증정보에 연결하며 기존 계정과의 연동 조건을 검사한다. */
 package com.petway.global.security.oauth;
 
 import com.petway.user.entity.User;
@@ -45,6 +46,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
             throw oauthError("invalid_provider_response", "카카오 사용자 식별값이 없습니다.");
         }
 
+        // 이미 연동된 카카오 식별자를 먼저 찾는다. 이메일 변경과 무관하게 기존 연결을 우선한다.
         UserAuth providerAuth = userAuthRepository
                 .findByProviderAndProviderUserId(KAKAO, providerUserId)
                 .orElse(null);
@@ -72,6 +74,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
             nickname = "PetWay 사용자";
         }
 
+        // 이메일이 같다는 사실만으로 계정을 합치지 않는다. LOCAL 계정이면 기존 계정 확인을 거쳐 연동한다.
         User sameEmailUser = userRepository.findByEmail(email).orElse(null);
         if (sameEmailUser != null) {
             requireActive(sameEmailUser);

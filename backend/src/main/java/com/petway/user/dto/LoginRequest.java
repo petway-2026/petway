@@ -1,3 +1,4 @@
+/* 일반 로그인·계정 확인에 사용할 이메일과 비밀번호 입력을 검증한다. */
 package com.petway.user.dto;
 
 import jakarta.validation.constraints.Email;

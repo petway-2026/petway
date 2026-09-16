@@ -1,3 +1,4 @@
+/* 동물 식별자와 소유자 확인정보를 각각 하나씩 선택했는지 검사한 뒤 외부 조회를 수행한다. */
 package com.petway.pet.service;
 
 import com.petway.pet.dto.PetRegistrationLookupRequest;
@@ -46,6 +47,7 @@ public class PetRegistrationLookupService {
         );
     }
 
+    // 둘 다 비어 있거나 둘 다 입력된 경우를 거부한다. 각 식별자 그룹에서 정확히 하나만 선택해야 한다.
     private void requireExactlyOne(String first, String second, String message) {
         if ((first == null) == (second == null)) {
             throw new IllegalArgumentException(message);

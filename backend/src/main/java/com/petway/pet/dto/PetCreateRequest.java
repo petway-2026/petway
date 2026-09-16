@@ -1,3 +1,4 @@
+/* 반려견 등록에 필요한 프로필과 성향을 받으며 필수값·범위 검증 조건을 선언한다. */
 package com.petway.pet.dto;
 
 import com.petway.pet.enums.ActivityLevel;

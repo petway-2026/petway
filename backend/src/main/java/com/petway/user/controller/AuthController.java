@@ -1,3 +1,4 @@
+/* 회원가입, 세션 로그인·로그아웃, 현재 사용자, CSRF 토큰과 카카오 계정 연동 API를 제공한다. */
 package com.petway.user.controller;
 
 import com.petway.user.dto.LoginRequest;
@@ -241,6 +242,7 @@ public class AuthController {
         );
     }
 
+    // 로그인·계정 연동 후 세션 ID를 교체하고 기존 CSRF 토큰을 비워 새 인증 상태에서 재발급하게 한다.
     private void rotateSession(HttpServletRequest request, HttpServletResponse response) {
         if (request.getSession(false) != null) request.changeSessionId();
         csrfTokenRepository.saveToken(null, request, response);

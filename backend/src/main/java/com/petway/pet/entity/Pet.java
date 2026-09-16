@@ -1,3 +1,4 @@
+/* 소유자, 반려견 프로필·성향, 대표견 여부를 저장하고 등록·수정 동작을 제공한다. */
 package com.petway.pet.entity;
 
 import com.petway.pet.enums.ActivityLevel;

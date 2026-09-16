@@ -1,3 +1,4 @@
+/* 회원 이메일을 기준으로 회원 조회 및 가입 중복 확인을 수행한다. */
 package com.petway.user.repository;
 
 import com.petway.user.entity.User;

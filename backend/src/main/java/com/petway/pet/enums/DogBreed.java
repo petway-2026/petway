@@ -1,3 +1,4 @@
+/* 선택 가능한 견종과 표시명, 맹견 분류를 정의한다. */
 package com.petway.pet.enums;
 
 public enum DogBreed {

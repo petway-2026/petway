@@ -1,3 +1,4 @@
+/* 활성 회원의 LOCAL 인증정보를 조회해 Spring Security의 비밀번호 인증에 연결한다. */
 package com.petway.global.security;
 
 import com.petway.user.entity.User;

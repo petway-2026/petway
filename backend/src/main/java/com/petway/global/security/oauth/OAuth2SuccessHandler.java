@@ -1,3 +1,4 @@
+/* 카카오 로그인 성공 후 프론트엔드로 이동시키는 인증 성공 핸들러다. */
 package com.petway.global.security.oauth;
 
 import com.petway.global.config.FrontendProperties;

@@ -1,3 +1,4 @@
+/* 이메일, 비밀번호, 닉네임을 받는 회원가입 요청이다. 권한은 클라이언트가 지정하지 않는다. */
 package com.petway.user.dto;
 
 import jakarta.validation.constraints.Email;

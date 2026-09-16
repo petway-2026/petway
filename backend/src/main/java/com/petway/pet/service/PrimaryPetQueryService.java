@@ -1,3 +1,4 @@
+/* 현재 사용자의 대표견을 조회하며 미등록과 대표견 설정 누락을 구분해 안내한다. */
 package com.petway.pet.service;
 
 import com.petway.pet.entity.Pet;

@@ -1,3 +1,4 @@
+/* 로그인 사용자의 반려견 CRUD, 대표견 변경, 동물등록정보 조회 요청을 연결한다. */
 package com.petway.pet.controller;
 
 import com.petway.pet.dto.PetCreateRequest;

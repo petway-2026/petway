@@ -1,3 +1,4 @@
+/* PetService의 동작을 검증하는 테스트다. 검증 대상: 소유권을 확인하며 반려견을 관리하고 첫 등록·대표견 변경·대표견 삭제 시 대표 상태를 조정한다. */
 package com.petway.pet.service;
 
 import com.petway.pet.dto.PetCreateRequest;
