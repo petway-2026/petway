@@ -1,3 +1,4 @@
+/* 장소의 관광 지역·시군구 코드로 날씨 API에 전달할 예보 권역을 선택한다. */
 import type { WeatherRegion } from "../../weather/types/weather";
 
 const GANGWON_YEONGDONG_SIGUNGU_CODES = new Set([

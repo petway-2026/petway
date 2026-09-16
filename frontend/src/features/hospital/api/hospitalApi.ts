@@ -1,3 +1,4 @@
+/* 병원·약국의 지역·이름·지도 조회 조건을 쿼리로 변환해 검색 API를 호출한다. */
 import { apiFetch } from "../../../shared/api/client";
 import type { HospitalPageResponse } from "../types/hospital";
 

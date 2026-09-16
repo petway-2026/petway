@@ -1,3 +1,4 @@
+/* 지도 중심·경계·마커의 공통 좌표 타입을 정의한다. */
 export interface MapCenter {
     latitude: number;
     longitude: number;

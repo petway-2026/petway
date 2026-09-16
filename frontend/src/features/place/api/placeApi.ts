@@ -1,3 +1,4 @@
+/* 장소 검색·동반 원문·반려견 판정 API를 제공한다. 여러 페이지 조회에는 후보 수와 요청 횟수 제한을 적용할 수 있다. */
 import { apiFetch } from "../../../shared/api/client";
 import { API_URL } from "../../../shared/api/config";
 
@@ -33,6 +34,8 @@ export interface PlaceSearchResponse {
 export interface NearbySearchLimits {
     targetUniqueCount?: number;
     maxPages?: number;
+    /** Fetch every page reported by the API instead of using the default preview limits. */
+    fetchAll?: boolean;
 }
 
 export interface PlacePetDetail {
@@ -113,7 +116,7 @@ export async function searchPlaces(
 export async function searchAllPlaces(areaCode: string): Promise<PlaceSearchResponse> {
     const pageSize = 100;
     const firstPage = await searchPlaces(areaCode, pageSize, 1);
-    const pageCount = Math.min(Math.ceil(firstPage.totalCount / pageSize), 5);
+    const pageCount = Math.ceil(firstPage.totalCount / pageSize);
     const items = [...firstPage.items];
 
     for (let page = 2; page <= pageCount; page += 1) {
@@ -173,8 +176,9 @@ export async function searchAllNearbyPlaces(
     signal?: AbortSignal
 ): Promise<PlaceSearchResponse> {
     const pageSize = 100;
-    const targetUniqueCount = Math.max(1, limits.targetUniqueCount ?? 200);
-    const maxPages = Math.max(1, limits.maxPages ?? 5);
+    const targetUniqueCount = limits.fetchAll
+        ? undefined
+        : Math.max(1, limits.targetUniqueCount ?? 200);
     const firstPage = await searchNearbyPlaces(
         latitude,
         longitude,
@@ -184,6 +188,10 @@ export async function searchAllNearbyPlaces(
         signal
     );
     signal?.throwIfAborted();
+    const defaultMaxPages = limits.fetchAll
+        ? Math.ceil(firstPage.totalCount / pageSize)
+        : 5;
+    const maxPages = Math.max(1, limits.maxPages ?? defaultMaxPages);
     const pageCount = Math.min(Math.ceil(firstPage.totalCount / pageSize), maxPages);
     const items = [...firstPage.items];
     const uniqueItems = () => Array.from(
@@ -195,7 +203,8 @@ export async function searchAllNearbyPlaces(
     };
     progress();
 
-    for (let page = 2; page <= pageCount && uniqueItems().length < targetUniqueCount; page += 1) {
+    for (let page = 2; page <= pageCount
+        && (targetUniqueCount === undefined || uniqueItems().length < targetUniqueCount); page += 1) {
         const response = await searchNearbyPlaces(latitude, longitude, radius, page, pageSize, signal);
         signal?.throwIfAborted();
         items.push(...response.items);

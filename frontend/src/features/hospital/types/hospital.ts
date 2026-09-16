@@ -1,3 +1,4 @@
+/* 병원·약국 표시 데이터와 검색 페이지 응답의 타입을 정의한다. */
 export interface Hospital {
     id: string;
     name: string;

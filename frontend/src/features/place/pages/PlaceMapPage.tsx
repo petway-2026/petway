@@ -1,3 +1,4 @@
+/* 장소 지도 화면에서 로그인·반려견 등록 상태를 확인해 동반 가능 판정 사용 흐름을 연결한다. */
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 

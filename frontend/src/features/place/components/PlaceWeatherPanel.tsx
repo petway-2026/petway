@@ -1,3 +1,4 @@
+/* 선택 장소와 방문일에 맞는 날씨를 조회하고 일별 예보·장기 전망 및 조회 오류를 구분해 표시한다. */
 import { useEffect, useMemo, useState } from "react";
 
 import { getWeather, WeatherApiError } from "../../weather/api/weatherApi";
@@ -132,6 +133,7 @@ export default function PlaceWeatherPanel({
     };
   }, []);
 
+  // 장소·날짜·재시도 값이 바뀌면 기존 예보를 비우고 새로 조회한다. 효과 정리 시 이전 요청을 취소한다.
   useEffect(() => {
     setForecast(null);
     setError(null);
