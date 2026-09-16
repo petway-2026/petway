@@ -1,3 +1,4 @@
+/* 반려견 CRUD·대표견 지정·동물등록 조회 API를 제공하고 조회 오류 상태를 구분한다. */
 import { apiFetch } from "../../../shared/api/client";
 import type {
     Pet,

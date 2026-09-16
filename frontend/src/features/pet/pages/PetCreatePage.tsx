@@ -1,3 +1,4 @@
+/* 공통 반려견 폼에서 받은 입력을 신규 등록 API로 보내고 결과에 따라 이동·안내한다. */
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 

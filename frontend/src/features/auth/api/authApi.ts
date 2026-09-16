@@ -1,3 +1,4 @@
+/* 회원가입·세션 로그인·계정 연동·로그아웃 API와 카카오 인증 이동을 제공한다. */
 import { apiFetch } from "../../../shared/api/client";
 import type {
     ApiError,

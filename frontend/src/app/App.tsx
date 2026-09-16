@@ -1,3 +1,4 @@
+/* 앱의 화면 경로와 공통 레이아웃을 구성하고 인증이 필요한 경로를 ProtectedRoute로 묶는다. */
 import {
     BrowserRouter,
     Route,
