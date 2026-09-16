@@ -1,3 +1,4 @@
+/* 여행 입력을 검사해 JSON으로 저장하고 사용자 소유권을 기준으로 조회·삭제한다. */
 package com.petway.trip.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -27,6 +28,7 @@ public class SavedTripService {
     public SavedTripResponse create(String email, SavedTripCreateRequest request) {
         validate(request);
         User user = user(email);
+        // 클라이언트의 요약 건수를 신뢰하지 않고 실제 저장할 날짜별 장소 목록에서 전체 개수를 계산한다.
         int placeCount = request.itinerary().days().stream().mapToInt(day -> day.places().size()).sum();
         try {
             SavedTrip saved = savedTripRepository.save(SavedTrip.create(
@@ -44,6 +46,7 @@ public class SavedTripService {
                 .map(this::response).toList();
     }
 
+    // 일정 ID만 조회하지 않고 로그인 사용자도 조건에 넣어 다른 사용자의 일정 접근을 막는다.
     public SavedTripResponse get(String email, Long id) {
         return response(savedTripRepository.findByIdAndUser(id, user(email))
                 .orElseThrow(() -> new IllegalArgumentException("저장한 여행일정을 찾을 수 없습니다.")));
@@ -56,6 +59,7 @@ public class SavedTripService {
         savedTripRepository.delete(trip);
     }
 
+    // 저장된 JSON을 응답 모델로 복원한다. 현재 원본 장소 정보를 다시 조회하는 동작은 아니다.
     private SavedTripResponse response(SavedTrip trip) {
         try {
             return new SavedTripResponse(trip.getId(), trip.getTitle(), trip.getRegionName(), trip.getStartDate(),

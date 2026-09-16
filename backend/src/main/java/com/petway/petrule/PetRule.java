@@ -1,3 +1,4 @@
+/* 동반 규정의 원문 출처, 체중·크기·공간 조건, 준비사항 및 미해석 문장을 보존하는 불변 모델이다. */
 package com.petway.petrule;
 
 import java.math.BigDecimal;
@@ -17,6 +18,7 @@ public record PetRule(
         List<UnparsedFragment> unparsedFragments
 ) {
 
+    // 입력 컬렉션을 복사해 파싱 결과가 다른 계층에서 변경되지 않게 한다.
     public PetRule {
         sources = immutableList(sources);
         weightLimits = immutableList(weightLimits);
@@ -90,6 +92,7 @@ public record PetRule(
                 : List.copyOf(values);
     }
 
+    // 원문 필드와 문장을 함께 저장해 추출한 조건의 근거를 역추적할 수 있게 한다.
     public record PetRuleSource(
             PetRuleSourceField sourceField,
             String rawText
@@ -100,6 +103,7 @@ public record PetRule(
         }
     }
 
+    // 상한의 이하·미만과 적용 공간을 보존한다. 범위 표현이 있으면 하한도 별도로 저장한다.
     public record WeightLimit(
             BigDecimal maxWeightKg,
             WeightOperator operator,
@@ -157,6 +161,7 @@ public record PetRule(
         }
     }
 
+    // 준비물 종류뿐 아니라 적용 공간과 대상 반려견 조건을 묶어 과도한 일반화를 막는다.
     public record Requirement(
             RequirementType type,
             SpaceScope scope,

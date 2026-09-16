@@ -1,3 +1,4 @@
+/* AI 미설정, 입력·출력 검증 실패, 제공자 호출 실패를 각각 HTTP 오류 응답으로 변환한다. */
 package com.petway.ai.recommendation;
 
 import java.util.Map;
@@ -29,7 +30,10 @@ public class RecommendationExceptionHandler {
 
     @ExceptionHandler(AiRecommendationException.class)
     public ResponseEntity<?> handleRecommendationFailure(AiRecommendationException exception) {
-        log.warn("AI recommendation failure: {}", exception.getMessage());
+        // Keep the client response generic, but include the cause in server logs so
+        // upstream HTTP errors (invalid key, quota, model access, etc.) are
+        // diagnosable without exposing them to the browser.
+        log.warn("AI recommendation failure: {}", exception.getMessage(), exception);
         return ResponseEntity
                 .status(HttpStatus.BAD_GATEWAY)
                 .body(Map.of("message", exception.getMessage()));

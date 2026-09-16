@@ -1,3 +1,4 @@
+/* 완성된 통합 검색 목록을 페이지 간 공유하고 동일 조건의 동시 로딩을 하나로 합친다. */
 package com.petway.place.service;
 
 import com.petway.place.dto.PlaceSummaryResponse;
@@ -33,6 +34,7 @@ public class PlaceSearchSnapshotCache {
         List<PlaceSummaryResponse> cached = cached(key);
         if (cached != null) return cached;
         var future = new CompletableFuture<List<PlaceSummaryResponse>>();
+        // 동일 조건으로 이미 로딩 중인 요청이 있으면 그 결과를 기다려 중복 외부 호출을 막는다.
         var existing = loading.putIfAbsent(key, future);
         if (existing != null) {
             try {
@@ -47,6 +49,7 @@ public class PlaceSearchSnapshotCache {
             // Another load may have completed between the first lookup and putIfAbsent.
             cached = cached(key);
             if (cached == null) {
+                // 서로 다른 검색도 동시 로딩 수를 제한한다. 대기열을 무한히 쌓는 대신 호출 제한 오류를 반환한다.
                 acquired = loadPermits.tryAcquire();
                 if (!acquired) throw new com.petway.external.tour.exception.TourApiException(
                         com.petway.external.tour.exception.TourApiErrorType.RATE_LIMITED,
@@ -57,6 +60,7 @@ public class PlaceSearchSnapshotCache {
             future.complete(result);
             return result;
         } catch (RuntimeException | Error exception) {
+            // 기다리는 요청에도 실패를 전달하고 finally에서 진행 중 표시를 제거해 다음 요청이 다시 시도할 수 있게 한다.
             future.completeExceptionally(exception);
             throw exception;
         } finally {

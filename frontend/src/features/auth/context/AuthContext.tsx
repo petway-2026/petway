@@ -1,3 +1,4 @@
+/* 현재 사용자와 인증 확인 상태를 공유하고 로그인·로그아웃 후 화면 상태를 갱신한다. */
 import {
     createContext,
     useContext,

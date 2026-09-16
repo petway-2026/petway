@@ -1,3 +1,4 @@
+/* AI 구조화 출력의 스키마다. 외부에서 받은 값은 RecommendationValidator를 통과한 뒤 사용한다. */
 package com.petway.ai.recommendation;
 
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;

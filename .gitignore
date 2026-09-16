@@ -7,6 +7,7 @@
 build/
 out/
 backend/.gradle/
+backend/.gradle-home/
 backend/build/
 
 # Node

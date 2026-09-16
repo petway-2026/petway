@@ -1,3 +1,4 @@
+/* PlaceController의 동작을 검증하는 테스트다. 검증 대상: 장소 검색, 동반 원문 조회, 로그인 반려견 기준 동반 가능 판정 API를 제공한다. */
 package com.petway.place.controller;
 
 import com.petway.place.dto.PlaceSearchResponse;

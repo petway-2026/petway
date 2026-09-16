@@ -1,3 +1,4 @@
+/* React 앱을 마운트하고 라우터·인증 상태 공급자를 최상위에 연결한다. */
 import {
     StrictMode,
 } from "react";

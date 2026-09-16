@@ -1,3 +1,4 @@
+/* RecommendationValidator의 동작을 검증하는 테스트다. 검증 대상: 입력 중복과 필수값을 검사하고, AI가 입력에 없는 장소나 동반 불가 장소를 반환하면 거부한다. */
 package com.petway.ai.recommendation;
 
 import static org.assertj.core.api.Assertions.assertThat;

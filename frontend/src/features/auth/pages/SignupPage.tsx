@@ -1,3 +1,4 @@
+/* 가입 폼 입력과 제출 상태를 관리하고 서버의 회원가입 결과를 안내한다. */
 import {
     useState,
     type FormEvent,

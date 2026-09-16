@@ -1,3 +1,4 @@
+/* 주변 검색의 위도·경도·반경과 페이지 입력 및 검증 조건을 정의한다. */
 package com.petway.place.dto;
 
 import jakarta.validation.constraints.DecimalMax;

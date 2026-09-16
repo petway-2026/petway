@@ -1,3 +1,4 @@
+/* 여행 소유자와 요약 컬럼을 저장하고 날짜별 상세 일정은 JSON 스냅샷으로 보관한다. */
 package com.petway.trip.entity;
 
 import com.petway.user.entity.User;

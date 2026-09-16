@@ -1,3 +1,4 @@
+/* WeatherRegionResolver의 동작을 검증하는 테스트다. 검증 대상: 관광공사 지역·시군구 코드를 서비스 날씨 권역으로 변환한다. */
 package com.petway.weather.service;
 
 import com.petway.weather.domain.WeatherRegion;

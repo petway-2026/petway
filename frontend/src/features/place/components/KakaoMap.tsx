@@ -1,3 +1,4 @@
+/* 카카오 지도 SDK의 지도·마커·경로·이벤트를 React 속성과 동기화하고 해제 시 정리한다. */
 import {
     useEffect,
     useRef,
@@ -193,6 +194,7 @@ export default function KakaoMap({
         }
 
 
+        // 이미 목표 위치에 있다면 중심을 다시 설정하지 않아 불필요한 이동 이벤트와 화면 흔들림을 줄인다.
         const actualCenter = mapRef.current.getCenter();
         const alreadyAtRequestedCenter =
             Math.abs(actualCenter.getLat() - center.latitude) < 0.000001 &&

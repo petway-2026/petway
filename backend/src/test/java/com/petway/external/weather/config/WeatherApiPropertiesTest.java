@@ -1,3 +1,4 @@
+/* WeatherApiProperties의 동작을 검증하는 테스트다. 검증 대상: 단기·중기 API 주소와 키, 계절 전망 안내 주소, HTTP 제한 시간을 관리한다. */
 package com.petway.external.weather.config;
 
 import org.junit.jupiter.api.Test;

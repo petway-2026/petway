@@ -1,3 +1,4 @@
+/* 카카오 인증 실패를 프론트엔드가 표시할 수 있는 리다이렉트 흐름으로 연결한다. */
 package com.petway.global.security.oauth;
 
 import com.petway.global.config.FrontendProperties;

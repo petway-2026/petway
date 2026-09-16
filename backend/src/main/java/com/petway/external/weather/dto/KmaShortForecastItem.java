@@ -1,3 +1,4 @@
+/* 단기예보의 발표 시각, 예보 시각, 항목 코드와 값을 표현한다. */
 package com.petway.external.weather.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;

@@ -1,3 +1,4 @@
+/* 대표견, 추천 장소 순위, 적합도 근거, 동반 조건과 날씨를 함께 반환한다. */
 package com.petway.walk.dto;
 
 import com.petway.compatibility.CompatibilityStatus;

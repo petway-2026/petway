@@ -1,3 +1,4 @@
+/* 위치를 받아 산책 후보를 조회하고 적합도·동반 준비사항·날씨를 표시한다. 점수 계산은 백엔드가 담당한다. */
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 
 import {
@@ -38,7 +39,7 @@ function requestErrorMessage(cause: unknown): string {
       return "로그인 정보가 만료되었습니다. 다시 로그인한 뒤 이용해 주세요.";
     }
     if (cause.code === "WALK_FIT_PROVIDER_RATE_LIMITED") {
-      return "관광정보 제공기관의 일시적인 요청 한도로 추천을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.";
+      return "주변 장소의 반려견 동반 정보를 확인하지 못했어요. 잠시 후 다시 시도해 주세요.";
     }
     return cause.message;
   }
@@ -60,10 +61,12 @@ export default function WalkFitRecommendationsSection() {
     useState<WalkFitRecommendationResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [expandedRecommendationId, setExpandedRecommendationId] = useState<string | null>(null);
   const requestRef = useRef<AbortController | null>(null);
 
   useEffect(() => () => requestRef.current?.abort(), []);
 
+  // 버튼을 눌렀을 때 위치를 얻어 백엔드의 규칙 기반 추천을 요청한다. 이전 요청은 취소해 결과 경합을 줄인다.
   const requestRecommendations = () => {
     if (!navigator.geolocation) {
       setError("이 브라우저에서는 현재 위치를 사용할 수 없습니다.");
@@ -75,6 +78,7 @@ export default function WalkFitRecommendationsSection() {
     requestRef.current = controller;
     setLoading(true);
     setResult(null);
+    setExpandedRecommendationId(null);
     setError("");
 
     navigator.geolocation.getCurrentPosition(
@@ -119,8 +123,8 @@ export default function WalkFitRecommendationsSection() {
           <span className="walk-fit-eyebrow">WALKFIT</span>
           <h2 id="walk-fit-title">오늘의 산책 추천</h2>
           <p>
-            대표 반려견의 동반 조건과 장소 유형, 선택한 날짜의 날씨를
-            함께 평가해 산책 목적의 방문 후보를 추천해요.
+            현재 위치에서 5km 이내의 관광지 중 대표 반려견의 동반 조건과
+            선택한 날짜의 날씨를 함께 평가해 추천해요.
           </p>
         </div>
         <div className="walk-fit-controls">
@@ -137,6 +141,7 @@ export default function WalkFitRecommendationsSection() {
               requestRef.current = null;
               setLoading(false);
               setResult(null);
+              setExpandedRecommendationId(null);
               setError("");
               setTargetDate(event.target.value);
             }}
@@ -188,14 +193,6 @@ export default function WalkFitRecommendationsSection() {
               <article
                 className={`walk-fit-card ${grade.className}`}
               >
-                {recommendation.imageUrl && (
-                  <img
-                    className="walk-fit-image"
-                    src={recommendation.imageUrl}
-                    alt=""
-                    loading="lazy"
-                  />
-                )}
                 <div className="walk-fit-card-body">
                   <div className="walk-fit-card-top">
                     <span className="walk-fit-rank">{recommendation.rank}순위</span>
@@ -212,7 +209,7 @@ export default function WalkFitRecommendationsSection() {
                   </div>
 
                   <div className="walk-fit-status-row">
-                    <span>
+                    <span className={`walk-fit-compatibility ${recommendation.compatibility.status.toLowerCase()}`}>
                       {COMPATIBILITY_COPY[recommendation.compatibility.status]}
                     </span>
                     {recommendation.compatibility.needsConfirmation && (
@@ -220,52 +217,34 @@ export default function WalkFitRecommendationsSection() {
                     )}
                   </div>
 
-                  <section className="walk-fit-detail-group">
-                    <h4>추천 이유</h4>
-                    <ul>
-                      {recommendation.walkFit.reasons.map((reason) => (
-                        <li key={reason}>{reason}</li>
-                      ))}
-                    </ul>
-                  </section>
+                  <button
+                    type="button"
+                    className="walk-fit-toggle"
+                    aria-expanded={expandedRecommendationId === recommendation.contentId}
+                    onClick={() => setExpandedRecommendationId((current) => current === recommendation.contentId ? null : recommendation.contentId)}
+                  >
+                    {expandedRecommendationId === recommendation.contentId ? "안내사항 접기" : "동반 안내사항 보기"}
+                    <span aria-hidden="true">{expandedRecommendationId === recommendation.contentId ? "⌃" : "⌄"}</span>
+                  </button>
 
-                  {recommendation.compatibility.requirements.length > 0 && (
+                  {expandedRecommendationId === recommendation.contentId && <>
                     <section className="walk-fit-detail-group">
-                      <h4>준비해주세요</h4>
-                      <ul>
-                        {recommendation.compatibility.requirements.map(
-                          (requirement, index) => (
-                            <li
-                              key={`${requirement.type}-${requirement.scope}-${index}`}
-                            >
-                              {requirement.label}
-                            </li>
-                          ),
-                        )}
-                      </ul>
+                      <h4>추천 이유</h4>
+                      <ul>{recommendation.walkFit.reasons.map((reason) => <li key={reason}>{reason}</li>)}</ul>
                     </section>
-                  )}
 
-                  <section className="walk-fit-weather">
-                    <h4>날씨</h4>
-                    {recommendation.weather.available ? (
-                      <>
-                        {recommendation.weather.summary && (
-                          <p>{recommendation.weather.summary}</p>
-                        )}
-                        <div>
-                          {recommendation.weather.temperature && (
-                            <span>{recommendation.weather.temperature}</span>
-                          )}
-                          {recommendation.weather.precipitation && (
-                            <span>{recommendation.weather.precipitation}</span>
-                          )}
-                        </div>
-                      </>
-                    ) : (
-                      <p>날씨 정보를 확인하지 못해 날씨는 평가에서 제외했어요.</p>
+                    {recommendation.compatibility.requirements.length > 0 && (
+                      <section className="walk-fit-detail-group">
+                        <h4>준비해주세요</h4>
+                        <ul>{recommendation.compatibility.requirements.map((requirement, requirementIndex) => <li key={`${requirement.type}-${requirement.scope}-${requirementIndex}`}>{requirement.scope === "INDOOR" ? "실내 이용 시 " : requirement.scope === "OUTDOOR" ? "실외 이용 시 " : ""}{requirement.label}</li>)}</ul>
+                      </section>
                     )}
-                  </section>
+
+                    <section className="walk-fit-weather">
+                      <h4>날씨</h4>
+                      {recommendation.weather.available ? <><>{recommendation.weather.summary && <p>{recommendation.weather.summary}</p>}</><div>{recommendation.weather.temperature && <span>{recommendation.weather.temperature}</span>}{recommendation.weather.precipitation && <span>{recommendation.weather.precipitation}</span>}</div></> : <p>날씨 정보를 확인하지 못해 날씨는 평가에서 제외했어요.</p>}
+                    </section>
+                  </>}
                 </div>
               </article>
               </Fragment>

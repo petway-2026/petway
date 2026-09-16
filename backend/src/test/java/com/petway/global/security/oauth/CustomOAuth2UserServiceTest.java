@@ -1,3 +1,4 @@
+/* CustomOAuth2UserService의 동작을 검증하는 테스트다. 검증 대상: 카카오 사용자 정보를 PetWay 회원·인증정보에 연결하며 기존 계정과의 연동 조건을 검사한다. */
 package com.petway.global.security.oauth;
 
 import com.petway.user.entity.User;

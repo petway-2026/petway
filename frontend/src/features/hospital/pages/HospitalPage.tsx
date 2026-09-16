@@ -1,3 +1,4 @@
+/* 병원·약국의 지역 검색, 지도 범위, 목록 페이지와 선택 시설을 함께 관리한다. */
 import {
     type FormEvent,
     useCallback,

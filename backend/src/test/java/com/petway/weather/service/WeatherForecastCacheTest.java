@@ -1,3 +1,4 @@
+/* WeatherForecastCache의 동작을 검증하는 테스트다. 검증 대상: 조회 조건별 날씨 응답을 잠시 보관하는 프로세스 로컬 캐시로 반복 외부 호출을 줄인다. */
 package com.petway.weather.service;
 
 import com.petway.weather.domain.ForecastType;

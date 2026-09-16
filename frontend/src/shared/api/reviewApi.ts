@@ -1,3 +1,4 @@
+/* 대상별 리뷰를 불러오고 평점·내용을 저장하며 서버의 오류 메시지를 전달한다. */
 import { apiFetch } from "./client";
 import { API_URL } from "./config";
 export type Review = { id:number; targetType:string; targetId:string; nickname:string; rating:number; content:string; createdAt:string; updatedAt?:string|null };

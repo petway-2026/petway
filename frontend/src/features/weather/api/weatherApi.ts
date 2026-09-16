@@ -1,3 +1,4 @@
+/* 장소 좌표·날짜·예보 권역으로 날씨를 요청하고 HTTP 오류를 화면용 오류 객체로 전달한다. */
 import { apiFetch } from "../../../shared/api/client";
 import type {
   WeatherForecastRequest,

@@ -1,3 +1,4 @@
+/* 관광공사 실제 API와 통합 검색 페이지를 비교하는 선택 실행 검증이다. 외부 호출이 발생한다. */
 package com.petway.place.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;

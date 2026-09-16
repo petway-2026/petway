@@ -1,3 +1,4 @@
+/* 카카오 속성과 PetWay 회원 식별정보를 Spring Security의 OAuth 사용자 계약으로 제공한다. */
 package com.petway.global.security.oauth;
 
 import com.petway.user.enums.UserRole;

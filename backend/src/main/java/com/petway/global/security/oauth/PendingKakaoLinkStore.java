@@ -1,3 +1,4 @@
+/* 계정 연동 대기 정보를 세션에 보관하고 확인 과정에서 조회·정리한다. */
 package com.petway.global.security.oauth;
 
 import jakarta.servlet.http.HttpServletRequest;

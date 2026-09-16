@@ -1,3 +1,4 @@
+/* 현재 대상의 즐겨찾기 상태를 불러오고 버튼으로 등록·해제를 전환한다. */
 import { useEffect, useState } from "react";
 import { fetchFavorites, toggleFavorite, type FavoriteRequest } from "../api/favoriteApi";
 export default function FavoriteButton(props: FavoriteRequest){

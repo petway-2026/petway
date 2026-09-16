@@ -1,3 +1,4 @@
+/* 로그인 사용자의 위치·방문일로 대표견 기준 산책 추천을 요청한다. */
 package com.petway.walk.controller;
 
 import com.petway.walk.dto.WalkFitRecommendationRequest;

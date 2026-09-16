@@ -1,3 +1,4 @@
+/* 단기·중기·계절 전망을 조회하고 발표 시각과 제공자별 응답 형식 차이를 처리한다. */
 package com.petway.external.weather.client;
 
 import com.petway.external.weather.config.WeatherApiProperties;
@@ -122,6 +123,7 @@ public class KmaWeatherClient implements WeatherForecastGateway {
         String apiKey = properties.getMid().getApiKey();
         ensureApiKey(apiKey, "중기예보");
         LocalDateTime base = latestMidBaseTime();
+        // 중기예보의 n일 뒤 필드는 현재 날짜가 아닌 실제 발표일 기준으로 선택한다.
         int forecastDay = Math.toIntExact(ChronoUnit.DAYS.between(base.toLocalDate(), targetDate));
         if (forecastDay < 4 || forecastDay > 10) {
             throw new WeatherForecastUnavailableException(
@@ -236,6 +238,7 @@ public class KmaWeatherClient implements WeatherForecastGateway {
         return items(response).get(0);
     }
 
+    // 발표 직후 데이터 반영 지연을 고려해 현재 한국 시각에서 10분을 뺀 뒤 사용 가능한 발표 차수를 고른다.
     private LocalDateTime latestShortBaseTime() {
         ZonedDateTime availableAt = ZonedDateTime.now(clock).withZoneSameInstant(KOREA).minusMinutes(10);
         LocalDate date = availableAt.toLocalDate();
@@ -250,6 +253,7 @@ public class KmaWeatherClient implements WeatherForecastGateway {
         return LocalDateTime.of(date, latest);
     }
 
+    // 중기예보는 06시·18시 발표를 사용하며 새벽에는 전날 18시 발표로 돌아간다.
     private LocalDateTime latestMidBaseTime() {
         ZonedDateTime availableAt = ZonedDateTime.now(clock).withZoneSameInstant(KOREA).minusMinutes(10);
         LocalDate date = availableAt.toLocalDate();
@@ -271,6 +275,7 @@ public class KmaWeatherClient implements WeatherForecastGateway {
         }
     }
 
+    // 이미 URL 인코딩된 키라면 먼저 풀고 URI 빌더에서 한 번만 인코딩해 이중 인코딩을 피한다.
     private String decodedApiKey(String apiKey) {
         String key = apiKey.trim();
         return key.contains("%") ? URLDecoder.decode(key, StandardCharsets.UTF_8) : key;

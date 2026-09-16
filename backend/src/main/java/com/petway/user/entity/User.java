@@ -1,3 +1,4 @@
+/* 회원 프로필·권한·상태를 보관한다. 인증 수단과 비밀번호 해시는 UserAuth에서 별도로 관리한다. */
 package com.petway.user.entity;
 
 import com.petway.user.enums.UserRole;

@@ -1,3 +1,4 @@
+/* 로그인 사용자의 여행 일정 저장, 목록·상세 조회, 삭제 API를 제공한다. */
 package com.petway.trip.controller;
 
 import com.petway.trip.dto.SavedTripCreateRequest;

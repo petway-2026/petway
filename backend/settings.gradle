@@ -1,1 +1,2 @@
+/* Gradle 루트 프로젝트의 이름과 빌드 구성을 선언한다. */
 rootProject.name = 'petway-backend'

@@ -1,3 +1,4 @@
+/* 원문 필드의 문맥을 유지하면서 정규식으로 동반 규정을 추출한다. 최종 동반 가능 판정은 하지 않는다. */
 package com.petway.petrule;
 
 import com.petway.petrule.PetRule.BreedGroup;
@@ -34,6 +35,7 @@ import org.springframework.stereotype.Component;
 @Component
 public final class PetRuleParser {
 
+    // 중소형견처럼 긴 표현을 먼저 매칭해 소형견 하나로 잘못 쪼개지 않게 한다.
     private static final String SIZE_EXPRESSION =
             "(중소형견|소형견|중형견|대형견)";
 
@@ -60,6 +62,11 @@ public final class PetRuleParser {
             "^\\s*" + SIZE_EXPRESSION + "\\s*$"
     );
 
+    // KTO data often abbreviates "중형견·소형견" as "중, 소형견".
+    private static final Pattern MEDIUM_SMALL_LIST_PATTERN = Pattern.compile(
+            "중\\s*[,·/]\\s*소형견|소형견\\s*[,·/]\\s*중형견"
+    );
+
     private static final Pattern ALL_BREEDS_ALLOWED_PATTERN = Pattern.compile(
             "(?:전|모든)\\s*견종\\s*(?:은|는|이|가)?\\s*"
                     + "(?:동반|출입|이용)?\\s*(?:가능|허용)"
@@ -80,7 +87,7 @@ public final class PetRuleParser {
     );
 
     private static final Pattern OUTDOOR_ONLY_PATTERN = Pattern.compile(
-            "(?:야외|외부)(?:\\s*공간)?\\s*(?:에서\\s*)?만\\s*"
+            "(?:야외|실외|외부)(?:\\s*공간)?\\s*(?:에서\\s*)?만\\s*"
                     + "(?:동반|출입|이용)?\\s*(?:가능|허용)?"
     );
 
@@ -89,7 +96,7 @@ public final class PetRuleParser {
     );
 
     private static final Pattern OUTDOOR_PATTERN = Pattern.compile(
-            "(?:야외|외부)\\s*(?:동반|출입|이용)?\\s*(가능|허용|불가|금지)"
+            "(?:야외|실외|외부)\\s*(?:동반|출입|이용)?\\s*(가능|허용|불가|금지)"
     );
 
     private static final Pattern UNSAFE_POSITIVE_SPACE_PATTERN = Pattern.compile(
@@ -183,8 +190,13 @@ public final class PetRuleParser {
                     + "\\s*(?:의\\s*경우|은|는|이|가)?\\s*[:：]?\\s*$"
     );
 
+    // Sex qualifiers are retained as context even though PetSubject currently
+    // has no sex field. This prevents "수컷 매너벨트 필수" from leaving the
+    // word "수컷" as an unparsed confirmation-triggering fragment.
+    private static final Pattern SEX_QUALIFIER_PATTERN = Pattern.compile("수컷|암컷");
+
     private static final Pattern REQUIREMENT_SCOPE_PATTERN = Pattern.compile(
-            "(실내|야외|외부|건물\\s*내|건물\\s*외)"
+            "(실내|야외|실외|외부|건물\\s*내|건물\\s*외)"
                     + "(?:\\s*에서)?(?:\\s+(?:시설|공간))?"
                     + "(?:\\s+(?:이동|이용))?\\s*(?:시)?"
     );
@@ -240,6 +252,7 @@ public final class PetRuleParser {
         return parse(source == null ? List.of() : List.of(source));
     }
 
+    // 빈 원문은 건너뛰고 필드마다 독립적으로 파싱한다. 한 필드의 오류가 다른 규정 추출을 중단하지 않는다.
     public PetRule parse(List<PetRuleSource> inputSources) {
         if (inputSources == null || inputSources.isEmpty()) {
             return PetRule.empty();
@@ -273,6 +286,7 @@ public final class PetRuleParser {
             ParseResult result
     ) {
         String rawText = source.rawText();
+        // 이미 해석한 문자 범위를 기록한다. 중복 해석을 피하고 남은 의미 있는 문장을 미해석 근거로 보존한다.
         boolean[] recognized = new boolean[rawText.length()];
         int parsedCountBefore = result.parsedConditionCount();
 
@@ -293,6 +307,7 @@ public final class PetRuleParser {
         );
     }
 
+    // 체중 범위와 상한을 숫자·연산자·공간으로 분리한다. 원문은 변형하지 않고 조건의 출처로 유지한다.
     private void parseWeights(
             PetRuleSource source,
             boolean[] recognized,
@@ -330,12 +345,26 @@ public final class PetRuleParser {
         }
     }
 
+    // 크기 목록·금지·허용 표현을 나누어 추출하고 이미 인식한 범위는 다시 허용 조건으로 읽지 않는다.
     private void parseSizes(
             PetRuleSource source,
             boolean[] recognized,
             List<SizeCondition> sizeConditions
     ) {
         String rawText = source.rawText();
+
+        Matcher mediumSmallMatcher = MEDIUM_SMALL_LIST_PATTERN.matcher(rawText);
+        while (mediumSmallMatcher.find()) {
+            if (overlaps(recognized, mediumSmallMatcher.start(), mediumSmallMatcher.end())) {
+                continue;
+            }
+            sizeConditions.add(new SizeCondition(
+                    Set.of(PetSize.SMALL, PetSize.MEDIUM),
+                    SizeConditionType.ALLOWED,
+                    source
+            ));
+            mark(recognized, mediumSmallMatcher.start(), mediumSmallMatcher.end());
+        }
 
         Matcher prohibitedMatcher = PROHIBITED_SIZE_PATTERN.matcher(rawText);
         while (prohibitedMatcher.find()) {
@@ -394,6 +423,7 @@ public final class PetRuleParser {
             List<SpaceRule> spaceRules
     ) {
         String rawText = source.rawText();
+        // 동반 유형 필드의 정형 값은 정확한 일치를 우선하고, 그 외 문장에는 공간 패턴을 적용한다.
         if (source.sourceField() == PetRuleSourceField.ACMPY_TYPE_CD) {
             String exactValue = rawText.replaceAll("\\s+", "");
             if ("전구역동반가능".equals(exactValue)) {
@@ -525,6 +555,7 @@ public final class PetRuleParser {
             boolean[] recognized,
             List<Requirement> requirements
     ) {
+        // '동반 시 필요사항' 필드는 자체적으로 의무 문맥이다. 다른 필드에서는 명시적 필수 표현을 더 요구한다.
         boolean needMatterSource =
                 source.sourceField() == PetRuleSourceField.ACMPY_NEED_MTR;
 
@@ -711,6 +742,14 @@ public final class PetRuleParser {
             );
         }
 
+        Matcher sexMatcher = SEX_QUALIFIER_PATTERN.matcher(prefix);
+        while (sexMatcher.find()) {
+            recognizedStart = Math.min(
+                    recognizedStart,
+                    clauseStart + sexMatcher.start()
+            );
+        }
+
         return new PrefixContext(target, scope, recognizedStart);
     }
 
@@ -748,7 +787,11 @@ public final class PetRuleParser {
                 continue;
             }
             confirmationConditions.add(new ConfirmationCondition(type, source));
-            mark(recognized, matcher.start(), matcher.end());
+            // The lead-in is part of the same confirmation clause. For example,
+            // "거리 내 매장은 개별 정책이 상이하므로 개별 문의 필요" must be
+            // consumed as one clause; otherwise the unparsed lead-in is later
+            // reported as an additional generic confirmation reason.
+            mark(recognized, findClauseStart(source.rawText(), matcher.start()), matcher.end());
         }
     }
 
@@ -838,6 +881,7 @@ public final class PetRuleParser {
         String prefix = rawText.substring(clauseStart, weightStart).trim();
         String normalized = prefix
                 .replaceFirst("^(?:및|그리고|또는|과|와)\\s*", "")
+                .replaceAll("[()\\[\\]]", "")
                 .replaceAll("\\s+", "");
 
         return switch (normalized) {
@@ -849,7 +893,7 @@ public final class PetRuleParser {
                     SpaceScope.INDOOR,
                     clauseStart
             );
-            case "야외", "야외에서", "외부", "외부에서" -> new WeightContext(
+            case "야외", "야외에서", "실외", "실외에서", "외부", "외부에서" -> new WeightContext(
                     SpaceScope.OUTDOOR,
                     clauseStart
             );
@@ -857,7 +901,9 @@ public final class PetRuleParser {
                     SpaceScope.UNSPECIFIED,
                     clauseStart
             );
-            default -> null;
+            default -> normalized.matches(".*(?:소형견|중형견|중소형견).*")
+                    ? new WeightContext(SpaceScope.UNSPECIFIED, weightStart)
+                    : null;
         };
     }
 
@@ -900,6 +946,7 @@ public final class PetRuleParser {
 
     private String cleanFragment(String value) {
         return value
+                .replaceFirst("^\\s*공식\\s*안내\\s*[·•:\\-]?\\s*", "")
                 .replaceAll("^[\\s,.;:!?/()\\[\\]{}·ㆍ]+", "")
                 .replaceAll("[\\s,.;:!?/()\\[\\]{}·ㆍ]+$", "")
                 .replaceAll("^(?:및|그리고|또는|과|와)\\s*", "")
@@ -971,6 +1018,7 @@ public final class PetRuleParser {
             return SpaceScope.INDOOR;
         }
         if ("야외".equals(normalized)
+                || "실외".equals(normalized)
                 || "외부".equals(normalized)
                 || "건물외".equals(normalized)) {
             return SpaceScope.OUTDOOR;

@@ -1,3 +1,4 @@
+/* 반려견 프로필·성향을 카드로 표시하고 대표견 지정·수정·삭제 동작을 연결한다. */
 import { Link } from "react-router-dom";
 
 import type { Pet } from "../types/pet";

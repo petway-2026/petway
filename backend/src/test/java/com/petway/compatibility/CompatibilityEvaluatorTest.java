@@ -1,3 +1,4 @@
+/* CompatibilityEvaluator의 동작을 검증하는 테스트다. 검증 대상: 반려견 프로필과 파싱된 규정을 비교하는 규칙 기반 판정기다. AI 호출 없이 사유와 준비사항을 모은다. */
 package com.petway.compatibility;
 
 import com.petway.pet.entity.Pet;
@@ -147,7 +148,7 @@ class CompatibilityEvaluatorTest {
 
         CompatibilityResult result = evaluate(pet("10", PetSizeType.MEDIUM), rule);
 
-        assertThat(result.status()).isEqualTo(CompatibilityStatus.CONDITIONAL);
+        assertThat(result.status()).isEqualTo(CompatibilityStatus.AVAILABLE);
         assertThat(result.reasons())
                 .contains("야외에서만 동반할 수 있습니다.")
                 .noneMatch(reason -> reason.contains("충족하지 않습니다"));
@@ -222,15 +223,15 @@ class CompatibilityEvaluatorTest {
     }
 
     @Test
-    void needsConfirmationForSizeOutsideAllowedLabel() {
+    void rejectsPetSizeOutsideAllowedLabel() {
         CompatibilityResult result = evaluate(
                 pet("2", PetSizeType.LARGE),
                 ruleWithSize(Set.of(PetSize.SMALL), SizeConditionType.ALLOWED)
         );
 
-        assertThat(result.status()).isEqualTo(CompatibilityStatus.NEED_CONFIRMATION);
+        assertThat(result.status()).isEqualTo(CompatibilityStatus.UNAVAILABLE);
         assertThat(result.reasons()).contains(
-                "장소의 반려견 크기 기준이 명확하지 않아 방문 전 확인이 필요합니다."
+                "장소에서 등록된 반려견 크기와 다른 크기의 동반을 허용하지 않습니다."
         );
     }
 
@@ -290,26 +291,26 @@ class CompatibilityEvaluatorTest {
     }
 
     @Test
-    void leashRequirementIsConditional() {
+    void leashRequirementIsPreparationNotice() {
         CompatibilityResult result = evaluate(
                 pet("5", PetSizeType.SMALL),
                 ruleWithRequirements(requirement(RequirementType.LEASH, PetSubject.unspecified()))
         );
 
-        assertThat(result.status()).isEqualTo(CompatibilityStatus.CONDITIONAL);
-        assertThat(result.reasons()).contains("목줄 착용이 필요합니다.");
+        assertThat(result.status()).isEqualTo(CompatibilityStatus.AVAILABLE);
+        assertThat(result.reasons()).doesNotContain("목줄 착용이 필요합니다.");
         assertThat(result.requirements()).hasSize(1);
     }
 
     @Test
-    void carrierRequirementIsConditional() {
+    void carrierRequirementIsPreparationNotice() {
         CompatibilityResult result = evaluate(
                 pet("5", PetSizeType.SMALL),
                 ruleWithRequirements(requirement(RequirementType.CARRIER, PetSubject.unspecified()))
         );
 
-        assertThat(result.status()).isEqualTo(CompatibilityStatus.CONDITIONAL);
-        assertThat(result.reasons()).contains("이동장 사용이 필요합니다.");
+        assertThat(result.status()).isEqualTo(CompatibilityStatus.AVAILABLE);
+        assertThat(result.reasons()).doesNotContain("이동장 사용이 필요합니다.");
     }
 
     @Test
@@ -321,10 +322,10 @@ class CompatibilityEvaluatorTest {
                 ruleWithRequirements(leash, wasteBag)
         );
 
-        assertThat(result.status()).isEqualTo(CompatibilityStatus.CONDITIONAL);
+        assertThat(result.status()).isEqualTo(CompatibilityStatus.AVAILABLE);
         assertThat(result.requirements()).containsExactly(leash, wasteBag);
         assertThat(result.reasons())
-                .contains("목줄 착용이 필요합니다.", "배변봉투를 준비해야 합니다.");
+                .doesNotContain("목줄 착용이 필요합니다.", "배변봉투를 준비해야 합니다.");
     }
 
     @Test
@@ -352,33 +353,33 @@ class CompatibilityEvaluatorTest {
     }
 
     @Test
-    void partialAreaIsConditional() {
+    void partialAreaIsAvailableWithRestrictionNotice() {
         CompatibilityResult result = evaluate(
                 pet("5", PetSizeType.SMALL),
                 ruleWithSpace(SpaceCondition.PARTIAL_AREA_ONLY)
         );
 
-        assertThat(result.status()).isEqualTo(CompatibilityStatus.CONDITIONAL);
+        assertThat(result.status()).isEqualTo(CompatibilityStatus.AVAILABLE);
     }
 
     @Test
-    void outdoorOnlyIsConditional() {
+    void outdoorOnlyIsAvailable() {
         CompatibilityResult result = evaluate(
                 pet("5", PetSizeType.SMALL),
                 ruleWithSpace(SpaceCondition.OUTDOOR_ONLY)
         );
 
-        assertThat(result.status()).isEqualTo(CompatibilityStatus.CONDITIONAL);
+        assertThat(result.status()).isEqualTo(CompatibilityStatus.AVAILABLE);
     }
 
     @Test
-    void terraceOnlyWithoutOtherUncertaintyIsConditional() {
+    void terraceOnlyWithoutOtherUncertaintyIsAvailableWithRestrictionNotice() {
         CompatibilityResult result = evaluate(
                 pet("5", PetSizeType.SMALL),
                 ruleWithSpace(SpaceCondition.TERRACE_ONLY)
         );
 
-        assertThat(result.status()).isEqualTo(CompatibilityStatus.CONDITIONAL);
+        assertThat(result.status()).isEqualTo(CompatibilityStatus.AVAILABLE);
         assertThat(result.reasons()).contains("테라스에서만 동반할 수 있습니다.");
     }
 
@@ -492,7 +493,7 @@ class CompatibilityEvaluatorTest {
     }
 
     @Test
-    void clearAllowedWithRequirementIsConditional() {
+    void clearAllowedWithRequirementIsPreparationNotice() {
         PetRule rule = rule(
                 List.of(),
                 List.of(),
@@ -503,7 +504,7 @@ class CompatibilityEvaluatorTest {
         );
 
         assertThat(evaluate(pet("5", PetSizeType.SMALL), rule).status())
-                .isEqualTo(CompatibilityStatus.CONDITIONAL);
+                .isEqualTo(CompatibilityStatus.AVAILABLE);
     }
 
     @Test

@@ -1,3 +1,4 @@
+/* TourApiClient의 동작을 검증하는 테스트다. 검증 대상: 관광공사 장소·동반정보 API를 호출한다. 주변 검색 캐시와 상세 조회의 동시 요청 공유로 호출량을 줄인다. */
 package com.petway.external.tour.client;
 
 import com.fasterxml.jackson.databind.ObjectMapper;

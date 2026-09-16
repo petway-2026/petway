@@ -1,3 +1,4 @@
+/* 관광공사 응답의 header, body, items와 장소 필드를 표현한다. 외부 필드명을 내부 이름에 연결한다. */
 package com.petway.external.tour.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;

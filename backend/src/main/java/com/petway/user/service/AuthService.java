@@ -1,3 +1,4 @@
+/* 일반 인증, 기존 계정 확인 후 카카오 연동, 현재 사용자 조회를 조정한다. */
 package com.petway.user.service;
 
 import com.petway.global.security.oauth.CustomOAuth2UserService;

@@ -1,3 +1,4 @@
+/* 공통 내비게이션과 로그인 상태별 사용자 메뉴·로그아웃 동작을 표시한다. */
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../../features/auth/context/AuthContext";
 

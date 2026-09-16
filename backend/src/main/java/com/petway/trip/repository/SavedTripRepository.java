@@ -1,3 +1,4 @@
+/* 사용자의 저장 일정 목록을 조회하고 일정 ID와 소유자를 함께 조건으로 검색한다. */
 package com.petway.trip.repository;
 
 import com.petway.trip.entity.SavedTrip;

@@ -1,3 +1,4 @@
+/* 허용할 프론트엔드 origin 목록을 검증하고 CORS 및 로그인 리다이렉트의 기준 주소를 제공한다. */
 package com.petway.global.config;
 
 import org.springframework.beans.factory.annotation.Value;

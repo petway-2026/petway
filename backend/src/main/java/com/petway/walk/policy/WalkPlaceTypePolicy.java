@@ -1,3 +1,4 @@
+/* 관광 콘텐츠 유형별 기본 점수와 실내·야외·활동 성격을 제공한다. */
 package com.petway.walk.policy;
 
 import org.springframework.stereotype.Component;
@@ -5,6 +6,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class WalkPlaceTypePolicy {
 
+    // 콘텐츠 유형을 이용한 기본 적합도다. 실내외 플래그는 공식 출입 규정과 별개의 유형 특성이다.
     public Evaluation evaluate(String contentTypeId) {
         return switch (contentTypeId == null ? "" : contentTypeId) {
             case "28" -> new Evaluation(

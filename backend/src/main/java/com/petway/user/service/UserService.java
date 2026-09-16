@@ -1,3 +1,4 @@
+/* 회원가입 시 회원과 LOCAL 인증정보를 함께 저장하고 이메일 기반 회원 조회를 제공한다. */
 package com.petway.user.service;
 
 import com.petway.user.dto.SignupRequest;

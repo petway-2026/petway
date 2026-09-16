@@ -1,3 +1,4 @@
+# Gradle 빌드 단계에서 실행 JAR를 만들고 런타임 이미지에서 백엔드를 실행한다.
 FROM eclipse-temurin:17-jdk-jammy AS build
 
 WORKDIR /workspace

@@ -1,3 +1,4 @@
+/* 사용자가 저장한 대상 식별자와 표시용 스냅샷을 보관하는 JPA 엔티티다. */
 package com.petway.favorite.entity;
 
 import com.petway.user.entity.User;

@@ -1,3 +1,4 @@
+/* 계절 전망 XML에서 대상 권역·월의 기온 및 강수 전망 확률을 추출한다. */
 package com.petway.external.weather.mapper;
 
 import com.petway.weather.domain.ForecastType;

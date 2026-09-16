@@ -1,3 +1,4 @@
+/* 동물병원 API 접속과 호출에 필요한 설정을 관리한다. */
 package com.petway.hospital.config;
 
 import org.springframework.beans.factory.annotation.Value;

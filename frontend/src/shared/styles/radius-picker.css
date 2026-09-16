@@ -1,3 +1,4 @@
+/* 검색 반경 선택 UI의 배치와 선택 상태를 표현한다. */
 .radius-picker-backdrop{position:fixed;inset:0;z-index:10000;display:grid;place-items:center;padding:20px;background:rgba(22,31,25,.48)}
 .radius-picker{position:relative;width:min(460px,100%);padding:32px;border-radius:24px;background:#fff;box-shadow:0 24px 70px rgba(23,40,29,.24)}
 .radius-picker>span{color:#52705c;font-size:12px;font-weight:800;letter-spacing:.12em}.radius-picker h2{margin:8px 36px 8px 0;font-size:24px}.radius-picker p{margin:0 0 22px;color:#69736c;font-size:14px}

@@ -1,3 +1,4 @@
+/* 입력 중복과 필수값을 검사하고, AI가 입력에 없는 장소나 동반 불가 장소를 반환하면 거부한다. */
 package com.petway.ai.recommendation;
 
 import java.util.ArrayList;
@@ -51,6 +52,7 @@ public class RecommendationValidator {
             throw invalid("AI 추천 목록이 비어 있습니다.");
         }
 
+        // 후보 ID를 허용 목록으로 사용한다. 이 단계는 요청 스냅샷과의 대조이며 외부 원본을 다시 조회하지 않는다.
         Map<String, RecommendationCandidate> candidatesById = new HashMap<>();
         input.candidates().forEach(candidate -> candidatesById.put(candidate.candidateId(), candidate));
 
@@ -73,6 +75,7 @@ public class RecommendationValidator {
             if (candidate.compatibilityStatus() == CandidateCompatibilityStatus.UNAVAILABLE) {
                 throw invalid("UNAVAILABLE 후보는 추천할 수 없습니다.");
             }
+            // 순위가 1부터 결과 개수 사이의 중복 없는 값인지 검사해 누락·중복 순위를 차단한다.
             if (item.rank < 1 || item.rank > recommendationCount || !ranks.add(item.rank)) {
                 throw invalid("AI 추천 순위가 올바르지 않습니다.");
             }
@@ -80,6 +83,7 @@ public class RecommendationValidator {
                 throw invalid("AI 추천 설명이 올바르지 않습니다.");
             }
 
+            // 최종 동반 상태는 모델이 작성한 값이 아니라 입력 후보에서 가져와 판정을 유지한다.
             validatedItems.add(new RecommendationItem(
                     item.candidateId,
                     item.rank,

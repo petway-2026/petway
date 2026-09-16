@@ -1,3 +1,4 @@
+/* 회원가입·로그인 요청, 사용자 프로필과 인증 API 응답의 TypeScript 계약이다. */
 export interface SignupRequest {
     email: string;
     password: string;

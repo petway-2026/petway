@@ -1,3 +1,4 @@
+/* 단기·중기·계절 전망 조회를 정의해 기상청 통신 구현을 서비스와 분리한다. */
 package com.petway.weather.port;
 
 import com.petway.weather.domain.WeatherForecast;

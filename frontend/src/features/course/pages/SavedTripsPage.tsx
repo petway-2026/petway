@@ -1,3 +1,4 @@
+/* 사용자의 저장 여행 목록을 불러오고 상세 이동과 일정 삭제를 제공한다. */
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { deleteSavedTrip, getSavedTrips, type SavedTrip } from "../api/savedTripApi";

@@ -1,3 +1,4 @@
+/* PetRegistrationLookupService의 동작을 검증하는 테스트다. 검증 대상: 동물 식별자와 소유자 확인정보를 각각 하나씩 선택했는지 검사한 뒤 외부 조회를 수행한다. */
 package com.petway.pet.service;
 
 import com.petway.pet.dto.PetRegistrationLookupRequest;

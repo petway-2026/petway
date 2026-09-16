@@ -1,3 +1,4 @@
+/* 공개 API와 인증·관리자 API를 구분하고 세션 인증, CSRF, CORS 및 카카오 로그인 흐름을 구성한다. */
 package com.petway.global.security;
 
 import com.petway.global.config.FrontendProperties;
@@ -67,6 +68,7 @@ public class SecurityConfig {
                 )
 
 
+                // 경로 규칙은 순서대로 매칭된다. 공개 장소 패턴보다 동반 판정·산책의 인증 규칙을 먼저 둔다.
                 .authorizeHttpRequests(
                         auth -> auth
 

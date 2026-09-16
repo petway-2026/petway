@@ -1,3 +1,4 @@
+/* 날짜별 장소·준비물 스냅샷의 저장, 목록·상세 조회, 삭제 API와 응답 타입을 제공한다. */
 import { apiFetch } from "../../../shared/api/client";
 import { API_URL } from "../../../shared/api/config";
 
@@ -9,6 +10,7 @@ export interface SavedTripPlace {
     latitude: number | null;
     longitude: number | null;
     thumbnailUrl: string | null;
+    preparations?: string[];
 }
 
 export interface SavedTripDay {

@@ -1,3 +1,4 @@
+/* 단기·중기·계절 전망의 공통 응답 및 예보별 선택 필드를 정의한다. */
 export type WeatherRegion =
   | "SEOUL_INCHEON_GYEONGGI"
   | "GANGWON_YEONGSEO"

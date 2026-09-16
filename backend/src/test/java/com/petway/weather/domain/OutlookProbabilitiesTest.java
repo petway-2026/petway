@@ -1,3 +1,4 @@
+/* OutlookProbabilities의 동작을 검증하는 테스트다. 검증 대상: 평년 대비 전망 확률의 유효성을 검사하고 우세한 전망 수준을 계산한다. */
 package com.petway.weather.domain;
 
 import org.junit.jupiter.api.Test;

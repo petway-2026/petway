@@ -1,3 +1,4 @@
+/* 기존 반려견의 프로필·성향 수정값과 입력 검증 조건을 정의한다. */
 package com.petway.pet.dto;
 
 import com.petway.pet.enums.ActivityLevel;

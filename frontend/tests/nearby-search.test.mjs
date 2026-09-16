@@ -1,3 +1,4 @@
+/* 주변 검색 취소 후 늦은 응답 처리와, 제한된 표시 목록·전체 건수의 구분을 검증한다. */
 import { test, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';

@@ -1,3 +1,4 @@
+/* 여행 코스 추천 요청을 AI 추천 포트로 전달하는 REST API다. */
 package com.petway.ai.recommendation;
 
 import lombok.RequiredArgsConstructor;

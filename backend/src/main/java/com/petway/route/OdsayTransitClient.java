@@ -1,3 +1,4 @@
+/* 인접 방문지 사이의 대중교통 경로를 조회하고 구간 캐시를 이용해 반복 호출을 줄인다. */
 package com.petway.route;
 
 import com.fasterxml.jackson.databind.JsonNode;

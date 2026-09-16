@@ -1,10 +1,12 @@
+/* 카카오 지도·주소 변환 SDK의 로딩 Promise를 공유해 여러 컴포넌트의 중복 스크립트 삽입을 막는다. */
 let kakaoMapPromise: Promise<void> | null = null;
 
 export function loadKakaoMap(): Promise<void> {
-    if (window.kakao?.maps) {
+    if (window.kakao?.maps?.services) {
         return Promise.resolve();
     }
 
+    // 여러 지도 화면이 동시에 마운트돼도 진행 중인 SDK 로딩을 공유한다.
     if (kakaoMapPromise) {
         return kakaoMapPromise;
     }
@@ -29,11 +31,18 @@ export function loadKakaoMap(): Promise<void> {
             ) as HTMLScriptElement | null;
 
         if (existingScript) {
-            if (window.kakao?.maps) {
+            if (window.kakao?.maps?.services) {
                 window.kakao.maps.load(() => {
                     resolve();
                 });
 
+                return;
+            }
+
+            // An older SDK tag may already be on the page without the
+            // services library. It cannot be upgraded in place safely.
+            if (window.kakao?.maps) {
+                reject(new Error("주소 변환용 카카오 지도 서비스를 불러오지 못했습니다. 페이지를 새로고침해 주세요."));
                 return;
             }
 
@@ -69,6 +78,7 @@ export function loadKakaoMap(): Promise<void> {
         script.src =
             `https://dapi.kakao.com/v2/maps/sdk.js` +
             `?appkey=${appKey}` +
+            `&libraries=services` +
             `&autoload=false`;
 
         script.async =

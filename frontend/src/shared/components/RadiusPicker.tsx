@@ -1,3 +1,4 @@
+/* 주변 검색 반경 선택지를 표시하고 선택값을 상위 화면에 전달한다. */
 import "../styles/radius-picker.css";
 
 export const RADIUS_OPTIONS = [

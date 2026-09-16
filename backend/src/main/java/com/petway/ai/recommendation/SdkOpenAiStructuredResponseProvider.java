@@ -1,3 +1,4 @@
+/* 공식 Java SDK의 구조화 응답을 내부 추천 응답 모델로 받는 어댑터다. */
 package com.petway.ai.recommendation;
 
 import com.openai.client.OpenAIClient;

@@ -1,3 +1,4 @@
+/* 장소의 공식 동반 원문과 PetWay 판정·근거·준비사항을 구분해 반환한다. */
 package com.petway.place.dto;
 
 import com.petway.compatibility.CompatibilityResult;

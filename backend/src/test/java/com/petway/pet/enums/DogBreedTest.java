@@ -1,3 +1,4 @@
+/* DogBreed의 동작을 검증하는 테스트다. 검증 대상: 선택 가능한 견종과 표시명, 맹견 분류를 정의한다. */
 package com.petway.pet.enums;
 
 import org.junit.jupiter.api.Test;

@@ -1,3 +1,4 @@
+/* 서버 렌더링 방식의 회원가입·로그인 페이지 경로와 회원가입 요청을 연결한다. */
 package com.petway.user.controller;
 
 import com.petway.user.dto.SignupRequest;

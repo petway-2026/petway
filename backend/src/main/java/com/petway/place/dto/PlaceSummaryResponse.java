@@ -1,3 +1,4 @@
+/* 관광공사·문화정보원 장소 정보를 화면 표시용 공통 필드와 출처로 통합한다. */
 package com.petway.place.dto;
 
 import java.math.BigDecimal;

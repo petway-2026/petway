@@ -1,3 +1,4 @@
+# 로컬 개발 프로필에서 사용할 데이터베이스·로그·외부 연동 설정이다.
 spring:
   config:
     # Paths support running from backend/ or the repository root.

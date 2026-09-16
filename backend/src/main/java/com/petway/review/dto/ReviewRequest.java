@@ -1,3 +1,4 @@
+/* 리뷰 대상 종류·ID와 평점·내용을 받으며 입력 제약을 선언한다. */
 package com.petway.review.dto;
 
 import jakarta.validation.constraints.Max;

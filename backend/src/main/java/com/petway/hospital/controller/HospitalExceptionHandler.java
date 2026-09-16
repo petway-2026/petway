@@ -1,3 +1,4 @@
+/* 병원 검색의 제공자 실패와 잘못된 요청을 HTTP 오류로 변환한다. */
 package com.petway.hospital.controller;
 
 import com.petway.hospital.client.AnimalHospitalApiException;

@@ -1,3 +1,4 @@
+/* AnimalHospitalClient의 동작을 검증하는 테스트다. 검증 대상: 행정안전부 동물병원 정보를 HTTP로 조회하고 내부 병원 목록으로 변환한다. */
 package com.petway.hospital.client;
 
 import com.petway.hospital.client.dto.AnimalHospitalApiResponse;

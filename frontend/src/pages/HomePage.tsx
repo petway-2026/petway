@@ -1,3 +1,4 @@
+/* 서비스 시작 화면에서 반려견 상태와 주요 탐색·추천 기능으로 이어지는 진입점을 제공한다. */
 import { Link } from "react-router-dom";
 
 import { useAuth } from "../features/auth/context/AuthContext";

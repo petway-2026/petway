@@ -1,3 +1,4 @@
+/* 문화정보원 CSV 한 시설의 정보다. 시설 분류와 동반 안내를 서비스의 공통 표현으로 정규화한다. */
 package com.petway.facility;
 
 import java.math.BigDecimal;

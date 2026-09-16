@@ -1,3 +1,4 @@
+/* TourPetDetailCache의 동작을 검증하는 테스트다. 검증 대상: 장소 ID별 동반 상세정보를 유효기간 동안 재사용해 관광공사 API 호출량을 줄인다. */
 package com.petway.external.tour.client;
 
 import com.petway.place.model.PlacePetDetail;

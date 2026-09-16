@@ -1,3 +1,4 @@
+/* 운영 설정·컨테이너 배포 파일의 필수 구성과 환경변수 계약을 검증한다. */
 package com.petway.global.config;
 
 import jakarta.servlet.http.HttpServletRequest;

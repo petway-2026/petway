@@ -1,3 +1,4 @@
+/* AI 추천 테스트에서 공통으로 사용할 반려견·후보·입력 예시를 생성한다. */
 package com.petway.ai.recommendation;
 
 import java.util.List;

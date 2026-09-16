@@ -1,3 +1,4 @@
+/* 운영 세션 쿠키의 보안 속성과 프론트엔드 origin 설정의 일관성을 검증한다. */
 package com.petway.global.config;
 
 import jakarta.servlet.http.HttpServlet;

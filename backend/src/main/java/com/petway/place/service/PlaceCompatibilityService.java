@@ -1,3 +1,4 @@
+/* 출처에 맞게 동반 상세를 얻고 원문 변환, 규정 파싱, 반려견 판정을 순서대로 실행한다. */
 package com.petway.place.service;
 
 import com.petway.compatibility.CompatibilityEvaluator;
@@ -59,6 +60,7 @@ public class PlaceCompatibilityService {
             String contentId
     ) {
 
+        // CSV ID이면 카탈로그 원문을 쓰고 관광공사 ID이면 제공자 상세를 조회한다. 두 출처 모두 같은 판정기로 연결한다.
         PlacePetDetail officialInformation = facilityCatalog.byId(contentId)
                 .map(f -> new PlacePetDetail(f.normalizedAccompanimentType(), f.normalizedAllowedCapacity(), null, f.normalizedAdditionalInformation(), null))
                 .orElseGet(() -> tourPlaceGateway.getPetDetail(contentId));
@@ -66,6 +68,7 @@ public class PlaceCompatibilityService {
             officialInformation = PlacePetDetail.empty();
         }
 
+        // 원문 필드 보존 → 규정 추출 → 반려견 비교 순서다. 원문과 서비스 해석을 응답에서 구분한다.
         PetRule petRule = petRuleParser.parse(
                 sourceAdapter.adapt(officialInformation)
         );

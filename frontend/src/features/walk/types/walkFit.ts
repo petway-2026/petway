@@ -1,3 +1,4 @@
+/* 산책 추천의 순위·적합도 등급·근거·동반 조건·날씨 응답 타입이다. */
 import type { CompatibilityStatus } from "../../place/api/placeApi";
 import type { ForecastType } from "../../weather/types/weather";
 

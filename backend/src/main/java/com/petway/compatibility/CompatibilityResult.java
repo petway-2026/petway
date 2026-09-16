@@ -1,3 +1,4 @@
+/* 동반 가능 상태와 판정 근거, 방문 준비사항을 함께 전달하는 결과다. */
 package com.petway.compatibility;
 
 import com.petway.petrule.PetRule.Requirement;

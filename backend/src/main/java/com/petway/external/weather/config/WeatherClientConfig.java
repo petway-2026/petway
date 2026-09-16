@@ -1,3 +1,4 @@
+/* 날씨 전용 HTTP 클라이언트와 날짜 계산에 사용할 Clock을 등록한다. */
 package com.petway.external.weather.config;
 
 import org.springframework.context.annotation.Bean;

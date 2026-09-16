@@ -1,3 +1,4 @@
+/* PlacePetRuleSourceAdapter의 동작을 검증하는 테스트다. 검증 대상: 동반 상세의 각 필드를 원문 출처와 함께 파서 입력으로 변환해 필드별 문맥을 보존한다. */
 package com.petway.place.mapper;
 
 import com.petway.petrule.PetRule.PetRuleSourceField;

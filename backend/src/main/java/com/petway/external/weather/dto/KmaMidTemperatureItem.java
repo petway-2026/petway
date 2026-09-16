@@ -1,3 +1,4 @@
+/* 중기 기온예보에서 대상 날짜의 최저·최고 기온을 선택한다. */
 package com.petway.external.weather.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;

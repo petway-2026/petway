@@ -1,3 +1,4 @@
+/* 현재 위치·검색 반경·장소 유형에 따른 주변 목록과 지도 선택, 동반정보 조회 상태를 관리한다. */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -213,6 +214,7 @@ export default function NearbyPlacesSection({
         );
     };
 
+    // 새 검색을 시작하면 이전 요청을 취소한다. 늦게 도착한 이전 결과가 현재 지도 목록을 덮지 않게 한다.
     const searchAt = async (location: MapCenter, areaSearch = false, radiusOption?: RadiusOption, targetBounds?: MapBounds | null) => {
         nearbyRequestRef.current?.abort();
         const controller = new AbortController();
@@ -288,6 +290,7 @@ export default function NearbyPlacesSection({
         setMapMoved(moved);
     }, [searchOrigin]);
 
+    // 반경 검색 결과 중 사용자가 적용한 지도 사각 영역 안의 장소만 화면에 남긴다.
     const areaPlaces = useMemo(
         () => appliedBounds === null ? places : places.filter((place) =>
             place.latitude !== null && place.longitude !== null
@@ -389,6 +392,7 @@ export default function NearbyPlacesSection({
         }
     }, [closePlaceExpansion, places, selectPlace]);
 
+    // 요청 취소와 증가하는 요청 ID를 함께 사용해 빠른 장소 선택 전환에서도 최신 상세만 반영한다.
     const loadPlaceDetail = async (place: PlaceSummary) => {
         detailRequestRef.current?.controller.abort();
 

@@ -1,3 +1,4 @@
+/* PlaceSearchSnapshotCache의 동작을 검증하는 테스트다. 검증 대상: 완성된 통합 검색 목록을 페이지 간 공유하고 동일 조건의 동시 로딩을 하나로 합친다. */
 package com.petway.place.service;
 
 import org.junit.jupiter.api.Test;

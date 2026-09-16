@@ -1,3 +1,4 @@
+/* 환경에 따른 API 기준 주소를 결정하고 운영 환경에서 사용할 주소 형식을 검증한다. */
 const configuredUrl = import.meta.env.VITE_API_URL?.trim();
 
 if (!configuredUrl) {

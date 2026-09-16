@@ -1,5 +1,7 @@
+/* 문화정보원 CSV를 읽어 장소·동물병원·약국을 검색하고 관광공사 장소와 대응되는 보조 정보를 찾는다. */
 package com.petway.facility;
 
+import com.petway.place.model.PlaceSummary;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -73,6 +75,27 @@ public class PetFacilityCatalog {
                 .toList();
     }
 
+    /**
+     * Returns CSV places in the same lightweight shape used by the external
+     * tourism provider.  Walk recommendations use this method so local data
+     * can be considered even when the provider is unavailable or rate limited.
+     */
+    public List<PlaceSummary> placeSummariesNearby(BigDecimal latitude, BigDecimal longitude, int radius) {
+        return placesNearby(latitude, longitude, radius).stream()
+                .map(f -> new PlaceSummary(
+                        f.id(),
+                        f.contentTypeId(),
+                        AREA_CODES.get(f.province()),
+                        null,
+                        f.name(),
+                        f.address(),
+                        f.latitude(),
+                        f.longitude(),
+                        null
+                ))
+                .toList();
+    }
+
     public List<PetFacility> hospitals(String address, String name) {
         String a = normalize(address), n = normalize(name);
         return hospitals.stream()
@@ -108,6 +131,7 @@ public class PetFacilityCatalog {
                 .findFirst();
     }
 
+    // 이름이 같은 후보에서 주소 포함 관계 또는 100m 이내 좌표를 추가 확인해 동명 시설의 오연결을 줄인다.
     private boolean sameLocation(PetFacility f, String address, BigDecimal lat, BigDecimal lon) {
         String left = normalizeAddress(f.address()), right = normalizeAddress(address);
         if (!left.isEmpty() && !right.isEmpty() && (left.contains(right) || right.contains(left))) return true;
@@ -115,6 +139,7 @@ public class PetFacilityCatalog {
                 && distanceMeters(lat.doubleValue(), lon.doubleValue(), f.latitude().doubleValue(), f.longitude().doubleValue()) <= 100;
     }
 
+    // 행 번호 대신 이름·주소·좌표에서 ID를 만들어 CSV 순서가 바뀌어도 같은 시설을 식별한다.
     private PetFacility toFacility(List<String> c) {
         String id = "csv-" + hash(normalize(c.get(0)) + "|" + normalizeAddress(first(c.get(14), c.get(15))) + "|" + c.get(11) + "|" + c.get(12));
         return new PetFacility(id, clean(c.get(0)), clean(c.get(2)), clean(c.get(3)), clean(c.get(4)), clean(c.get(5)),
@@ -123,6 +148,7 @@ public class PetFacilityCatalog {
                 clean(c.get(24)), clean(c.get(25)), clean(c.get(26)), clean(c.get(27)), clean(c.get(28)), clean(c.get(29)), clean(c.get(30)));
     }
 
+    // 따옴표 안의 쉼표는 구분자로 쓰지 않고, 연속된 따옴표는 값에 포함된 따옴표로 처리한다.
     private static List<String> parse(String line) {
         List<String> fields = new ArrayList<>(31); StringBuilder value = new StringBuilder(); boolean quoted = false;
         for (int i = 0; i < line.length(); i++) { char ch = line.charAt(i);

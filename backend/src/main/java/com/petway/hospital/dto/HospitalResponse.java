@@ -1,3 +1,4 @@
+/* 병원·약국의 표시 정보, 위치, 출처를 클라이언트에 전달한다. */
 package com.petway.hospital.dto;
 
 public record HospitalResponse(

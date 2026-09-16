@@ -1,3 +1,4 @@
+/* 방문 순서별 장소 좌표로 자동차·대중교통 경로를 요청하며 요청 취소 신호를 전달한다. */
 import { apiFetch } from "../../../shared/api/client";
 import { API_URL } from "../../../shared/api/config";
 

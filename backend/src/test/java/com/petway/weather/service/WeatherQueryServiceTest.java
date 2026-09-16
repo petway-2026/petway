@@ -1,3 +1,4 @@
+/* WeatherQueryService의 동작을 검증하는 테스트다. 검증 대상: 좌표·날짜를 검증하고 방문일까지 남은 기간에 맞는 예보를 선택하며 성공 응답을 캐시한다. */
 package com.petway.weather.service;
 
 import com.petway.weather.domain.ForecastType;

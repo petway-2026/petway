@@ -1,3 +1,4 @@
+/* HospitalService의 동작을 검증하는 테스트다. 검증 대상: 시설 유형과 검색 조건에 따라 병원·약국 후보를 모으고 위치 필터와 페이지를 적용한다. */
 package com.petway.hospital.service;
 
 import com.petway.hospital.client.AnimalHospitalClient;

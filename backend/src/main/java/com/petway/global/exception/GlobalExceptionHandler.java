@@ -1,3 +1,4 @@
+/* 서비스·외부 API·입력 검증 예외를 클라이언트가 처리할 HTTP 상태와 메시지로 변환한다. */
 package com.petway.global.exception;
 
 import com.petway.external.animalregistration.exception.AnimalRegistrationException;

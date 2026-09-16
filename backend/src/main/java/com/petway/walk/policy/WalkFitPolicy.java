@@ -1,3 +1,4 @@
+/* 동반 조건·장소 유형·반려견 성향·날씨를 점수화한다. AI를 호출하지 않는 결정론적 평가 정책이다. */
 package com.petway.walk.policy;
 
 import com.petway.compatibility.CompatibilityStatus;
@@ -19,6 +20,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class WalkFitPolicy {
 
+    // 총점의 기준 배점은 동반 조건 40, 장소 유형 30, 반려견 성향 10, 날씨 20이다.
     private static final int COMPATIBILITY_MAX = 40;
     private static final int PLACE_TYPE_MAX = 30;
     private static final int PET_MAX = 10;
@@ -56,6 +58,8 @@ public class WalkFitPolicy {
             maximumScore += WEATHER_MAX;
         }
 
+        // 날씨 조회에 실패하면 날씨 배점을 분모에서도 제외한 뒤 100점으로 환산한다.
+        // 정보가 없다는 이유만으로 나쁜 날씨와 같은 감점을 주지 않는다.
         int score = clamp(
                 (int) Math.round(rawScore * 100.0 / maximumScore),
                 0,
@@ -87,6 +91,7 @@ public class WalkFitPolicy {
         };
     }
 
+    // 등록된 선호도·활동량과 장소 유형의 일반적 성격을 비교한다. 개별 장소 시설을 확정하는 판정은 아니다.
     private int petScore(
             Pet pet,
             WalkPlaceTypePolicy.Evaluation placeType,
@@ -126,6 +131,7 @@ public class WalkFitPolicy {
             WeatherForecastResponse weather,
             List<String> reasons
     ) {
+        // 계절 전망에는 방문 당일의 기온·강수확률을 적용하지 않고 평년 대비 강수 경향만 반영한다.
         if (weather.forecastType() == ForecastType.SEASONAL_OUTLOOK) {
             int score = 12;
             if (weather.precipitationOutlook() == OutlookLevel.ABOVE_NORMAL) {

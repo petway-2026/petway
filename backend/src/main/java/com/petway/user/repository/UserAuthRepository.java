@@ -1,3 +1,4 @@
+/* 회원의 인증 수단과 외부 제공자 식별자로 인증정보를 조회한다. */
 package com.petway.user.repository;
 
 import com.petway.user.entity.User;

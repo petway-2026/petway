@@ -1,3 +1,4 @@
+/* 운영 환경의 origin 프로토콜과 세션 쿠키 Secure·HttpOnly·SameSite 설정의 일관성을 검사한다. */
 package com.petway.global.config;
 
 import org.springframework.boot.autoconfigure.web.ServerProperties;

@@ -1,3 +1,4 @@
+/* KmaWeatherMapper의 동작을 검증하는 테스트다. 검증 대상: 기상청 단기·중기 응답을 날짜별 날씨 요약으로 통합하고 필요한 예보값을 검증한다. */
 package com.petway.external.weather.mapper;
 
 import com.petway.external.weather.dto.KmaShortForecastItem;

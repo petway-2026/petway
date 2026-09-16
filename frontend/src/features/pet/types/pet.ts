@@ -1,3 +1,4 @@
+/* 반려견 프로필, 선택형 성향 값, 등록·수정·외부 조회 요청과 응답을 정의한다. */
 export type ActivityLevel =
     | "LOW"
     | "MEDIUM"

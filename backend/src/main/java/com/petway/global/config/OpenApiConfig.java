@@ -1,3 +1,4 @@
+/* API 문서의 기본 정보와 상태 변경 요청에 필요한 CSRF 헤더 안내를 구성한다. */
 package com.petway.global.config;
 
 import io.swagger.v3.oas.models.OpenAPI;
