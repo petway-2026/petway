@@ -3,11 +3,12 @@ export function matchesRegion(
     place: { areaCode: string | null; address: string | null },
     areaCode: string,
     district = "",
+    nearbyDistricts: string[] = [],
 ): boolean {
     if (place.areaCode != null && place.areaCode !== areaCode) return false;
     if (!district) return true;
     const parts = place.address?.trim().split(/\s+/) ?? [];
     return areaCode === "8"
         ? ["세종특별자치시", "세종시", "세종"].includes(parts[0] ?? "")
-        : parts[1] === district;
+        : parts[1] === district || nearbyDistricts.includes(parts[1] ?? "");
 }

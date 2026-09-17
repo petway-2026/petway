@@ -21,6 +21,9 @@ import { getDrivingRoute, getTransitRoute, type DrivingRoute, type TransitRoute 
 import { saveTrip } from "../api/savedTripApi";
 import FavoriteButton from "../../../shared/components/FavoriteButton";
 import { matchesRegion } from "../utils/regionScope";
+import { getNearbyDistricts } from "../utils/nearbyDistricts";
+import { districtCenters } from "../utils/districtCenters";
+import { groupRecommendations } from "../utils/recommendationScope";
 import { compatibilityReasonSections } from "../../place/utils/compatibilityReasons";
 
 import "../styles/travel-course.css";
@@ -115,6 +118,7 @@ const WEATHER_ICONS: Record<string, string> = {
 
 interface Recommendation extends PlaceSummary {
     compatibility?: PlaceCompatibility;
+    compatibilityError?: string;
 }
 
 function isCafePlace(place: Pick<Recommendation, "contentTypeId" | "title">): boolean {
@@ -198,12 +202,21 @@ export default function TravelCoursePage() {
     const [pets, setPets] = useState<Pet[]>([]);
     const [regionCode, setRegionCode] = useState("1");
     const [districtName, setDistrictName] = useState("");
+    const [includeNearbyDistricts, setIncludeNearbyDistricts] = useState(false);
+    const nearbyDistricts = useMemo(() => getNearbyDistricts(regionCode, districtName,
+        (DISTRICTS[regionCode] ?? []).map((district) => district.name)), [regionCode, districtName]);
+    const includedDistricts = includeNearbyDistricts ? nearbyDistricts : [];
+    const locationLabel = `${REGIONS.find((region) => region.code === regionCode)?.name ?? ""}${districtName ? ` ${[districtName, ...includedDistricts].join(" · ")}` : ""}`;
     const [tripDays, setTripDays] = useState(2);
     const [startDate, setStartDate] = useState(initialStartDate);
     const [endDate, setEndDate] = useState(addDays(initialStartDate, 1));
     const [selectedDay, setSelectedDay] = useState(0);
     const [origin, setOrigin] = useState<MapCenter>(SEOUL_CENTER);
-    const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
+    const [loadedRecommendations, setRecommendations] = useState<Recommendation[]>([]);
+    // 목록, 유형 필터, AI 후보 모두 현재 선택한 행정구역만 사용한다.
+    const recommendations = useMemo(() => loadedRecommendations.filter((place) =>
+        matchesRegion(place, regionCode, districtName, includeNearbyDistricts ? nearbyDistricts : [])
+    ), [loadedRecommendations, regionCode, districtName, includeNearbyDistricts, nearbyDistricts]);
     const [regionPlaceCount, setRegionPlaceCount] = useState(0);
     const [courses, setCourses] = useState<Recommendation[][]>([[], []]);
     const [includeLodging, setIncludeLodging] = useState(false);
@@ -279,8 +292,8 @@ export default function TravelCoursePage() {
         getPets().then(setPets).catch(() => setPets([]));
     }, []);
 
-    // 검색 결과를 거리순으로 정리하고 동반 판정을 묶음 조회한다. 판정 조회가 실패한 장소는 최종 후보에서 제외한다.
-    const loadRecommendations = async (_areaCode: string, center: MapCenter, locationLabel: string, district?: string) => {
+    // 모든 지역 장소를 유지하고, 판정 실패는 방문 전 확인으로 안내한다.
+    const loadRecommendations = async (_areaCode: string, center: MapCenter, locationLabel: string, district?: string, extraDistricts: string[] = []) => {
         recommendationRequestRef.current?.abort();
         const controller = new AbortController();
         recommendationRequestRef.current = controller;
@@ -296,18 +309,20 @@ export default function TravelCoursePage() {
             const response = await searchAllPlaces(_areaCode, signal);
             if (signal.aborted) return;
             const scopedItems = response.items.filter((place) =>
-                matchesRegion(place, _areaCode, district)
+                matchesRegion(place, _areaCode, district, extraDistricts)
             );
             setRegionPlaceCount(scopedItems.length);
             const nearby = scopedItems
-                .filter((place) => place.latitude !== null && place.longitude !== null)
                 .sort((left, right) => {
+                    if (left.latitude === null || left.longitude === null) return right.latitude === null || right.longitude === null ? 0 : 1;
+                    if (right.latitude === null || right.longitude === null) return -1;
                     const leftDistance = distanceKm(center, { latitude: left.latitude!, longitude: left.longitude! });
                     const rightDistance = distanceKm(center, { latitude: right.latitude!, longitude: right.longitude! });
                     return leftDistance - rightDistance;
                 });
 
-            const eligible: Recommendation[] = [];
+            const eligible: Recommendation[] = [...nearby];
+            setRecommendations([...eligible]);
             let attempted = 0;
             let providerFailureCount = 0;
             // 동시에 확인하는 개수는 제한하지만 현재 구현은 후보 목록 전체를 순차 묶음으로 확인한다.
@@ -323,24 +338,23 @@ export default function TravelCoursePage() {
                             place: { ...place, compatibility: await getPlaceCompatibility(place.contentId, signal) },
                             failed: false as const,
                         };
-                    } catch {
-                        return { failed: true as const };
+                    } catch (error) {
+                        return { place: { ...place, compatibilityError: error instanceof Error ? error.message : "동반 조건 조회에 실패했어요." }, failed: true as const };
                     }
                 }));
                 if (signal.aborted) return;
                 attempted += batch.length;
-                batchResult.forEach((result) => {
+                batchResult.forEach((result, index) => {
+                    eligible[attempted - batch.length + index] = result.place;
                     if (result.failed) {
                         providerFailureCount += 1;
-                    } else {
-                        eligible.push(result.place);
                     }
                 });
                 setRecommendations([...eligible]);
                 setMessage(`${locationLabel} 전체 ${nearby.length}곳 중 가까운 장소의 동반 조건을 확인하고 있어요.`);
             }
             setRecommendations(eligible);
-            setMessage(`${locationLabel} 후보 ${scopedItems.length}곳 중 동반 조건을 확인한 ${eligible.length}곳을 추천했어요.${providerFailureCount > 0 ? ` 제공기관 오류로 ${providerFailureCount}곳은 추천에서 제외했어요.` : ""}`);
+            setMessage(`${locationLabel} 전체 ${eligible.length}곳을 표시했어요.${providerFailureCount > 0 ? ` 동반 조건을 조회하지 못한 ${providerFailureCount}곳은 방문 전 확인에 포함했어요.` : ""}`);
         } catch (error) {
             if (signal.aborted) return;
             setRecommendations([]);
@@ -351,9 +365,15 @@ export default function TravelCoursePage() {
     };
 
     useEffect(() => {
-        void loadRecommendations("1", SEOUL_CENTER, "서울특별시");
+        const region = REGIONS.find((item) => item.code === regionCode) ?? REGIONS[0];
+        const district = DISTRICTS[regionCode]?.find((item) => item.name === districtName);
+        const coordinates = districtCenters[`${regionCode}:${districtName}`];
+        const center = district?.center ?? (coordinates ? { latitude: coordinates[0], longitude: coordinates[1] } : region.center);
+        setOrigin(center);
+        void loadRecommendations(region.code, center, locationLabel, districtName,
+            includeNearbyDistricts ? nearbyDistricts : []);
         return () => recommendationRequestRef.current?.abort();
-    }, []);
+    }, [regionCode, districtName, includeNearbyDistricts]);
     useEffect(() => {
         setCourses((current) => Array.from({ length: tripDays }, (_, index) => current[index] ?? []));
         setSelectedDay((current) => Math.min(current, tripDays - 1));
@@ -397,17 +417,9 @@ export default function TravelCoursePage() {
         setTripDays(daysBetween(startDate, value));
     };
 
-    const filteredRecommendations = useMemo(() => recommendations.filter((place) => {
-        const status = place.compatibility?.petwayAssessment.status;
-        const matchesScope = recommendationScope === "AVAILABLE"
-            ? status === "AVAILABLE"
-            : recommendationScope === "CONFIRMATION"
-                ? status === "CONDITIONAL" || status === "NEED_CONFIRMATION"
-                : status === "UNAVAILABLE";
-        return (includeLodging || place.contentTypeId !== "32")
-            && matchesScope
-            && (selectedType === "all" || place.contentTypeId === selectedType);
-    }), [includeLodging, recommendationScope, recommendations, selectedType]);
+    const recommendationGroups = useMemo(() => groupRecommendations(recommendations, selectedType), [recommendations, selectedType]);
+    const filteredRecommendations = recommendationGroups[recommendationScope];
+    const filteredTotal = Object.values(recommendationGroups).reduce((sum, places) => sum + places.length, 0);
     const recommendationPageSize = 10;
     const recommendationTotalPages = Math.max(1, Math.ceil(filteredRecommendations.length / recommendationPageSize));
     const pagedRecommendations = useMemo(() => filteredRecommendations.slice(
@@ -416,8 +428,7 @@ export default function TravelCoursePage() {
     useEffect(() => { setRecommendationPage(1); }, [selectedType, includeLodging, recommendationScope]);
 
     const availableTypes = useMemo(() => Array.from(new Set(recommendations
-        .filter((place) => includeLodging || place.contentTypeId !== "32")
-        .map((place) => place.contentTypeId))), [includeLodging, recommendations]);
+        .map((place) => place.contentTypeId))), [recommendations]);
 
     useEffect(() => {
         const validStops = course.filter((place) => place.latitude !== null && place.longitude !== null);
@@ -498,6 +509,7 @@ export default function TravelCoursePage() {
             .map((place) => ({ latitude: place.latitude!, longitude: place.longitude! })), [course, drivingRoute, transportMode]);
 
     const addPlace = (place: Recommendation) => {
+        if (place.latitude === null || place.longitude === null) return;
         if (course.some((item) => item.contentId === place.contentId)) return;
         if (place.compatibility?.petwayAssessment.status === "UNAVAILABLE") return;
         if (place.contentTypeId === "32") {
@@ -668,27 +680,37 @@ export default function TravelCoursePage() {
     };
 
     const changeRegion = (code: string) => {
+        recommendationRequestRef.current?.abort();
         const region = REGIONS.find((item) => item.code === code) ?? REGIONS[0];
         setRegionCode(code);
         setDistrictName("");
+        setIncludeNearbyDistricts(false);
         setOrigin(region.center);
         setSelectedType("all");
         setSelectedDay(0);
         setCourses(Array.from({ length: tripDays }, () => []));
         setAiSummary(null);
-        void loadRecommendations(region.code, region.center, region.name);
     };
 
     const changeDistrict = (name: string) => {
+        recommendationRequestRef.current?.abort();
         const district = districtOptions.find((item) => item.name === name);
         setDistrictName(name);
+        setIncludeNearbyDistricts(false);
         setSelectedType("all");
         setSelectedDay(0);
         setCourses(Array.from({ length: tripDays }, () => []));
         setAiSummary(null);
         const center = district?.center ?? selectedRegion.center;
         setOrigin(center);
-        void loadRecommendations(selectedRegion.code, center, `${selectedRegion.name} ${name}`, name);
+    };
+
+    const toggleNearbyDistricts = (enabled: boolean) => {
+        recommendationRequestRef.current?.abort();
+        setIncludeNearbyDistricts(enabled);
+        setSelectedType("all");
+        setRecommendationPage(1);
+        setAiSummary(null);
     };
 
     const toggleLodging = (enabled: boolean) => {
@@ -730,7 +752,7 @@ export default function TravelCoursePage() {
         const remainingActivities = [...activities];
         const lodgingCandidates = [
             ...places.filter((place) => place.contentTypeId === "32"),
-            ...recommendations.filter((place) => place.contentTypeId === "32" && !places.some((selected) => selected.contentId === place.contentId)),
+            ...recommendations.filter((place) => place.contentTypeId === "32" && place.compatibility?.petwayAssessment.status === "AVAILABLE" && place.latitude !== null && place.longitude !== null && !places.some((selected) => selected.contentId === place.contentId)),
         ];
         setCourses(Array.from({ length: tripDays }, (_, dayIndex) => {
             const needsLodging = includeLodging && dayIndex < tripDays - 1;
@@ -787,6 +809,7 @@ export default function TravelCoursePage() {
         // 현재 여행 화면은 AVAILABLE로 판정된 장소만 AI 입력 후보로 사용한다.
         const eligibleRecommendations = recommendations.filter((place) =>
             (includeLodging || place.contentTypeId !== "32")
+            && place.latitude !== null && place.longitude !== null
             && place.compatibility?.petwayAssessment.status === "AVAILABLE"
         );
         // 선택 지역의 AVAILABLE 후보를 개수 제한 없이 모두 보낸다.
@@ -811,7 +834,7 @@ export default function TravelCoursePage() {
                 weatherSummary: null,
             }));
             const result = await createAiCourse({
-                userIntent: `${selectedRegion.name}${districtName ? ` ${districtName}` : ""}, ${startDate}~${endDate}, ${tripDays}일, 최대 ${targetCount}곳. 사용자 요청: ${travelPrompt.trim() || "가까운 장소부터 자연스러운 동선"}. ${includeLodging ? "숙박은 각 숙박일 마지막에 배치" : "숙박 제외"}`,
+                userIntent: `${locationLabel}, ${startDate}~${endDate}, ${tripDays}일, 최대 ${targetCount}곳. 사용자 요청: ${travelPrompt.trim() || "가까운 장소부터 자연스러운 동선"}. ${includeLodging ? "숙박은 각 숙박일 마지막에 배치" : "숙박 제외"}`,
                 pet: { summary: `${primaryPet.petName}, ${primaryPet.weightKg}kg, ${primaryPet.sizeType ?? "체형 미확인"}, 활동성 ${primaryPet.activityLevel ?? "미확인"}` },
                 weatherSummary,
                 candidates: inputCandidates,
@@ -844,7 +867,7 @@ export default function TravelCoursePage() {
                         <h1>우리 아이와 보내는 하루를<br />가볍게 설계해 보세요</h1>
                         <p>큰 틀만 선택하면 갈 수 있는 장소를 확인하고, 원하는 곳을 자유롭게 더할 수 있어요.</p>
                     </div>
-                    <div className="course-trip-badge"><strong>{selectedRegion.name}{districtName ? ` ${districtName}` : ""}</strong><span>{startDate} - {endDate} · {tripDays - 1}박 {tripDays}일</span></div>
+                    <div className="course-trip-badge"><strong>{locationLabel}</strong><span>{startDate} - {endDate} · {tripDays - 1}박 {tripDays}일</span></div>
                 </header>
 
                 <section className="course-settings" aria-label="여행 기본 설정">
@@ -871,6 +894,11 @@ export default function TravelCoursePage() {
                         <small>{primaryPet ? `${primaryPet.weightKg}kg · ${primaryPet.sizeType ?? "체형 확인 필요"}` : "등록하면 장소별 동반 가능 여부를 확인해 드려요."}</small>
                     </div>
                     <label className="course-time-field">출발 시간<input type="time" min="10:00" max="20:00" value={startTime} onChange={(event) => setStartTime(event.target.value)} /></label>
+                    <div className="course-nearby-setting">
+                        <label><input type="checkbox" checked={includeNearbyDistricts} onChange={(event) => toggleNearbyDistricts(event.target.checked)} disabled={!districtName || nearbyDistricts.length === 0} aria-describedby="course-nearby-description" />인근 시군구까지 보기</label>
+                        <small id="course-nearby-description">{!districtName ? "시·군·구를 선택하면 여행 범위를 넓힐 수 있어요." : nearbyDistricts.length === 0 ? "같은 시도 안에서 추가할 가까운 시군구가 없어요." : includeNearbyDistricts ? `포함 지역: ${[districtName, ...nearbyDistricts].join(" · ")}` : `체크하면 ${nearbyDistricts.join(" · ")}도 함께 볼 수 있어요.`}</small>
+                        {districtName && nearbyDistricts.length > 0 && <small>같은 시도 내 가까운 여행 지역을 최대 3곳 추가해요. 이동 시간과 도로 상황은 지역마다 달라요.</small>}
+                    </div>
                 </section>
 
                 <p className="course-status" role="status">{message}</p>
@@ -921,18 +949,19 @@ export default function TravelCoursePage() {
 
                 <div className="course-workspace">
                     <section className="course-recommendations">
-                        <header><div><span>RECOMMENDATIONS</span><h2>{primaryPet ? `${primaryPet.petName}와 갈 만한 곳` : "지역 추천 장소"}</h2></div><strong>{recommendationScope === "AVAILABLE" ? "바로 동반 가능" : recommendationScope === "CONFIRMATION" ? "방문 전 확인" : "동반 불가"} {filteredRecommendations.length} / 전체 {regionPlaceCount}곳</strong></header>
+                        <header><div><span>{locationLabel}{districtName ? "" : " 전체"}</span><h2>{primaryPet ? `${primaryPet.petName}와 갈 만한 곳` : "지역 추천 장소"}</h2></div><strong>{recommendationScope === "AVAILABLE" ? "바로 동반 가능" : recommendationScope === "CONFIRMATION" ? "방문 전 확인" : "동반 불가"} {filteredRecommendations.length} / {selectedType === "all" ? "전체" : "선택 유형 전체"} {filteredTotal}곳</strong></header>
                         <div className="course-filter-groups">
                         <div className="course-scope-filters" aria-label="동반 가능 여부">
-                            <button type="button" className={`course-scope-button available ${recommendationScope === "AVAILABLE" ? "active" : ""}`} onClick={() => setRecommendationScope("AVAILABLE")}>바로 동반 가능</button>
-                            <button type="button" className={`course-scope-button confirmation ${recommendationScope === "CONFIRMATION" ? "active" : ""}`} onClick={() => setRecommendationScope("CONFIRMATION")}>방문 전 확인</button>
-                            <button type="button" className={`course-scope-button unavailable ${recommendationScope === "UNAVAILABLE" ? "active" : ""}`} onClick={() => setRecommendationScope("UNAVAILABLE")}>동반 불가</button>
+                            <button type="button" className={`course-scope-button available ${recommendationScope === "AVAILABLE" ? "active" : ""}`} onClick={() => setRecommendationScope("AVAILABLE")}>바로 동반 가능 {recommendationGroups.AVAILABLE.length}</button>
+                            <button type="button" className={`course-scope-button confirmation ${recommendationScope === "CONFIRMATION" ? "active" : ""}`} onClick={() => setRecommendationScope("CONFIRMATION")}>방문 전 확인 {recommendationGroups.CONFIRMATION.length}</button>
+                            <button type="button" className={`course-scope-button unavailable ${recommendationScope === "UNAVAILABLE" ? "active" : ""}`} onClick={() => setRecommendationScope("UNAVAILABLE")}>동반 불가 {recommendationGroups.UNAVAILABLE.length}</button>
                         </div>
                         <div className="course-type-filters">
                             <button type="button" className={selectedType === "all" ? "active" : ""} onClick={() => setSelectedType("all")}>전체</button>
                             {availableTypes.map((type) => <button type="button" key={type} className={selectedType === type ? "active" : ""} onClick={() => setSelectedType(type)}>{TYPE_LABELS[type] ?? "기타"}</button>)}
                         </div>
                         </div>
+                        {selectedType !== "all" && <small>선택 지역 전체 {regionPlaceCount}곳 중 {TYPE_LABELS[selectedType] ?? "선택 유형"} 기준이에요.</small>}
                         <div className="course-card-list">
                             {loading && <div className="course-empty paw-loading"><span aria-hidden="true">🐾</span><strong>가까운 동반 장소를 찾고 있어요.</strong></div>}
                             {!loading && pagedRecommendations.map((place) => {
@@ -940,6 +969,7 @@ export default function TravelCoursePage() {
                                 const assessment = place.compatibility?.petwayAssessment;
                                 const expanded = expandedCompatibilityId === place.contentId;
                                 const added = course.some((item) => item.contentId === place.contentId);
+                                const missingCoordinates = place.latitude === null || place.longitude === null;
                                 const isUnavailable = place.compatibility?.petwayAssessment.status === "UNAVAILABLE";
                                 const lodgingUnavailable = place.contentTypeId === "32"
                                     && (!includeLodging || selectedDay === tripDays - 1 || course.some((item) => item.contentTypeId === "32"));
@@ -953,6 +983,8 @@ export default function TravelCoursePage() {
                                         <button type="button" className={`course-compatibility ${status.className}`} aria-expanded={expanded} onClick={() => setExpandedCompatibilityId((current) => current === place.contentId ? null : place.contentId)}>
                                             {status.label}<span aria-hidden="true">{expanded ? "⌃" : "⌄"}</span>
                                         </button>
+                                        {place.compatibilityError && <small>동반 조건 미확인 · {place.compatibilityError} 방문 전 업체에 확인해 주세요.</small>}
+                                        {missingCoordinates && <small>위치 좌표가 없어 코스에 추가할 수 없어요.</small>}
                                         {!expanded && assessment && <small>{compatibilityReasonSections(assessment)[0]?.reasons[0]}</small>}
                                         {expanded && assessment && <div className="course-compatibility-details">
                                             {compatibilityReasonSections(assessment).map((section) => <div key={section.title}><strong>{section.title}</strong><ul>{section.reasons.map((reason) => <li key={reason}>{reason}</li>)}</ul></div>)}
@@ -961,8 +993,8 @@ export default function TravelCoursePage() {
                                         </div>}
                                         {place.contentTypeId === "32" && <small className="course-lodging-notice">숙박일의 마지막 코스로 추가되며 예약은 해당 업체에서 확인해 주세요.</small>}
                                     </div>
-                                    <button type="button" className="course-add-button" disabled={added || isUnavailable || lodgingUnavailable} onClick={() => addPlace(place)} aria-label={`${place.title} 코스에 추가`}>
-                                        <span aria-hidden="true">{added ? "✓" : "+"}</span>{added ? "담았어요" : isUnavailable || lodgingUnavailable ? "추가 불가" : "코스에 담기"}
+                                    <button type="button" className="course-add-button" disabled={added || isUnavailable || lodgingUnavailable || missingCoordinates} onClick={() => addPlace(place)} aria-label={`${place.title} 코스에 추가`}>
+                                        <span aria-hidden="true">{added ? "✓" : "+"}</span>{added ? "담았어요" : isUnavailable || lodgingUnavailable || missingCoordinates ? "추가 불가" : "코스에 담기"}
                                     </button>
                                 </article>;
                             })}
