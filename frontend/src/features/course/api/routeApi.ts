@@ -42,6 +42,16 @@ export interface RouteStopInput {
     longitude: number;
 }
 
+async function routeErrorMessage(response: Response, fallback: string): Promise<string> {
+    try {
+        const body = await response.json() as { message?: string };
+        if (body.message?.trim()) return body.message;
+    } catch {
+        // Keep the user-facing fallback when the server does not return JSON.
+    }
+    return fallback;
+}
+
 export async function getDrivingRoute(
     stops: RouteStopInput[],
     signal?: AbortSignal,
@@ -53,7 +63,7 @@ export async function getDrivingRoute(
         signal,
         body: JSON.stringify({ stops }),
     });
-    if (!response.ok) throw new Error("실제 도로 경로를 불러오지 못했습니다.");
+    if (!response.ok) throw new Error(await routeErrorMessage(response, "실제 도로 경로를 불러오지 못했습니다."));
     return response.json() as Promise<DrivingRoute>;
 }
 
@@ -65,6 +75,6 @@ export async function getTransitRoute(stops: RouteStopInput[], signal?: AbortSig
         signal,
         body: JSON.stringify({ stops }),
     });
-    if (!response.ok) throw new Error("대중교통 경로를 불러오지 못했습니다.");
+    if (!response.ok) throw new Error(await routeErrorMessage(response, "대중교통 경로를 불러오지 못했습니다."));
     return response.json() as Promise<TransitRoute>;
 }

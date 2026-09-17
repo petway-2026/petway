@@ -1,5 +1,5 @@
 /* 여행 조건에서 장소 후보를 모아 동반 가능 여부를 확인하고 AI 또는 대체 추천으로 날짜별 일정을 구성한다. */
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 
 import { getPets } from "../../pet/api/petApi";
@@ -221,8 +221,16 @@ export default function TravelCoursePage() {
     const [transitRoute, setTransitRoute] = useState<TransitRoute | null>(null);
     const [transportMode, setTransportMode] = useState<TransportMode>("DRIVING");
     const [routeLoading, setRouteLoading] = useState(false);
+    const [routeError, setRouteError] = useState<string | null>(null);
     const [saveLoading, setSaveLoading] = useState(false);
     const [saveFeedback, setSaveFeedback] = useState<SaveFeedback | null>(null);
+    const [customPlaceOpen, setCustomPlaceOpen] = useState(false);
+    const [customPlaceName, setCustomPlaceName] = useState("");
+    const [customPlaceAddress, setCustomPlaceAddress] = useState("");
+    const [customPlaceLoading, setCustomPlaceLoading] = useState(false);
+    const [customPlaceAddressError, setCustomPlaceAddressError] = useState("");
+    const [postcodeOpen, setPostcodeOpen] = useState(false);
+    const postcodeContainerRef = useRef<HTMLDivElement>(null);
     const [weatherByDay, setWeatherByDay] = useState<Record<number, WeatherForecastResponse>>({});
     const [weatherLoading, setWeatherLoading] = useState(false);
     const [message, setMessage] = useState("서울 중심으로 추천 장소를 준비하고 있어요.");
@@ -413,48 +421,30 @@ export default function TravelCoursePage() {
 
     useEffect(() => {
         const validStops = course.filter((place) => place.latitude !== null && place.longitude !== null);
+        setDrivingRoute(null);
+        setTransitRoute(null);
+        setRouteError(null);
         if (validStops.length < 2) {
-            setDrivingRoute(null);
             setRouteLoading(false);
             return;
         }
 
         const controller = new AbortController();
         setRouteLoading(true);
-        getDrivingRoute(validStops.map((place) => ({
+        const stops = validStops.map((place) => ({
             id: place.contentId,
             name: place.title,
             latitude: place.latitude!,
             longitude: place.longitude!,
-        })), controller.signal)
-            .then(setDrivingRoute)
+        }));
+        const request = transportMode === "DRIVING"
+            ? getDrivingRoute(stops, controller.signal).then((route) => setDrivingRoute(route))
+            : getTransitRoute(stops, controller.signal).then((route) => setTransitRoute(route));
+        request
             .catch((error: unknown) => {
-                if (!(error instanceof DOMException && error.name === "AbortError")) setDrivingRoute(null);
-            })
-            .finally(() => {
-                if (!controller.signal.aborted) setRouteLoading(false);
-            });
-        return () => controller.abort();
-    }, [course]);
-
-    useEffect(() => {
-        const validStops = course.filter((place) => place.latitude !== null && place.longitude !== null);
-        if (transportMode !== "TRANSIT" || validStops.length < 2) {
-            setTransitRoute(null);
-            return;
-        }
-
-        const controller = new AbortController();
-        setRouteLoading(true);
-        getTransitRoute(validStops.map((place) => ({
-            id: place.contentId,
-            name: place.title,
-            latitude: place.latitude!,
-            longitude: place.longitude!,
-        })), controller.signal)
-            .then(setTransitRoute)
-            .catch((error: unknown) => {
-                if (!(error instanceof DOMException && error.name === "AbortError")) setTransitRoute(null);
+                if (!(error instanceof DOMException && error.name === "AbortError")) {
+                    setRouteError(error instanceof Error ? error.message : "경로를 불러오지 못했어요.");
+                }
             })
             .finally(() => {
                 if (!controller.signal.aborted) setRouteLoading(false);
@@ -522,66 +512,99 @@ export default function TravelCoursePage() {
         });
     };
 
-    // 사용자가 선택한 주소를 좌표로 바꿔 USER 출처의 장소로 추가한다. 공공데이터 동반 판정을 받은 장소는 아니다.
-    const addCustomPlace = async () => {
+    // 주소를 좌표로 변환해 USER 출처의 장소로 추가한다. 공공데이터 동반 판정을 받은 장소는 아니다.
+    const addCustomPlace = () => {
+        setCustomPlaceName("");
+        setCustomPlaceAddress("");
+        setCustomPlaceAddressError("");
+        setPostcodeOpen(false);
+        setCustomPlaceOpen(true);
+    };
+
+    const openPostcodeSearch = async () => {
+        setCustomPlaceAddressError("");
         try {
-            await loadKakaoMap();
-        } catch (error) {
-            window.alert(error instanceof Error ? error.message : "지도 주소 변환 기능을 불러오지 못했어요.");
-            return;
-        }
-        const openPostcode = () => {
-            new window.daum.Postcode({
-                oncomplete: (data: { roadAddress?: string; jibunAddress?: string; buildingName?: string }) => {
-                    const address = data.roadAddress || data.jibunAddress;
-                    if (!address) return;
-                    const title = window.prompt("일정에 표시할 장소명을 입력해 주세요.", data.buildingName || address)?.trim();
-                    if (!title) return;
-                    if (!window.kakao?.maps?.services?.Geocoder) {
-                        window.alert("주소 좌표 변환 기능이 준비되지 않았어요. 페이지를 새로고침한 뒤 다시 시도해 주세요.");
+            if (!window.daum?.Postcode) {
+                await new Promise<void>((resolve, reject) => {
+                    const scriptId = "daum-postcode-sdk";
+                    const existing = document.getElementById(scriptId) as HTMLScriptElement | null;
+                    if (existing) {
+                        existing.addEventListener("load", () => resolve(), { once: true });
+                        existing.addEventListener("error", () => reject(new Error("주소 검색 서비스를 불러오지 못했어요.")), { once: true });
                         return;
                     }
-                    const geocoder = new window.kakao.maps.services.Geocoder();
-                    geocoder.addressSearch(address, (result: Array<{ x: string; y: string }>, status: string) => {
-                        if (status !== window.kakao.maps.services.Status.OK || result.length === 0) {
-                            window.alert("주소의 지도 위치를 찾지 못했어요. 다른 주소로 다시 시도해 주세요.");
-                            return;
-                        }
-                        const place: Recommendation = {
-                            contentId: `custom-${Date.now()}`,
-                            contentTypeId: "12",
-                            areaCode: null,
-                            sigunguCode: null,
-                            title,
-                            address,
-                            latitude: Number(result[0].y),
-                            longitude: Number(result[0].x),
-                            thumbnailUrl: null,
-                            source: "USER",
-                        };
-                        addPlace(place);
-                    });
-                },
-            }).open();
-        };
+                    const script = document.createElement("script");
+                    script.id = scriptId;
+                    script.src = "https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js";
+                    script.async = true;
+                    script.onload = () => resolve();
+                    script.onerror = () => reject(new Error("주소 검색 서비스를 불러오지 못했어요."));
+                    document.head.appendChild(script);
+                });
+            }
+            setPostcodeOpen(true);
+            window.setTimeout(() => {
+                const container = postcodeContainerRef.current;
+                if (!container || !window.daum?.Postcode) return;
+                container.replaceChildren();
+                new window.daum.Postcode({
+                    oncomplete: (data: { roadAddress?: string; jibunAddress?: string; buildingName?: string }) => {
+                        const address = data.roadAddress || data.jibunAddress || "";
+                        setCustomPlaceAddress(address);
+                        setCustomPlaceAddressError("");
+                        if (data.buildingName) setCustomPlaceName((current) => current.trim() ? current : data.buildingName!);
+                        setPostcodeOpen(false);
+                    },
+                    onclose: () => setPostcodeOpen(false),
+                    width: "100%",
+                    height: "100%",
+                }).embed(container);
+            }, 0);
+        } catch (error) {
+            setCustomPlaceAddressError(error instanceof Error ? error.message : "주소 검색 서비스를 불러오지 못했어요.");
+        }
+    };
 
-        if (window.daum?.Postcode) {
-            openPostcode();
-            return;
+    const submitCustomPlace = async (event: FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        const address = customPlaceAddress.trim();
+        const title = customPlaceName.trim() || address;
+        if (!address || customPlaceLoading) return;
+        setCustomPlaceAddressError("");
+        setCustomPlaceLoading(true);
+        try {
+            await loadKakaoMap();
+            if (!window.kakao?.maps?.services?.Geocoder) throw new Error("주소 좌표 변환 기능을 사용할 수 없습니다. 잠시 후 다시 시도해 주세요.");
+            const result = await new Promise<{ x: string; y: string }>((resolve, reject) => {
+                const geocoder = new window.kakao.maps.services.Geocoder();
+                geocoder.addressSearch(address, (matches: Array<{ x: string; y: string }>, status: string) => {
+                    if (status !== window.kakao.maps.services.Status.OK || matches.length === 0) {
+                        reject(new Error("주소를 찾지 못했어요. 도로명 주소나 건물명을 확인해 주세요."));
+                        return;
+                    }
+                    resolve(matches[0]);
+                });
+            });
+            addPlace({
+                contentId: `custom-${Date.now()}`,
+                contentTypeId: "12",
+                areaCode: null,
+                sigunguCode: null,
+                title,
+                address,
+                latitude: Number(result.y),
+                longitude: Number(result.x),
+                thumbnailUrl: null,
+                source: "USER",
+            });
+            setCustomPlaceOpen(false);
+        } catch (error) {
+            setCustomPlaceAddressError(error instanceof Error && error.message.includes("주소를 찾지 못")
+                ? "올바른 주소를 입력해 주세요. 도로명 주소나 건물명을 확인해 주세요."
+                : error instanceof Error ? error.message : "주소를 장소로 추가하지 못했어요.");
+        } finally {
+            setCustomPlaceLoading(false);
         }
-        const scriptId = "daum-postcode-sdk";
-        const existing = document.getElementById(scriptId);
-        if (existing) {
-            existing.addEventListener("load", openPostcode, { once: true });
-            return;
-        }
-        const script = document.createElement("script");
-        script.id = scriptId;
-        script.src = "https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js";
-        script.async = true;
-        script.onload = openPostcode;
-        script.onerror = () => window.alert("주소 검색 서비스를 불러오지 못했어요.");
-        document.head.appendChild(script);
     };
 
     const moveCourseItem = (index: number, direction: -1 | 1) => {
@@ -960,7 +983,7 @@ export default function TravelCoursePage() {
                             {weatherLoading ? <span>기상청 예보를 확인하고 있어요.</span> : weatherByDay[selectedDay] ? <><span className="course-day-weather-icon">{WEATHER_ICONS[weatherByDay[selectedDay].weatherCondition ?? "UNKNOWN"]}</span><div><strong>{dayDates[selectedDay]} · {weatherByDay[selectedDay].display.weather}</strong><p>{weatherByDay[selectedDay].display.temperature} · 강수 {weatherByDay[selectedDay].display.precipitation}</p><small>{weatherByDay[selectedDay].forecastType === "SEASONAL_OUTLOOK" ? "장기 일정은 일별 예보가 아닌 월별 기후 전망이에요." : weatherByDay[selectedDay].display.summary}</small></div></> : <span>이 날짜에 제공된 기상청 예보가 아직 없어요.</span>}
                         </div>
                         <div className="course-transport-tabs" aria-label="이동수단 선택"><button type="button" className={transportMode === "DRIVING" ? "active" : ""} onClick={() => setTransportMode("DRIVING")}>🚗 자동차</button><button type="button" className={transportMode === "TRANSIT" ? "active" : ""} onClick={() => setTransportMode("TRANSIT")}>🚌 대중교통</button></div>
-                        {course.length > 0 && <div className="course-route-map"><KakaoMap center={{ latitude: course[0].latitude!, longitude: course[0].longitude! }} markers={markers} routePath={routePath} level={8} /><small className="course-route-source">{routeLoading ? "경로를 찾고 있어요…" : transportMode === "TRANSIT" && transitRoute ? "ODsay 추천 대중교통 경로" : drivingRoute ? "카카오모빌리티 실제 자동차 경로" : "직선거리 기반 예상 경로"}</small></div>}
+                        {course.length > 0 && <div className="course-route-map"><KakaoMap center={{ latitude: course[0].latitude!, longitude: course[0].longitude! }} markers={markers} routePath={routePath} level={8} /><small className="course-route-source">{routeLoading ? "경로를 찾고 있어요…" : transportMode === "TRANSIT" && transitRoute ? "ODsay 추천 대중교통 경로" : transportMode === "DRIVING" && drivingRoute ? "카카오모빌리티 실제 자동차 경로" : "직선거리 기반 예상 경로"}</small>{routeError && <small className="course-route-error">{routeError} · 직선거리 기준으로 표시합니다.</small>}</div>}
                         {course.length === 0 ? <div className="course-empty course-empty-builder"><strong>아직 정한 장소가 없어요</strong><span>추천 카드나 ‘장소 직접 추가’로 원하는 장소를 담아보세요.</span></div> : <ol className="course-timeline">
                             {routeInfo.map(({ place, travel, distance, stay, transitLeg }, index) => <li key={place.contentId}>
                                 {travel !== null && <div className="course-travel-time">{index} → {index + 1} 이동 · {transportMode === "TRANSIT" && transitLeg ? `대중교통 약 ${travel}분 · 환승 ${transitLeg.transfers}회 · ${transitLeg.fare.toLocaleString()}원` : `차량 약 ${travel}분${distance !== null ? ` · 약 ${distance.toFixed(1)}km` : ""}`}{transportMode === "TRANSIT" && transitLeg && <span className="course-transit-steps">{transitLeg.steps.map((step) => `${step.type === "WALK" ? "도보" : step.type === "BUS" ? "버스" : "지하철"} ${step.durationMinutes}분${step.description ? ` (${step.description})` : ""}`).join(" → ")}</span>}</div>}
@@ -972,6 +995,20 @@ export default function TravelCoursePage() {
                     </aside>
                 </div>
             </div>
+            {customPlaceOpen && <div className="course-custom-place-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget && !customPlaceLoading) setCustomPlaceOpen(false); }}>
+                <section className="course-custom-place-dialog" role="dialog" aria-modal="true" aria-labelledby="course-custom-place-title">
+                    <button type="button" className="course-custom-place-close" onClick={() => setCustomPlaceOpen(false)} disabled={customPlaceLoading} aria-label="닫기">×</button>
+                    <span>MY COURSE</span><h2 id="course-custom-place-title">장소 직접 추가</h2>
+                    <p>주소를 검색해 선택하거나 직접 입력해 주세요.</p>
+                    <form onSubmit={submitCustomPlace}>
+                        <label>장소명 <small>선택</small><input autoFocus value={customPlaceName} onChange={(event) => setCustomPlaceName(event.target.value)} maxLength={100} placeholder="예: 친구 집, 숙소" /></label>
+                        <label>주소 <div className="course-custom-place-address-row"><input required value={customPlaceAddress} onChange={(event) => { setCustomPlaceAddress(event.target.value); setCustomPlaceAddressError(""); }} maxLength={300} placeholder="도로명 주소 또는 건물명" aria-invalid={Boolean(customPlaceAddressError)} aria-describedby={customPlaceAddressError ? "course-custom-place-address-error" : undefined} /><button type="button" onClick={openPostcodeSearch} disabled={customPlaceLoading}>주소 검색</button></div>{customPlaceAddressError && <small className="course-custom-place-address-error" id="course-custom-place-address-error" role="alert">{customPlaceAddressError}</small>}</label>
+                        {postcodeOpen && <div className="course-postcode-embed" ref={postcodeContainerRef} aria-label="주소 검색 결과" />}
+                        <small className="course-custom-place-note">직접 추가한 장소는 반려동물 동반 가능 여부가 확인되지 않은 장소로 표시돼요.</small>
+                        <div><button type="button" onClick={() => setCustomPlaceOpen(false)} disabled={customPlaceLoading}>취소</button><button type="submit" disabled={customPlaceLoading || !customPlaceAddress.trim()}>{customPlaceLoading ? "위치 찾는 중…" : "주소 확인 후 추가"}</button></div>
+                    </form>
+                </section>
+            </div>}
         </main>
     );
 }
