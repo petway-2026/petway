@@ -7,7 +7,6 @@ import type { Pet } from "../../pet/types/pet";
 import {
     getPlaceCompatibility,
     searchAllPlaces,
-    searchAllNearbyPlaces,
     type CompatibilityStatus,
     type PlaceCompatibility,
     type PlaceSummary,
@@ -21,6 +20,8 @@ import { createAiCourse, type AiCourseCandidate } from "../api/courseApi";
 import { getDrivingRoute, getTransitRoute, type DrivingRoute, type TransitRoute } from "../api/routeApi";
 import { saveTrip } from "../api/savedTripApi";
 import FavoriteButton from "../../../shared/components/FavoriteButton";
+import { matchesRegion } from "../utils/regionScope";
+import { compatibilityReasonSections } from "../../place/utils/compatibilityReasons";
 
 import "../styles/travel-course.css";
 
@@ -226,6 +227,7 @@ export default function TravelCoursePage() {
     const [weatherLoading, setWeatherLoading] = useState(false);
     const [message, setMessage] = useState("서울 중심으로 추천 장소를 준비하고 있어요.");
     const saveInFlightRef = useRef(false);
+    const recommendationRequestRef = useRef<AbortController | null>(null);
 
     const primaryPet = pets.find((pet) => pet.isPrimary) ?? pets[0] ?? null;
     // 장소별 현실적인 체류시간을 우선하고, 하루가 과밀해지지 않도록
@@ -271,6 +273,10 @@ export default function TravelCoursePage() {
 
     // 검색 결과를 거리순으로 정리하고 동반 판정을 묶음 조회한다. 판정 조회가 실패한 장소는 최종 후보에서 제외한다.
     const loadRecommendations = async (_areaCode: string, center: MapCenter, locationLabel: string, district?: string) => {
+        recommendationRequestRef.current?.abort();
+        const controller = new AbortController();
+        recommendationRequestRef.current = controller;
+        const { signal } = controller;
         setRecommendationPage(1);
         setLoading(true);
         setRecommendations([]);
@@ -279,22 +285,10 @@ export default function TravelCoursePage() {
         setExpandedCompatibilityId(null);
         setMessage(`${locationLabel} 주변에서 반려견 동반 장소를 찾고 있어요.`);
         try {
-            const useAreaSearch = _areaCode !== "1" || Boolean(district);
-            const response = useAreaSearch
-                ? await searchAllPlaces(_areaCode)
-                : await searchAllNearbyPlaces(center.latitude, center.longitude, 30000, (partial) => {
-                const partialNearby = partial.items
-                    .filter((place) => place.latitude !== null && place.longitude !== null)
-                    .sort((left, right) => distanceKm(center, { latitude: left.latitude!, longitude: left.longitude! })
-                        - distanceKm(center, { latitude: right.latitude!, longitude: right.longitude! }));
-                setRegionPlaceCount(partialNearby.length);
-                setRecommendations(partialNearby);
-                setMessage(`${locationLabel} 주변 장소 ${partialNearby.length}곳을 먼저 보여드리고 있어요.`);
-                }, {
-                    fetchAll: true,
-                });
+            const response = await searchAllPlaces(_areaCode, signal);
+            if (signal.aborted) return;
             const scopedItems = response.items.filter((place) =>
-                !district || (place.address ?? "").includes(district)
+                matchesRegion(place, _areaCode, district)
             );
             setRegionPlaceCount(scopedItems.length);
             const nearby = scopedItems
@@ -309,7 +303,7 @@ export default function TravelCoursePage() {
             let attempted = 0;
             let providerFailureCount = 0;
             // 동시에 확인하는 개수는 제한하지만 현재 구현은 후보 목록 전체를 순차 묶음으로 확인한다.
-            while (attempted < nearby.length) {
+            while (!signal.aborted && attempted < nearby.length) {
                 const batchSize = Math.min(
                     COMPATIBILITY_BATCH_SIZE,
                     nearby.length - attempted,
@@ -318,13 +312,14 @@ export default function TravelCoursePage() {
                 const batchResult = await Promise.all(batch.map(async (place) => {
                     try {
                         return {
-                            place: { ...place, compatibility: await getPlaceCompatibility(place.contentId) },
+                            place: { ...place, compatibility: await getPlaceCompatibility(place.contentId, signal) },
                             failed: false as const,
                         };
                     } catch {
                         return { failed: true as const };
                     }
                 }));
+                if (signal.aborted) return;
                 attempted += batch.length;
                 batchResult.forEach((result) => {
                     if (result.failed) {
@@ -339,14 +334,18 @@ export default function TravelCoursePage() {
             setRecommendations(eligible);
             setMessage(`${locationLabel} 후보 ${scopedItems.length}곳 중 동반 조건을 확인한 ${eligible.length}곳을 추천했어요.${providerFailureCount > 0 ? ` 제공기관 오류로 ${providerFailureCount}곳은 추천에서 제외했어요.` : ""}`);
         } catch (error) {
+            if (signal.aborted) return;
             setRecommendations([]);
             setMessage(error instanceof Error ? error.message : "추천 장소를 불러오지 못했습니다.");
         } finally {
-            setLoading(false);
+            if (!signal.aborted) setLoading(false);
         }
     };
 
-    useEffect(() => { void loadRecommendations("1", SEOUL_CENTER, "서울특별시"); }, []);
+    useEffect(() => {
+        void loadRecommendations("1", SEOUL_CENTER, "서울특별시");
+        return () => recommendationRequestRef.current?.abort();
+    }, []);
     useEffect(() => {
         setCourses((current) => Array.from({ length: tripDays }, (_, index) => current[index] ?? []));
         setSelectedDay((current) => Math.min(current, tripDays - 1));
@@ -748,62 +747,16 @@ export default function TravelCoursePage() {
         return selected;
     };
 
-    // 사용자 요청의 장소 유형과 출발지 거리를 점수화한 뒤 유형별로 번갈아 뽑아 AI 입력 크기를 제한한다.
-    const selectAiCandidates = (places: Recommendation[], request: string, limit: number) => {
-        const normalizedRequest = request.toLowerCase();
-        const requestedTypes = new Set<string>();
-        const keywordTypes: Array<[string[], string]> = [
-            [["카페", "커피", "다방", "디저트", "베이커리"], "CAFE"],
-            [["맛집", "식당", "음식", "점심", "저녁", "식사"], "39"],
-            [["관광", "명소", "자연", "산책", "공원", "바다", "경치"], "12"],
-            [["문화", "전시", "박물관", "미술관", "역사"], "14"],
-            [["레포츠", "체험", "액티비티", "운동", "스포츠"], "28"],
-            [["쇼핑", "시장", "몰", "백화점"], "38"],
-            [["숙박", "호텔", "펜션", "리조트"], "32"],
-        ];
-        keywordTypes.forEach(([keywords, type]) => {
-            if (keywords.some((keyword) => normalizedRequest.includes(keyword))) requestedTypes.add(type);
-        });
-
-        const scored = [...places].map((place) => {
-            const key = isCafePlace(place) ? "CAFE" : place.contentTypeId;
-            const distance = place.latitude !== null && place.longitude !== null
-                ? distanceKm(origin, { latitude: place.latitude, longitude: place.longitude })
-                : 999;
-            const relevance = requestedTypes.has(key) ? 100 : requestedTypes.size === 0 ? 20 : 0;
-            return { place, key, score: relevance - Math.min(distance, 50) };
-        }).sort((left, right) => right.score - left.score);
-
-        const groups = new Map<string, Recommendation[]>();
-        scored.forEach(({ place, key }) => {
-            const group = groups.get(key) ?? [];
-            group.push(place);
-            groups.set(key, group);
-        });
-        const selected: Recommendation[] = [];
-        while (selected.length < limit && groups.size > 0) {
-            for (const [key, group] of groups) {
-                const next = group.shift();
-                if (next) selected.push(next);
-                if (group.length === 0) groups.delete(key);
-                if (selected.length >= limit) break;
-            }
-        }
-        return selected;
-    };
-
-    // 기존 코스 교체 확인 → 후보 압축 → AI 순위 요청 → 날짜별 배치 순서로 처리한다. 실패 시 대체 추천을 사용한다.
+    // 기존 코스 교체 확인 → 전체 적합 후보로 AI 순위 요청 → 날짜별 배치 순서로 처리한다. 실패 시 대체 추천을 사용한다.
     const generateAiCourse = async () => {
         if (recommendations.length === 0 || !primaryPet) return;
+        const regionSignal = recommendationRequestRef.current?.signal;
         const hasCourse = courses.some((day) => day.length > 0);
         if (hasCourse && !window.confirm("현재 작성한 코스를 AI 추천 코스로 바꿀까요?")) return;
 
         setAiLoading(true);
         setAiSummary(null);
         const targetCount = tripDays * maxStops;
-        // 실제 일정에 필요한 수를 기준으로 AI 후보만 동적으로 압축한다.
-        // 장소 목록 화면의 전체 결과에는 영향을 주지 않는다.
-        const aiCandidateBudget = Math.min(96, Math.max(40, targetCount * 8));
         const weatherSummary = dayDates.map((date, index) => {
             const forecast = weatherByDay[index];
             return forecast ? `${date} ${forecast.display.summary}` : `${date} 예보 확인 전`;
@@ -813,10 +766,10 @@ export default function TravelCoursePage() {
             (includeLodging || place.contentTypeId !== "32")
             && place.compatibility?.petwayAssessment.status === "AVAILABLE"
         );
-        // 장소 목록 화면과 AI 입력 모두 AVAILABLE 후보 전체를 사용한다.
+        // 선택 지역의 AVAILABLE 후보를 개수 제한 없이 모두 보낸다.
         // 다만 이미 백엔드에서 동반 가능 여부를 판정했으므로, 모델에는
         // 이름·유형·거리처럼 코스 순서에 필요한 최소 정보만 전달한다.
-        const candidates = selectAiCandidates(eligibleRecommendations, travelPrompt, aiCandidateBudget);
+        const candidates = eligibleRecommendations;
         try {
             const inputCandidates: AiCourseCandidate[] = candidates.map((place) => ({
                 candidateId: place.contentId,
@@ -835,11 +788,12 @@ export default function TravelCoursePage() {
                 weatherSummary: null,
             }));
             const result = await createAiCourse({
-                userIntent: `${selectedRegion.name}${districtName ? ` ${districtName}` : ""}, ${startDate}부터 ${endDate}까지 ${tripDays - 1}박 ${tripDays}일 반려견 동반 여행. 일정은 매일 10:00~20:00 안에서 자유롭게 구성한다. 첫 장소와 점심 전 장소는 선택한 시·군·구 및 현재 위치(origin)에서 가까운 곳을 우선하고, 같은 시간대에는 가까운 장소끼리 묶는다. 광진구에서 시작해 갑자기 먼 구의 식당으로 이동하는 식의 비효율적인 동선은 피한다. 하루에 먼 지역으로 이동해야 한다면 그 지역의 관광지·식당·카페를 함께 묶고, 장거리 이동은 하루 한 번 정도로 제한한다. 점심 식사는 12:00~14:00, 저녁 식사는 17:00~19:00에 배치하고, 카페는 식당으로 세지 않는다. 장소명에 카페·다락·다방·커피·베이커리·디저트가 들어간 음식점은 카페로 분류해 식사 시간대에서 제외한다. 카페는 하루 최대 1곳만 추천한다. 장소 유형별 기본 체류시간은 관광지 2~3시간, 문화시설 2~3시간, 레포츠 2~3시간, 쇼핑몰·아울렛 2시간 이상, 음식점 1~1.5시간, 카페 1~1.5시간, 숙박 1시간으로 잡고, 경복궁·대형 공원·아울렛처럼 넓은 장소는 짧게 배정하지 않는다. 이동시간과 체류시간을 합산해 실제로 10:00~20:00 안에 가능한 일정만 만든다. 최대 ${targetCount}개 장소를 날짜별·시간순 코스로 구성한다. 사용자 요청: ${travelPrompt.trim() || "현재 위치에서 가까운 장소부터 이동 동선이 자연스럽게 이어지는 여행"}. ${includeLodging ? "숙박 장소는 각 숙박일의 마지막 순서로 배치" : "숙박 장소는 추천에서 제외"}`,
+                userIntent: `${selectedRegion.name}${districtName ? ` ${districtName}` : ""}, ${startDate}~${endDate}, ${tripDays}일, 최대 ${targetCount}곳. 사용자 요청: ${travelPrompt.trim() || "가까운 장소부터 자연스러운 동선"}. ${includeLodging ? "숙박은 각 숙박일 마지막에 배치" : "숙박 제외"}`,
                 pet: { summary: `${primaryPet.petName}, ${primaryPet.weightKg}kg, ${primaryPet.sizeType ?? "체형 미확인"}, 활동성 ${primaryPet.activityLevel ?? "미확인"}` },
                 weatherSummary,
                 candidates: inputCandidates,
             });
+            if (regionSignal?.aborted) return;
             const byId = new Map(candidates.map((place) => [place.contentId, place]));
             const ranked = result.recommendations
                 .sort((left, right) => left.rank - right.rank)
@@ -850,6 +804,7 @@ export default function TravelCoursePage() {
             distributeCourse(selected);
             setAiSummary(`OpenAI 추천 적용됨 · ${result.summary}`);
         } catch {
+            if (regionSignal?.aborted) return;
             distributeCourse(buildBalancedFallback(candidates, targetCount));
             setAiSummary("규칙 기반 대체 추천 적용됨 · OpenAI 연결을 사용할 수 없어 동반 적합성, 거리, 장소 유형의 균형을 기준으로 코스 초안을 만들었어요.");
         } finally {
@@ -975,9 +930,9 @@ export default function TravelCoursePage() {
                                         <button type="button" className={`course-compatibility ${status.className}`} aria-expanded={expanded} onClick={() => setExpandedCompatibilityId((current) => current === place.contentId ? null : place.contentId)}>
                                             {status.label}<span aria-hidden="true">{expanded ? "⌃" : "⌄"}</span>
                                         </button>
-                                        {!expanded && assessment?.reasons[0] && <small>{assessment.reasons[0]}</small>}
+                                        {!expanded && assessment && <small>{compatibilityReasonSections(assessment)[0]?.reasons[0]}</small>}
                                         {expanded && assessment && <div className="course-compatibility-details">
-                                            {assessment.reasons.length > 0 && <><strong>{assessment.status === "AVAILABLE" ? "이용 안내" : "방문 전 확인할 내용"}</strong><ul>{assessment.reasons.map((reason) => <li key={reason}>{reason}</li>)}</ul></>}
+                                            {compatibilityReasonSections(assessment).map((section) => <div key={section.title}><strong>{section.title}</strong><ul>{section.reasons.map((reason) => <li key={reason}>{reason}</li>)}</ul></div>)}
                                             {assessment.requirements.length > 0 && <><strong>방문 준비사항</strong><ul>{assessment.requirements.map((requirement) => <li key={`${requirement.type}-${requirement.scope}`}>{requirement.scope === "INDOOR" ? "실내 이용 시 " : requirement.scope === "OUTDOOR" ? "실외 이용 시 " : ""}{requirement.label} 준비가 필요합니다.</li>)}</ul></>}
                                             {place.compatibility?.officialInformation.additionalInformation && <small>공식 안내 · {place.compatibility.officialInformation.additionalInformation}</small>}
                                         </div>}

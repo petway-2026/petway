@@ -14,6 +14,31 @@ class OpenAiRecommendationClientTest {
     private final RecommendationValidator validator = new RecommendationValidator();
 
     @Test
+    void compactPromptOmitsEmptyDataButRetainsAdmissionConditions() throws Exception {
+        ObjectMapper mapper = new ObjectMapper();
+        RecommendationInput input = new RecommendationInput(
+                "서울 2일 여행", new RecommendationPetSnapshot("소형견"), "맑음",
+                java.util.List.of(
+                        new RecommendationCandidate("available", "공원", "관광지",
+                                CandidateCompatibilityStatus.AVAILABLE, java.util.List.of(),
+                                java.util.List.of(), 1.2, null),
+                        RecommendationFixtures.candidate("confirmation", CandidateCompatibilityStatus.NEED_CONFIRMATION),
+                        RecommendationFixtures.candidate("blocked", CandidateCompatibilityStatus.UNAVAILABLE)
+                )
+        );
+        String prompt = promptPolicy.createUserPrompt(input);
+        var candidates = mapper.readTree(prompt.substring(prompt.indexOf('{'))).get("candidates");
+        assertThat(candidates.size()).isEqualTo(2);
+        assertThat(candidates.get(0).has("status")).isFalse();
+        assertThat(candidates.get(0).has("requirements")).isFalse();
+        assertThat(candidates.get(0).has("weather")).isFalse();
+        assertThat(candidates.get(0).get("km").asDouble()).isEqualTo(1.2);
+        assertThat(candidates.get(1).get("status").asText()).isEqualTo("NEED_CONFIRMATION");
+        assertThat(candidates.get(1).get("requirements").get(0).asText()).isEqualTo("방문 전 전화 확인");
+        assertThat(prompt).doesNotContain("blocked");
+    }
+
+    @Test
     void returnsValidatedStructuredRecommendation() {
         OpenAiRecommendationClient client = new OpenAiRecommendationClient(
                 promptPolicy,
