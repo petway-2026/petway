@@ -32,207 +32,10 @@ import java.util.regex.Pattern;
 
 import org.springframework.stereotype.Component;
 
+import static com.petway.petrule.PetRulePatterns.*;
+
 @Component
 public final class PetRuleParser {
-
-    // 중소형견처럼 긴 표현을 먼저 매칭해 소형견 하나로 잘못 쪼개지 않게 한다.
-    private static final String SIZE_EXPRESSION =
-            "(중소형견|소형견|중형견|대형견)";
-
-    private static final Pattern WEIGHT_PATTERN = Pattern.compile(
-            "(\\d+(?:\\.\\d+)?)\\s*(?:kg|㎏)\\s*(이하|미만)",
-            Pattern.CASE_INSENSITIVE
-    );
-    private static final Pattern WEIGHT_RANGE_PATTERN = Pattern.compile(
-            "(\\d+(?:\\.\\d+)?)\\s*(?:kg|㎏)?\\s*[~～-]\\s*(\\d+(?:\\.\\d+)?)\\s*(?:kg|㎏)",
-            Pattern.CASE_INSENSITIVE
-    );
-
-    private static final Pattern PROHIBITED_SIZE_PATTERN = Pattern.compile(
-            SIZE_EXPRESSION + "\\s*(?:은|는|이|가)?\\s*"
-                    + "(?:동반|출입|이용)?\\s*(?:불가|금지)"
-    );
-
-    private static final Pattern ALLOWED_SIZE_PATTERN = Pattern.compile(
-            SIZE_EXPRESSION + "\\s*(?:은|는|이|가)?\\s*"
-                    + "(?:(?:만\\s*)?(?:(?:동반|출입|이용)\\s*)?(?:가능|허용)|만)"
-    );
-
-    private static final Pattern BARE_SIZE_PATTERN = Pattern.compile(
-            "^\\s*" + SIZE_EXPRESSION + "\\s*$"
-    );
-
-    // KTO data often abbreviates "중형견·소형견" as "중, 소형견".
-    private static final Pattern MEDIUM_SMALL_LIST_PATTERN = Pattern.compile(
-            "중\\s*[,·/]\\s*소형견|소형견\\s*[,·/]\\s*중형견"
-    );
-
-    private static final Pattern ALL_BREEDS_ALLOWED_PATTERN = Pattern.compile(
-            "(?:전|모든)\\s*견종\\s*(?:은|는|이|가)?\\s*"
-                    + "(?:동반|출입|이용)?\\s*(?:가능|허용)"
-    );
-
-    private static final Pattern ALL_AREAS_PATTERN = Pattern.compile(
-            "전\\s*구역\\s*(?:에서\\s*)?(?:동반|출입|이용)?\\s*(?:가능|허용)"
-    );
-
-    private static final Pattern PARTIAL_AREA_PATTERN = Pattern.compile(
-            "일부\\s*구역\\s*(?:에서\\s*)?(?:만\\s*)?"
-                    + "(?:동반|출입|이용)?\\s*(?:가능|허용)"
-    );
-
-    private static final Pattern TERRACE_ONLY_PATTERN = Pattern.compile(
-            "(?:야외\\s*)?테라스\\s*(?:에서\\s*)?만\\s*"
-                    + "(?:동반|출입|이용)?\\s*(?:가능|허용)?"
-    );
-
-    private static final Pattern OUTDOOR_ONLY_PATTERN = Pattern.compile(
-            "(?:야외|실외|외부)(?:\\s*공간)?\\s*(?:에서\\s*)?만\\s*"
-                    + "(?:동반|출입|이용)?\\s*(?:가능|허용)?"
-    );
-
-    private static final Pattern INDOOR_PATTERN = Pattern.compile(
-            "실내\\s*(?:동반|출입|이용)?\\s*(가능|허용|불가|금지)"
-    );
-
-    private static final Pattern OUTDOOR_PATTERN = Pattern.compile(
-            "(?:야외|실외|외부)\\s*(?:동반|출입|이용)?\\s*(가능|허용|불가|금지)"
-    );
-
-    private static final Pattern UNSAFE_POSITIVE_SPACE_PATTERN = Pattern.compile(
-            "(?:불가|금지|안\\s*됨|불가능|여부|문의|확인\\s*필요)"
-    );
-
-    private static final Pattern NEGATED_REQUIREMENT_PATTERN = Pattern.compile(
-            "(?:불필요|필요\\s*없음|필수\\s*아님|안\\s*함|하지\\s*않음|"
-                    + "미착용(?:\\s*가능)?|없음)"
-    );
-
-    private static final Pattern LEASH_NEED_PATTERN = Pattern.compile(
-            "(?:목줄|리드줄)\\s*(?:착용|사용|지참)?\\s*(?:필수|필요)?"
-    );
-
-    private static final Pattern LEASH_EXPLICIT_PATTERN = Pattern.compile(
-            "(?:목줄|리드줄)\\s*(?:착용|사용|지참)?\\s*(?:필수|필요)"
-    );
-
-    private static final Pattern MUZZLE_NEED_PATTERN = Pattern.compile(
-            "입마개\\s*(?:착용|사용|지참)?\\s*(?:필수|필요)?"
-    );
-
-    private static final Pattern MUZZLE_EXPLICIT_PATTERN = Pattern.compile(
-            "입마개\\s*(?:착용|사용|지참)?\\s*(?:필수|필요)"
-    );
-
-    private static final Pattern WASTE_BAG_NEED_PATTERN = Pattern.compile(
-            "배변\\s*봉투\\s*(?:지참|준비|휴대)?\\s*(?:필수|필요)?"
-    );
-
-    private static final Pattern WASTE_BAG_EXPLICIT_PATTERN = Pattern.compile(
-            "배변\\s*봉투\\s*(?:(?:지참|준비|휴대)(?:\\s*(?:필수|필요))?|필수|필요)"
-    );
-
-    private static final Pattern WASTE_DISPOSAL_NEED_PATTERN = Pattern.compile(
-            "배변\\s*처리\\s*(?:필수|필요)?"
-    );
-
-    private static final Pattern WASTE_DISPOSAL_EXPLICIT_PATTERN = Pattern.compile(
-            "배변\\s*처리\\s*(?:필수|필요)"
-    );
-
-    private static final String CARRIER_EXPRESSION =
-            "(?:이동장|캐리어|켄넬|케이지)"
-                    + "(?:\\s*\\(\\s*(?:이동장|캐리어|켄넬|케이지)\\s*\\))?";
-
-    private static final Pattern CARRIER_NEED_PATTERN = Pattern.compile(
-            CARRIER_EXPRESSION
-                    + "\\s*(?:사용|이용|착용|지참)?\\s*(?:필수|필요)?"
-    );
-
-    private static final Pattern CARRIER_EXPLICIT_PATTERN = Pattern.compile(
-            CARRIER_EXPRESSION + "\\s*(?:사용|이용|착용|지참)?\\s*(?:필수|필요)"
-    );
-
-    private static final Pattern STROLLER_NEED_PATTERN = Pattern.compile(
-            "유모차\\s*(?:사용|이용|지참)?\\s*(?:필수|필요)?"
-    );
-
-    private static final Pattern STROLLER_EXPLICIT_PATTERN = Pattern.compile(
-            "유모차\\s*(?:사용|이용|지참)?\\s*(?:필수|필요)"
-    );
-
-    private static final Pattern MANNER_BELT_NEED_PATTERN = Pattern.compile(
-            "매너\\s*벨트\\s*(?:착용|사용|지참)?\\s*(?:필수|필요)?"
-    );
-
-    private static final Pattern MANNER_BELT_EXPLICIT_PATTERN = Pattern.compile(
-            "매너\\s*벨트\\s*(?:착용|사용|지참)?\\s*(?:필수|필요)"
-    );
-
-    private static final Pattern VACCINATION_REQUIRED_PATTERN = Pattern.compile(
-            "(?:예방\\s*)?접종\\s*완료\\s*(?:한\\s*반려견)?\\s*만\\s*"
-                    + "(?:이용|동반|출입)?\\s*(?:가능|허용)|"
-                    + "예방\\s*접종\\s*(?:완료\\s*)?(?:은|는|이|가)?\\s*(?:필수|필요)"
-    );
-
-    private static final Pattern VACCINATION_CERTIFICATE_NEED_PATTERN = Pattern.compile(
-            "(?:예방\\s*)?접종\\s*(?:증명서|증빙)\\s*"
-                    + "(?:지참|제시|준비)?\\s*(?:필수|필요)?"
-    );
-
-    private static final Pattern VACCINATION_CERTIFICATE_EXPLICIT_PATTERN = Pattern.compile(
-            "(?:예방\\s*)?접종\\s*(?:증명서|증빙)\\s*"
-                    + "(?:(?:지참|제시|준비)(?:\\s*(?:필수|필요))?|필수|필요)"
-    );
-
-    private static final Pattern REQUIREMENT_TARGET_PATTERN = Pattern.compile(
-            "(중소형견|소형견|중형견|대형견|맹견)"
-                    + "\\s*(?:의\\s*경우|은|는|이|가)?\\s*[:：]?\\s*$"
-    );
-
-    // Sex qualifiers are retained as context even though PetSubject currently
-    // has no sex field. This prevents "수컷 매너벨트 필수" from leaving the
-    // word "수컷" as an unparsed confirmation-triggering fragment.
-    private static final Pattern SEX_QUALIFIER_PATTERN = Pattern.compile("수컷|암컷");
-
-    private static final Pattern REQUIREMENT_SCOPE_PATTERN = Pattern.compile(
-            "(실내|야외|실외|외부|건물\\s*내|건물\\s*외)"
-                    + "(?:\\s*에서)?(?:\\s+(?:시설|공간))?"
-                    + "(?:\\s+(?:이동|이용))?\\s*(?:시)?"
-    );
-
-    private static final Pattern GENERIC_ALLOWANCE_PATTERN = Pattern.compile(
-            "(?:반려동물|반려견)?\\s*(?:은|는|이|가)?\\s*"
-                    + "동반\\s*(?:가능|허용)"
-    );
-
-    private static final Pattern RESERVATION_REQUIRED_PATTERN = Pattern.compile(
-            "(?:사전\\s*)?예약\\s*(?:이|가)?\\s*"
-                    + "(?:필수|필요|후\\s*(?:이용|동반|출입)?\\s*(?:가능|허용))"
-    );
-
-    private static final Pattern INQUIRY_REQUIRED_PATTERN = Pattern.compile(
-            "(?:(?:사전|전화|개별|현장)\\s*)?문의\\s*(?:이|가)?\\s*"
-                    + "(?:필수|필요|후\\s*(?:이용|동반|출입)?\\s*(?:가능|허용))"
-    );
-
-    private static final String PET_FEE_SUBJECT = "(?:반려견|반려동물|애견)";
-
-    private static final Pattern PET_FEE_AMOUNT_PATTERN = Pattern.compile(
-            PET_FEE_SUBJECT + "[^,.;\\n]{0,30}?"
-                    + "(?:추가\\s*요금|동반\\s*요금|\\d+\\s*마리당)\\s*"
-                    + "(?::|은|는)?\\s*(\\d[\\d,]*)\\s*원"
-    );
-
-    private static final Pattern PET_FEE_REQUIRED_PATTERN = Pattern.compile(
-            PET_FEE_SUBJECT + "[^,.;\\n]{0,30}?"
-                    + "(?:추가\\s*요금|동반\\s*요금)[^,.;\\n]{0,10}?"
-                    + "(?:발생|부과|필수|필요)"
-    );
-
-    private static final Pattern UNCERTAIN_FEE_PATTERN = Pattern.compile(
-            "(?:발생|부과)\\s*(?:가능|할\\s*수)"
-    );
 
     public PetRule parse(String rawText) {
         return parse(new PetRuleSource(
@@ -268,7 +71,9 @@ public final class PetRuleParser {
 
             result.sources.add(source);
             try {
-                parseSource(source, result);
+                ParseResult sourceResult = new ParseResult();
+                parseSource(source, sourceResult);
+                result.merge(sourceResult);
             } catch (RuntimeException ignored) {
                 result.unparsedFragments.add(new UnparsedFragment(
                         source.sourceField(),
@@ -314,6 +119,8 @@ public final class PetRuleParser {
             List<WeightLimit> weightLimits
     ) {
         String rawText = source.rawText();
+        // 방문 날짜를 받지 않는 판정에서 요일별 예외를 장소 전체의 체중 상한으로 확정하지 않는다.
+        if (DAY_DEPENDENT_RULE_PATTERN.matcher(rawText).find()) return;
         Matcher rangeMatcher = WEIGHT_RANGE_PATTERN.matcher(rawText);
         while (rangeMatcher.find()) {
             WeightContext context = resolveWeightContext(rawText, rangeMatcher.start());
@@ -368,6 +175,7 @@ public final class PetRuleParser {
 
         Matcher prohibitedMatcher = PROHIBITED_SIZE_PATTERN.matcher(rawText);
         while (prohibitedMatcher.find()) {
+            if (!isUnconditionalProhibition(rawText, prohibitedMatcher.start(), prohibitedMatcher.end())) continue;
             sizeConditions.add(new SizeCondition(
                     toPetSizes(prohibitedMatcher.group(1)),
                     SizeConditionType.DISALLOWED,
@@ -378,6 +186,9 @@ public final class PetRuleParser {
 
         Matcher allowedMatcher = ALLOWED_SIZE_PATTERN.matcher(rawText);
         while (allowedMatcher.find()) {
+            if (hasClauseMatch(UNSAFE_POSITIVE_SPACE_PATTERN, rawText, allowedMatcher.start(), allowedMatcher.end())) {
+                continue;
+            }
             if (overlaps(recognized, allowedMatcher.start(), allowedMatcher.end())) {
                 continue;
             }
@@ -400,6 +211,17 @@ public final class PetRuleParser {
             ));
             mark(recognized, bareMatcher.start(), bareMatcher.end());
         }
+
+        // 문화정보원 허용 크기에는 '5kg 미만 소형', '소형/대형' 같은 축약형도 들어온다.
+        if (source.sourceField() == PetRuleSourceField.ACMPY_PSBL_CPAM) {
+            Matcher labelMatcher = CAPACITY_SIZE_LABEL_PATTERN.matcher(rawText);
+            while (labelMatcher.find()) {
+                if (overlaps(recognized, labelMatcher.start(), labelMatcher.end())) continue;
+                sizeConditions.add(new SizeCondition(
+                        toPetSizes(labelMatcher.group(1) + "견"), SizeConditionType.ALLOWED, source));
+                mark(recognized, labelMatcher.start(), labelMatcher.end());
+            }
+        }
     }
 
     private void parseBreeds(
@@ -409,12 +231,26 @@ public final class PetRuleParser {
     ) {
         Matcher matcher = ALL_BREEDS_ALLOWED_PATTERN.matcher(source.rawText());
         while (matcher.find()) {
+            if (hasClauseMatch(UNSAFE_POSITIVE_SPACE_PATTERN, source.rawText(), matcher.start(), matcher.end())) continue;
             breedRules.add(new BreedRule(
                     BreedRuleType.ALL_BREEDS_ALLOWED,
                     source
             ));
             mark(recognized, matcher.start(), matcher.end());
         }
+        Matcher prohibitedMatcher = DANGEROUS_BREEDS_PROHIBITED_PATTERN.matcher(source.rawText());
+        while (prohibitedMatcher.find()) {
+            if (!isUnconditionalProhibition(source.rawText(), prohibitedMatcher.start(), prohibitedMatcher.end())) continue;
+            breedRules.add(new BreedRule(BreedRuleType.DANGEROUS_BREEDS_PROHIBITED, source));
+            mark(recognized, prohibitedMatcher.start(), prohibitedMatcher.end());
+        }
+    }
+
+    private boolean isUnconditionalProhibition(String rawText, int start, int end) {
+        String prefix = rawText.substring(findClauseStart(rawText, start), start);
+        String suffix = rawText.substring(end, findClauseEnd(rawText, end));
+        return !CONDITIONAL_PROHIBITION_PREFIX.matcher(prefix).find()
+                && !NEGATED_PROHIBITION_SUFFIX.matcher(suffix).find();
     }
 
     private void parseSpaces(
@@ -525,6 +361,9 @@ public final class PetRuleParser {
 
             String expression = matcher.group(1);
             boolean isAllowed = "가능".equals(expression) || "허용".equals(expression);
+            if (!isAllowed && !isUnconditionalProhibition(source.rawText(), matcher.start(), matcher.end())) {
+                continue;
+            }
             if (isAllowed && hasClauseMatch(
                     UNSAFE_POSITIVE_SPACE_PATTERN,
                     source.rawText(),
@@ -567,67 +406,9 @@ public final class PetRuleParser {
                 recognized,
                 requirements
         );
-        parseRequirement(
-                VACCINATION_REQUIRED_PATTERN,
-                RequirementType.VACCINATION_STATUS,
-                source,
-                recognized,
-                requirements
-        );
-
-        parseRequirement(
-                needMatterSource ? LEASH_NEED_PATTERN : LEASH_EXPLICIT_PATTERN,
-                RequirementType.LEASH,
-                source,
-                recognized,
-                requirements
-        );
-        parseRequirement(
-                needMatterSource ? MUZZLE_NEED_PATTERN : MUZZLE_EXPLICIT_PATTERN,
-                RequirementType.MUZZLE,
-                source,
-                recognized,
-                requirements
-        );
-        parseRequirement(
-                needMatterSource ? WASTE_BAG_NEED_PATTERN : WASTE_BAG_EXPLICIT_PATTERN,
-                RequirementType.WASTE_BAG,
-                source,
-                recognized,
-                requirements
-        );
-        parseRequirement(
-                needMatterSource
-                        ? WASTE_DISPOSAL_NEED_PATTERN
-                        : WASTE_DISPOSAL_EXPLICIT_PATTERN,
-                RequirementType.WASTE_DISPOSAL,
-                source,
-                recognized,
-                requirements
-        );
-        parseRequirement(
-                needMatterSource ? CARRIER_NEED_PATTERN : CARRIER_EXPLICIT_PATTERN,
-                RequirementType.CARRIER,
-                source,
-                recognized,
-                requirements
-        );
-        parseRequirement(
-                needMatterSource ? STROLLER_NEED_PATTERN : STROLLER_EXPLICIT_PATTERN,
-                RequirementType.STROLLER,
-                source,
-                recognized,
-                requirements
-        );
-        parseRequirement(
-                needMatterSource
-                        ? MANNER_BELT_NEED_PATTERN
-                        : MANNER_BELT_EXPLICIT_PATTERN,
-                RequirementType.MANNER_BELT,
-                source,
-                recognized,
-                requirements
-        );
+        for (RequirementPattern rule : REQUIREMENT_PATTERNS) {
+            parseRequirement(rule.forSource(needMatterSource), rule.type(), source, recognized, requirements);
+        }
     }
 
     private void parseVaccinationCertificate(
@@ -879,7 +660,7 @@ public final class PetRuleParser {
     ) {
         int clauseStart = findClauseStart(rawText, weightStart);
         String prefix = rawText.substring(clauseStart, weightStart).trim();
-        String normalized = prefix
+        String normalized = cleanFragment(prefix)
                 .replaceFirst("^(?:및|그리고|또는|과|와)\\s*", "")
                 .replaceAll("[()\\[\\]]", "")
                 .replaceAll("\\s+", "");
@@ -947,8 +728,8 @@ public final class PetRuleParser {
     private String cleanFragment(String value) {
         return value
                 .replaceFirst("^\\s*공식\\s*안내\\s*[·•:\\-]?\\s*", "")
-                .replaceAll("^[\\s,.;:!?/()\\[\\]{}·ㆍ]+", "")
-                .replaceAll("[\\s,.;:!?/()\\[\\]{}·ㆍ]+$", "")
+                .replaceAll("^[\\s,.;:!?/()\\[\\]{}·ㆍ•\\-]+", "")
+                .replaceAll("[\\s,.;:!?/()\\[\\]{}·ㆍ•\\-]+$", "")
                 .replaceAll("^(?:및|그리고|또는|과|와)\\s*", "")
                 .replaceAll("\\s*(?:및|그리고|또는|과|와)$", "")
                 .trim();
@@ -1050,6 +831,18 @@ public final class PetRuleParser {
         private final List<ConfirmationCondition> confirmationConditions = new ArrayList<>();
         private final List<FeeRule> feeRules = new ArrayList<>();
         private final List<UnparsedFragment> unparsedFragments = new ArrayList<>();
+
+        // 한 원문 필드의 처리가 끝난 뒤 합쳐, 오류가 난 필드의 일부 규칙만 남지 않게 한다.
+        private void merge(ParseResult sourceResult) {
+            weightLimits.addAll(sourceResult.weightLimits);
+            sizeConditions.addAll(sourceResult.sizeConditions);
+            spaceRules.addAll(sourceResult.spaceRules);
+            requirements.addAll(sourceResult.requirements);
+            breedRules.addAll(sourceResult.breedRules);
+            confirmationConditions.addAll(sourceResult.confirmationConditions);
+            feeRules.addAll(sourceResult.feeRules);
+            unparsedFragments.addAll(sourceResult.unparsedFragments);
+        }
 
         private int parsedConditionCount() {
             return weightLimits.size()

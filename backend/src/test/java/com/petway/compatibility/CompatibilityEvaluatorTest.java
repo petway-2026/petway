@@ -413,7 +413,7 @@ class CompatibilityEvaluatorTest {
 
         assertThat(result.status()).isEqualTo(CompatibilityStatus.NEED_CONFIRMATION);
         assertThat(result.reasons())
-                .contains("기타 동반 규정에 확인되지 않은 내용이 있어 방문 전 확인이 필요합니다.");
+                .anyMatch(reason -> reason.startsWith("기타 동반 규정에 확인되지 않은 내용이 있어 방문 전 확인이 필요합니다. 원문:"));
     }
 
     @Test
@@ -433,10 +433,8 @@ class CompatibilityEvaluatorTest {
         CompatibilityResult result = evaluate(pet("5", PetSizeType.SMALL), rule);
 
         assertThat(result.status()).isEqualTo(CompatibilityStatus.NEED_CONFIRMATION);
-        assertThat(result.reasons()).contains(
-                "동반 가능한 반려동물 조건에 확인되지 않은 내용이 있습니다.",
-                "실내 동반이 허용됩니다."
-        );
+        assertThat(result.reasons()).contains("실내 동반이 허용됩니다.")
+                .anyMatch(reason -> reason.startsWith("동반 가능한 반려동물 조건에 확인되지 않은 내용이 있습니다. 원문:"));
     }
 
     @Test

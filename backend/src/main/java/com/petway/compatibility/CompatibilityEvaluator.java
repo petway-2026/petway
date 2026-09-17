@@ -5,6 +5,7 @@ import com.petway.pet.entity.Pet;
 import com.petway.pet.enums.PetSizeType;
 import com.petway.petrule.PetRule;
 import com.petway.petrule.PetRule.BreedGroup;
+import com.petway.petrule.PetRule.BreedRuleType;
 import com.petway.petrule.PetRule.ConfirmationCondition;
 import com.petway.petrule.PetRule.FeeRule;
 import com.petway.petrule.PetRule.PetRuleSourceField;
@@ -29,9 +30,23 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 @Component
 public class CompatibilityEvaluator {
+
+    // 일반적인 정책 변경 고지만으로 명시된 동반 허용을 확인 필요로 바꾸지 않는다.
+    // 날짜·현장별 허용 여부, 전화 문의, 실제 제한은 이 패턴에 포함하지 않는다.
+    private static final Pattern GENERAL_POLICY_NOTICE = Pattern.compile(
+            "(?:반려견|반려동물)동반(?:운영)?정책[은는]?(?:사정에따라)?"
+                    + "(?:변동|변경)될수(?:있음|있습니다|있다)[.!]?"
+    );
+
+    // 해석하지 못한 입장 조건은 허용 정보가 다른 필드에 있더라도 무시할 수 없다.
+    private static final Pattern UNRESOLVED_ADMISSION_CONDITION = Pattern.compile(
+            "불가|금지|제한|필수|필요|문의|확인|여부|경우|조건|따라|예외|점포마다|"
+                    + "요일|주말|평일|공휴일|\\d+\\s*(?:kg|㎏)|(?:가능|허용)\\s*(?:아님|하지\\s*않)"
+    );
 
     private static final Set<PetRuleSourceField> DECISION_RELEVANT_SOURCES = EnumSet.of(
             PetRuleSourceField.UNSPECIFIED,
@@ -52,7 +67,7 @@ public class CompatibilityEvaluator {
 
         evaluateWeights(pet, rule, spaceContext, assessment);
         evaluateSizes(pet, rule, assessment);
-        evaluateBreedRules(rule, assessment);
+        evaluateBreedRules(pet, rule, assessment);
         evaluateConfirmationConditions(rule, assessment);
         evaluateFees(rule, assessment);
         evaluateRequirements(pet, rule, assessment);
@@ -80,15 +95,28 @@ public class CompatibilityEvaluator {
         Set<SpaceCondition> conditions = EnumSet.noneOf(SpaceCondition.class);
         rule.spaceRules().forEach(spaceRule -> conditions.add(spaceRule.condition()));
 
-        if (hasSpaceConflict(conditions)) {
+        boolean spaceConflict = hasSpaceConflict(conditions);
+        if (spaceConflict) {
             assessment.confirm(
                     "공간별 동반 가능 규정이 서로 달라 방문 전 확인이 필요합니다."
             );
         }
 
+        if (!spaceConflict && conditions.contains(SpaceCondition.INDOOR_PROHIBITED)
+                && conditions.contains(SpaceCondition.OUTDOOR_PROHIBITED)) {
+            assessment.unavailable("실내와 실외 모두 반려견 동반이 금지되어 있습니다.");
+            return SpaceContext.UNRESOLVED;
+        }
+
         boolean indoorAndOutdoorAllowed = conditions.contains(SpaceCondition.INDOOR_ALLOWED)
                 && conditions.contains(SpaceCondition.OUTDOOR_ALLOWED);
-        if (indoorAndOutdoorAllowed) {
+        boolean hasAreaRestriction = conditions.stream().anyMatch(condition -> switch (condition) {
+            case INDOOR_PROHIBITED, OUTDOOR_PROHIBITED, OUTDOOR_ONLY,
+                    TERRACE_ONLY, PARTIAL_AREA_ONLY -> true;
+            default -> false;
+        });
+        // 실내와 실외를 모두 허용하면 전 구역 허용이다. 명시된 일부 구역 제한은 그대로 우선한다.
+        if (indoorAndOutdoorAllowed && !hasAreaRestriction) {
             assessment.positive("전 구역에서 반려견과 동반할 수 있습니다.");
         }
 
@@ -99,9 +127,11 @@ public class CompatibilityEvaluator {
                 continue;
             }
             switch (condition) {
-                case ALL_AREAS_ALLOWED -> assessment.positive(
-                        "전 구역에서 반려견과 동반할 수 있습니다."
-                );
+                case ALL_AREAS_ALLOWED -> {
+                    if (!hasAreaRestriction) {
+                        assessment.positive("전 구역에서 반려견과 동반할 수 있습니다.");
+                    }
+                }
                 case INDOOR_ALLOWED -> assessment.positive(
                         "실내 동반이 허용됩니다."
                 );
@@ -279,13 +309,24 @@ public class CompatibilityEvaluator {
     }
 
     private void evaluateBreedRules(
+            Pet pet,
             PetRule rule,
             Assessment assessment
     ) {
-        if (!rule.breedRules().isEmpty()) {
-            assessment.positive(
-                    "모든 견종의 동반이 허용됩니다."
-            );
+        boolean dangerousBreedsProhibited = rule.breedRules().stream()
+                .anyMatch(r -> r.type() == BreedRuleType.DANGEROUS_BREEDS_PROHIBITED);
+        if (rule.breedRules().stream().anyMatch(r -> r.type() == BreedRuleType.ALL_BREEDS_ALLOWED)) {
+            // 견종 허용은 판정에 반영하되, 모든 입장 조건을 충족했다는 안내로 출력하지 않는다.
+            assessment.hasAllowanceEvidence = true;
+        }
+        if (dangerousBreedsProhibited) {
+            if (pet.getBreed() == null) {
+                assessment.confirm("맹견 입장 제한이 있어 등록된 견종을 확인해야 합니다.");
+            } else if (pet.getBreed().isDangerous()) {
+                assessment.unavailable("이 장소는 맹견 동반을 금지하고 있습니다.");
+            } else {
+                assessment.positive("등록된 견종은 맹견 입장 제한에 해당하지 않습니다.");
+            }
         }
     }
 
@@ -380,22 +421,21 @@ public class CompatibilityEvaluator {
         // 기존에 얻은 판정 근거와 원문 출처에 따라 미해석 문장이 최종 확인 필요 상태에 영향을 줄지 정한다.
         boolean hasConcreteOutcome = assessment.hasOutcomeEvidence();
         for (UnparsedFragment fragment : rule.unparsedFragments()) {
-            if (isInformationalAvailability(fragment)) {
-                assessment.positive("반려견 동반 가능 여부는 점포마다 다를 수 있습니다.");
+            if (assessment.hasAllowanceEvidence
+                    && fragment.reason() != PetRule.UnparsedReason.PARSER_ERROR
+                    && fragment.sourceField() == PetRuleSourceField.ETC_ACMPY_INFO
+                    && GENERAL_POLICY_NOTICE.matcher(fragment.rawText().replaceAll("\\s+", "")).matches()) {
                 continue;
             }
             if (isDecisionRelevant(fragment)
                     && (!hasConcreteOutcome
-                    || fragment.sourceField() == PetRuleSourceField.ACMPY_PSBL_CPAM)) {
-                assessment.confirm(unparsedReason(fragment.sourceField()));
+                    || fragment.reason() == PetRule.UnparsedReason.PARSER_ERROR
+                    || fragment.sourceField() == PetRuleSourceField.ACMPY_PSBL_CPAM
+                    || UNRESOLVED_ADMISSION_CONDITION.matcher(fragment.rawText()).find())) {
+                assessment.confirm(unparsedReason(fragment.sourceField())
+                        + " 원문: “" + fragment.rawText().trim() + "”");
             }
         }
-    }
-
-    private boolean isInformationalAvailability(UnparsedFragment fragment) {
-        String normalized = fragment.rawText().replaceAll("\\s+", "");
-        return normalized.contains("가능(점포마다다름)")
-                && !normalized.contains("불가능(점포마다다름)");
     }
 
     private boolean isDecisionRelevant(UnparsedFragment fragment) {
@@ -467,6 +507,7 @@ public class CompatibilityEvaluator {
         private final Set<String> conditionalReasons = new LinkedHashSet<>();
         private final Set<String> positiveReasons = new LinkedHashSet<>();
         private final List<Requirement> requirements = new ArrayList<>();
+        private boolean hasAllowanceEvidence;
 
         private void unavailable(String reason) {
             unavailableReasons.add(reason);
@@ -481,6 +522,7 @@ public class CompatibilityEvaluator {
         }
 
         private void positive(String reason) {
+            hasAllowanceEvidence = true;
             positiveReasons.add(reason);
         }
 
@@ -498,7 +540,7 @@ public class CompatibilityEvaluator {
             return !unavailableReasons.isEmpty()
                     || !confirmationReasons.isEmpty()
                     || !conditionalReasons.isEmpty()
-                    || !positiveReasons.isEmpty()
+                    || hasAllowanceEvidence
                     || !requirements.isEmpty();
         }
 
@@ -521,7 +563,10 @@ public class CompatibilityEvaluator {
             reasons.addAll(confirmationReasons);
             reasons.addAll(conditionalReasons);
             reasons.addAll(positiveReasons);
-            return new CompatibilityResult(status, reasons, requirements);
+            return new CompatibilityResult(status, reasons, requirements,
+                    new CompatibilityResult.ReasonGroups(
+                            List.copyOf(unavailableReasons), List.copyOf(confirmationReasons),
+                            List.copyOf(conditionalReasons), List.copyOf(positiveReasons)));
         }
     }
 }

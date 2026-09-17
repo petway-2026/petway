@@ -314,7 +314,8 @@ public record PetRule(
     }
 
     public enum BreedRuleType {
-        ALL_BREEDS_ALLOWED
+        ALL_BREEDS_ALLOWED,
+        DANGEROUS_BREEDS_PROHIBITED
     }
 
     public enum ConfirmationType {
