@@ -4,6 +4,8 @@ package com.petway.ai.recommendation;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -29,6 +31,8 @@ public class RecommendationPromptPolicy {
             15. 후보가 충분하면 날짜별로 서로 다른 장소 유형을 최소 2개 이상 포함하고, 가까운 장소끼리 묶어 이동을 줄인다.
             16. 기본 체류시간은 관광지·문화시설·레포츠 2~3시간, 쇼핑몰·아울렛 2시간 이상, 음식점·카페 1~1.5시간으로 잡는다. 경복궁·대형 공원·대형 쇼핑몰처럼 넓은 장소를 1시간 안에 끝나는 일정으로 만들지 않는다.
             17. 각 날짜의 이동시간과 체류시간 합계가 10:00~20:00를 넘지 않도록 현실적으로 구성한다.
+            18. 후보의 status 생략은 AVAILABLE을 뜻한다. reasons와 requirements 생략은 빈 목록이며, weather 생략 시 공통 weatherSummary만 참고한다. id는 candidateId, km는 출발지 직선거리다.
+            19. summary는 2문장 이내, 각 reason은 짧은 1문장으로 작성한다. 준비사항이 없으면 preparationTips는 빈 배열로 반환한다.
             """;
 
     private final ObjectMapper objectMapper;
@@ -51,7 +55,7 @@ public class RecommendationPromptPolicy {
                 input.userIntent(),
                 input.pet(),
                 input.weatherSummary(),
-                eligibleCandidates
+                eligibleCandidates.stream().map(this::compactCandidate).toList()
         );
 
         try {
@@ -62,11 +66,32 @@ public class RecommendationPromptPolicy {
         }
     }
 
+    private Map<String, Object> compactCandidate(RecommendationCandidate candidate) {
+        Map<String, Object> value = new LinkedHashMap<>();
+        value.put("id", candidate.candidateId());
+        value.put("name", candidate.name());
+        if (candidate.category() != null) value.put("category", candidate.category());
+        if (candidate.compatibilityStatus() != CandidateCompatibilityStatus.AVAILABLE) {
+            value.put("status", candidate.compatibilityStatus());
+        }
+        if (candidate.compatibilityReasons() != null && !candidate.compatibilityReasons().isEmpty()) {
+            value.put("reasons", candidate.compatibilityReasons());
+        }
+        if (candidate.requirements() != null && !candidate.requirements().isEmpty()) {
+            value.put("requirements", candidate.requirements());
+        }
+        if (candidate.distanceKm() != null) value.put("km", candidate.distanceKm());
+        if (candidate.weatherSummary() != null && !candidate.weatherSummary().isBlank()) {
+            value.put("weather", candidate.weatherSummary());
+        }
+        return value;
+    }
+
     private record PromptSnapshot(
             String userIntent,
             RecommendationPetSnapshot pet,
             String weatherSummary,
-            List<RecommendationCandidate> candidates
+            List<Map<String, Object>> candidates
     ) {
     }
 }

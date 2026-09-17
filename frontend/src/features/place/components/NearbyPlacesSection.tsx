@@ -2,13 +2,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+import { compatibilityReasonSections } from "../utils/compatibilityReasons";
 import {
-    getPlaceCompatibility,
+    loadPlaceCompatibilities,
     getPlacePetDetail,
-    PlaceCompatibilityApiError,
     searchAllNearbyPlaces,
     type CompatibilityStatus,
-    type PlaceCompatibility,
+    type PlaceCompatibilityEntry,
     type PlacePetDetail,
     type PlaceSummary,
 } from "../api/placeApi";
@@ -125,9 +125,13 @@ export default function NearbyPlacesSection({
     const [detail, setDetail] = useState<PlacePetDetail | null>(null);
     const [detailLoading, setDetailLoading] = useState(false);
     const [detailError, setDetailError] = useState("");
-    const [compatibility, setCompatibility] = useState<PlaceCompatibility | null>(null);
-    const [compatibilityLoading, setCompatibilityLoading] = useState(false);
-    const [compatibilityError, setCompatibilityError] = useState("");
+    const [compatibilityEntries, setCompatibilityEntries] = useState<{
+        owner: typeof user;
+        entries: Record<string, PlaceCompatibilityEntry>;
+    }>({ owner: user, entries: {} });
+    const entries = compatibilityEntries.owner === user ? compatibilityEntries.entries : {};
+    const [compatibilityScope, setCompatibilityScope] = useState("ALL");
+    const [compatibilityRefresh, setCompatibilityRefresh] = useState(0);
     const [selectedPlace, setSelectedPlace] = useState<SelectedPlace | null>(null);
     const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null);
     const [selectedType, setSelectedType] = useState("all");
@@ -136,7 +140,6 @@ export default function NearbyPlacesSection({
     const [mapAreaSearch, setMapAreaSearch] = useState(false);
     const detailRequestRef = useRef<{ id: number; controller: AbortController } | null>(null);
     const nearbyRequestRef = useRef<AbortController | null>(null);
-    const compatibilityRequestRef = useRef<AbortController | null>(null);
     const detailRequestIdRef = useRef(0);
     const locationStatusMessageRef = useRef(INITIAL_LOCATION_MESSAGE);
     const weatherMessageActiveRef = useRef(false);
@@ -165,11 +168,6 @@ export default function NearbyPlacesSection({
         setDetail(null);
         setDetailLoading(false);
         setDetailError("");
-        compatibilityRequestRef.current?.abort();
-        compatibilityRequestRef.current = null;
-        setCompatibility(null);
-        setCompatibilityLoading(false);
-        setCompatibilityError("");
         setSelectedPlace(null);
         setSelectedPlaceId(null);
         restoreLocationMessage();
@@ -178,7 +176,6 @@ export default function NearbyPlacesSection({
     useEffect(() => () => {
         nearbyRequestRef.current?.abort();
         detailRequestRef.current?.controller.abort();
-        compatibilityRequestRef.current?.abort();
     }, []);
 
     const getCurrentLocation = () => {
@@ -220,6 +217,8 @@ export default function NearbyPlacesSection({
         const controller = new AbortController();
         nearbyRequestRef.current = controller;
         setMapAreaSearch(areaSearch);
+        closePlaceExpansion();
+        setCompatibilityScope("ALL");
         setLocationLoading(true);
         updateLocationMessage("선택한 지도 영역의 장소를 찾고 있어요.");
         try {
@@ -311,7 +310,30 @@ export default function NearbyPlacesSection({
             : areaPlaces.filter((place) => place.contentTypeId === selectedType),
         [areaPlaces, selectedType]
     );
-    const pagedPlaces = filteredPlaces;
+    // 상세 버튼과 별개로 목록을 자동 판정하고, 검색·계정 변경 시 이전 요청을 취소한다.
+    useEffect(() => {
+        const controller = new AbortController();
+        setCompatibilityEntries({ owner: user, entries: {} });
+        if (user && !locationLoading) {
+            void loadPlaceCompatibilities(areaPlaces.map((place) => place.contentId), controller.signal,
+                (contentId, entry) => setCompatibilityEntries((current) => ({
+                    owner: user,
+                    entries: { ...current.entries, [contentId]: entry },
+                })));
+        }
+        return () => controller.abort();
+    }, [areaPlaces, user, locationLoading, compatibilityRefresh]);
+
+    const matchesScope = (place: PlaceSummary, scope: string) => {
+        if (scope === "ALL") return true;
+        const status = entries[place.contentId]?.result?.petwayAssessment.status;
+        return scope === "AVAILABLE"
+            ? status === "AVAILABLE" || status === "CONDITIONAL"
+            : status === scope;
+    };
+    const pagedPlaces = useMemo(() => user
+        ? filteredPlaces.filter((place) => matchesScope(place, compatibilityScope))
+        : filteredPlaces, [filteredPlaces, compatibilityEntries, user, compatibilityScope]);
 
     const orderedPlaces = useMemo(() => {
         const located = pagedPlaces.filter((place) => place.latitude !== null && place.longitude !== null);
@@ -433,59 +455,17 @@ export default function NearbyPlacesSection({
             return;
         }
 
-        compatibilityRequestRef.current?.abort();
-        compatibilityRequestRef.current = null;
-        setCompatibility(null);
-        setCompatibilityLoading(false);
-        setCompatibilityError("");
         setExpandedPlaceId(place.contentId);
         selectPlace(place);
-        void loadPlaceDetail(place);
-        if (user) void loadCompatibility(place);
-    };
-
-    const loadCompatibility = async (place: PlaceSummary) => {
-        compatibilityRequestRef.current?.abort();
-        const controller = new AbortController();
-        compatibilityRequestRef.current = controller;
-
-        setCompatibility(null);
-        setCompatibilityError("");
-        setCompatibilityLoading(true);
-
-        try {
-            const response = await getPlaceCompatibility(
-                place.contentId,
-                controller.signal
-            );
-            if (!controller.signal.aborted) {
-                detailRequestRef.current?.controller.abort();
-                detailRequestRef.current = null;
-                setCompatibility(response);
-                setDetail(response.officialInformation);
-                setDetailLoading(false);
-                setDetailError("");
-            }
-        } catch (cause) {
-            if (controller.signal.aborted) return;
-
-            if (cause instanceof PlaceCompatibilityApiError
-                && (cause.status === 401 || cause.status === 403)) {
-                setCompatibilityError(
-                    "로그인 정보가 만료되었습니다. 다시 로그인한 뒤 확인해 주세요."
-                );
-            } else {
-                setCompatibilityError(
-                    cause instanceof Error
-                        ? cause.message
-                        : "내 반려견의 동반 가능 여부를 확인하지 못했습니다."
-                );
-            }
-        } finally {
-            if (!controller.signal.aborted) {
-                compatibilityRequestRef.current = null;
-                setCompatibilityLoading(false);
-            }
+        const cached = entries[place.contentId]?.result;
+        if (cached) {
+            detailRequestRef.current?.controller.abort();
+            detailRequestRef.current = null;
+            setDetail(cached.officialInformation);
+            setDetailLoading(false);
+            setDetailError("");
+        } else {
+            void loadPlaceDetail(place);
         }
     };
 
@@ -576,8 +556,28 @@ export default function NearbyPlacesSection({
                             </button>
                         ))}
                     </div>
+                    {user ? <>
+                        <div className="nearby-place-filters" aria-label="동반 가능 여부 필터">
+                            {[["ALL", "전체"], ["AVAILABLE", "동반 가능"], ["NEED_CONFIRMATION", "방문 전 확인"], ["UNAVAILABLE", "동반 불가"]].map(([scope, label]) => (
+                                <button type="button" key={scope} className={compatibilityScope === scope ? "active" : ""}
+                                    aria-pressed={compatibilityScope === scope}
+                                    onClick={() => { setCompatibilityScope(scope); closePlaceExpansion(); }}>
+                                    {label} <span>{filteredPlaces.filter((place) => matchesScope(place, scope)).length}</span>
+                                </button>
+                            ))}
+                            <button type="button" onClick={() => setCompatibilityRefresh((value) => value + 1)}>판정 새로고침</button>
+                        </div>
+                        <p className="nearby-assessment-progress" role="status">
+                            마이펫 기준 자동 확인 · {filteredPlaces.filter((place) => entries[place.contentId]?.result).length}/{filteredPlaces.length}곳 판정 완료
+                            {filteredPlaces.some((place) => entries[place.contentId]?.error) && " · 조회하지 못한 장소는 전체 목록에서 확인해 주세요."}
+                        </p>
+                    </> : <p className="nearby-assessment-progress">로그인하고 대표 반려견을 등록하면 동반 가능 여부를 자동으로 확인해 드려요.</p>}
+                    {orderedPlaces.length === 0 && <p className="nearby-assessment-progress">현재 필터에 해당하는 장소가 없습니다. 판정 중인 장소는 전체 목록에서 확인할 수 있어요.</p>}
                     <div className="nearby-place-grid">
                     {orderedPlaces.map((place) => {
+                        const compatibility = user ? entries[place.contentId]?.result : undefined;
+                        const compatibilityError = user ? entries[place.contentId]?.error : undefined;
+                        const compatibilityLoading = Boolean(user && !entries[place.contentId]);
                         const isSelected = selectedPlaceId === place.contentId;
                         const weatherSelected = selectedPlace?.contentId === place.contentId;
                         const detailExpanded = expandedPlaceId === place.contentId;
@@ -613,7 +613,7 @@ export default function NearbyPlacesSection({
                                         {place.operatingHours && <small>운영시간 · {place.operatingHours}</small>}
                                         {place.closedDays && <small>휴무일 · {place.closedDays}</small>}
                                         <small>출처 · {place.source ?? "한국관광공사"}</small>
-                                        <button
+                                        {!compatibility && <button
                                             type="button"
                                             className="nearby-detail-button"
                                             onClick={() => toggleDetail(place)}
@@ -621,36 +621,31 @@ export default function NearbyPlacesSection({
                                         >
                                             {detailExpanded
                                                 ? "상세정보 닫기"
-                                                : user ? "마이펫 기준 동반 가능 여부" : "동반 상세정보"}
-                                        </button>
-                                        {user && detailExpanded && !compatibility && !compatibilityLoading && (
-                                            <button
-                                                type="button"
-                                                className="nearby-compatibility-button"
-                                                onClick={() => void loadCompatibility(place)}
-                                                disabled={compatibilityLoading}
-                                            >
-                                                {compatibilityLoading
-                                                    ? "마이펫 기준으로 확인 중…"
-                                                    : "마이펫 기준 다시 확인"}
-                                            </button>
-                                        )}
-                                        {detailExpanded && compatibilityError && !compatibilityLoading && (
+                                                : "공식 동반 상세정보"}
+                                        </button>}
+                                        {compatibilityLoading && <p className="nearby-assessment-progress" role="status">마이펫 기준으로 자동 확인 중…</p>}
+                                        {compatibilityError && (
                                             <div className="nearby-compatibility-error" role="alert">
-                                                <span>{compatibilityError}</span>
+                                                <span>판정 조회 실패 · {compatibilityError}</span>
                                                 <button
                                                     type="button"
-                                                    onClick={() => void loadCompatibility(place)}
+                                                    onClick={() => setCompatibilityRefresh((value) => value + 1)}
                                                 >
                                                     다시 시도
                                                 </button>
                                             </div>
                                         )}
-                                        {detailExpanded && compatibility && !compatibilityLoading && !compatibilityError && (() => {
+                                        {compatibility && (() => {
                                             const presentation = COMPATIBILITY_PRESENTATION[
                                                 compatibility.petwayAssessment.status
                                             ];
                                             const assessment = compatibility.petwayAssessment;
+                                            const official = compatibility.officialInformation;
+                                            const hasOfficialInformation = Boolean(
+                                                official.accompanimentType || official.allowedCapacity
+                                                || official.requiredItems || official.additionalInformation
+                                                || official.safetyNotice
+                                            );
 
                                             return (
                                                 <section className={`nearby-compatibility-result ${presentation.className}`}>
@@ -661,20 +656,24 @@ export default function NearbyPlacesSection({
                                                         {compatibility.petName} 기준 · {presentation.label}
                                                     </h4>
 
-                                                    {assessment.reasons.length > 0 && (
-                                                        <div className="nearby-compatibility-group">
-                                                            <strong>
-                                                                {assessment.needsConfirmation
-                                                                    ? "확인이 필요해요"
-                                                                    : "판정 이유"}
-                                                            </strong>
+                                                    <details className="nearby-assessment-details"
+                                                        onToggle={(event) => {
+                                                            if (event.currentTarget.open) selectPlace(place);
+                                                        }}>
+                                                        <summary>
+                                                            <span className="nearby-assessment-show">판정 이유·준비사항 보기</span>
+                                                            <span className="nearby-assessment-hide">판정 이유·준비사항 접기</span>
+                                                        </summary>
+                                                    {compatibilityReasonSections(assessment).map((section) => (
+                                                        <div className="nearby-compatibility-group" key={section.title}>
+                                                            <strong>{section.title}</strong>
                                                             <ul>
-                                                                {assessment.reasons.map((reason) => (
+                                                                {section.reasons.map((reason) => (
                                                                     <li key={reason}>{reason}</li>
                                                                 ))}
                                                             </ul>
                                                         </div>
-                                                    )}
+                                                    ))}
 
                                                     {assessment.requirements.length > 0 && (
                                                         <div className="nearby-compatibility-group">
@@ -688,15 +687,28 @@ export default function NearbyPlacesSection({
                                                             </ul>
                                                         </div>
                                                     )}
+                                                    <section className="nearby-official-information">
+                                                        <strong>공식 안내 · {place.source ?? "한국관광공사"} 제공</strong>
+                                                        {hasOfficialInformation ? (
+                                                            <dl className="nearby-pet-detail">
+                                                                {official.accompanimentType && <><dt>동반 유형</dt><dd>{official.accompanimentType}</dd></>}
+                                                                {official.allowedCapacity && <><dt>동반 가능 동물</dt><dd>{official.allowedCapacity}</dd></>}
+                                                                {official.requiredItems && <><dt>필요사항</dt><dd>{official.requiredItems}</dd></>}
+                                                                {official.additionalInformation && <><dt>이용 안내</dt><dd>{official.additionalInformation}</dd></>}
+                                                                {official.safetyNotice && <><dt>안전 유의사항</dt><dd>{official.safetyNotice}</dd></>}
+                                                            </dl>
+                                                        ) : <p className="nearby-pet-detail-empty">제공된 반려동물 동반 상세정보가 없습니다.</p>}
+                                                    </section>
+                                                    </details>
                                                 </section>
                                             );
                                         })()}
-                                        {detailExpanded && detailLoading && (
+                                        {!compatibility && detailExpanded && detailLoading && (
                                             <div className="nearby-pet-detail-status" role="status">
                                                 동반 상세정보를 불러오고 있어요.
                                             </div>
                                         )}
-                                        {detailExpanded && detailError && !detailLoading && (
+                                        {!compatibility && detailExpanded && detailError && !detailLoading && (
                                             <div className="nearby-pet-detail-error" role="alert">
                                                 <span>{detailError}</span>
                                                 <button
@@ -707,7 +719,7 @@ export default function NearbyPlacesSection({
                                                 </button>
                                             </div>
                                         )}
-                                        {detailExpanded && detail && hasPetDetail && !detailLoading && !detailError && (
+                                        {!compatibility && detailExpanded && detail && hasPetDetail && !detailLoading && !detailError && (
                                             <section className="nearby-official-information">
                                                 <strong>공식 안내 · {place.source ?? "한국관광공사"} 제공</strong>
                                                 <dl className="nearby-pet-detail">
@@ -719,7 +731,7 @@ export default function NearbyPlacesSection({
                                                 </dl>
                                             </section>
                                         )}
-                                        {detailExpanded && detail && !hasPetDetail && !detailLoading && !detailError && (
+                                        {!compatibility && detailExpanded && detail && !hasPetDetail && !detailLoading && !detailError && (
                                             <p className="nearby-pet-detail-empty">
                                                 제공된 반려동물 동반 상세정보가 없습니다.
                                             </p>

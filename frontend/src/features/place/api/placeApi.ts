@@ -72,6 +72,12 @@ export interface PlaceCompatibility {
         reasons: string[];
         requirements: CompatibilityRequirement[];
         needsConfirmation: boolean;
+        reasonGroups?: {
+            unavailable: string[];
+            confirmation: string[];
+            conditions: string[];
+            allowed: string[];
+        } | null;
     };
 }
 
@@ -89,13 +95,14 @@ export async function searchPlaces(
     areaCode: string,
     size = 100,
     page = 1,
+    signal?: AbortSignal,
 ): Promise<PlaceSearchResponse> {
     const query = new URLSearchParams({
         areaCode,
         page: String(page),
         size: String(size),
     });
-    const response = await apiFetch(`${API_URL}/api/places?${query}`);
+    const response = await apiFetch(`${API_URL}/api/places?${query}`, { signal });
 
     if (!response.ok) {
         let message = "반려동물 동반 장소를 불러오지 못했습니다.";
@@ -113,14 +120,16 @@ export async function searchPlaces(
     return response.json() as Promise<PlaceSearchResponse>;
 }
 
-export async function searchAllPlaces(areaCode: string): Promise<PlaceSearchResponse> {
+export async function searchAllPlaces(areaCode: string, signal?: AbortSignal): Promise<PlaceSearchResponse> {
     const pageSize = 100;
-    const firstPage = await searchPlaces(areaCode, pageSize, 1);
+    const firstPage = await searchPlaces(areaCode, pageSize, 1, signal);
+    signal?.throwIfAborted();
     const pageCount = Math.ceil(firstPage.totalCount / pageSize);
     const items = [...firstPage.items];
 
     for (let page = 2; page <= pageCount; page += 1) {
-        const response = await searchPlaces(areaCode, pageSize, page);
+        const response = await searchPlaces(areaCode, pageSize, page, signal);
+        signal?.throwIfAborted();
         items.push(...response.items);
     }
 
@@ -256,4 +265,41 @@ export async function getPlaceCompatibility(
     }
 
     return response.json() as Promise<PlaceCompatibility>;
+}
+
+export type PlaceCompatibilityEntry =
+    | { result: PlaceCompatibility; error?: never }
+    | { result?: never; error: string };
+
+// 가까운 장소부터 최대 4개씩 조회한다. 취소된 검색의 응답은 화면에 전달하지 않는다.
+export async function loadPlaceCompatibilities(
+    contentIds: string[],
+    signal: AbortSignal,
+    onResult: (contentId: string, entry: PlaceCompatibilityEntry) => void,
+): Promise<void> {
+    const pending = [...new Set(contentIds)];
+    let next = 0;
+    let sharedError: string | undefined;
+    await Promise.all(Array.from({ length: Math.min(4, pending.length) }, async () => {
+        while (!signal.aborted && next < pending.length) {
+            const contentId = pending[next++];
+            let entry: PlaceCompatibilityEntry;
+            if (sharedError) {
+                entry = { error: sharedError };
+            } else {
+                try {
+                    entry = { result: await getPlaceCompatibility(contentId, signal) };
+                } catch (cause) {
+                    if (signal.aborted) return;
+                    const message = cause instanceof Error ? cause.message : "동반 판정을 불러오지 못했습니다.";
+                    entry = { error: message };
+                    if (cause instanceof PlaceCompatibilityApiError
+                        && ([401, 403].includes(cause.status) || message.includes("대표 반려견"))) {
+                        sharedError = message;
+                    }
+                }
+            }
+            if (!signal.aborted) onResult(contentId, entry);
+        }
+    }));
 }

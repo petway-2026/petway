@@ -103,7 +103,7 @@ class PlaceCompatibilityServiceTest {
         );
 
         assertThat(response.petwayAssessment().status())
-                .isEqualTo(CompatibilityStatus.CONDITIONAL);
+                .isEqualTo(CompatibilityStatus.AVAILABLE);
         assertThat(response.petwayAssessment().requirements())
                 .extracting(PlaceCompatibilityResponse.RequirementItem::type)
                 .containsExactlyInAnyOrder(
@@ -244,6 +244,26 @@ class PlaceCompatibilityServiceTest {
         assertThat(response.petId()).isEqualTo(primaryPet.getId());
         verify(petRepository).findByUserAndIsPrimaryTrue(owner);
         verify(petRepository, never()).findByUserAndIsPrimaryTrue(otherUser);
+    }
+
+    @Test
+    void repeatedPreparationIsDisplayedOnceWhileDistinctScopesArePreserved() {
+        stubPrimaryPet(new BigDecimal("7.8"));
+        when(tourPlaceGateway.getPetDetail("100"))
+                .thenReturn(new PlacePetDetail("전구역 동반가능", "이동장 필수", "이동장 필수",
+                        "실내 목줄 필수, 실외 목줄 필수", null));
+
+        PlaceCompatibilityResponse response = service.getCompatibility("owner@petway.test", "100");
+
+        assertThat(response.petwayAssessment().status()).isEqualTo(CompatibilityStatus.AVAILABLE);
+        assertThat(response.petwayAssessment().requirements()).hasSize(3);
+        assertThat(response.petwayAssessment().requirements())
+                .extracting(PlaceCompatibilityResponse.RequirementItem::type)
+                .containsExactly(RequirementType.CARRIER, RequirementType.LEASH, RequirementType.LEASH);
+        assertThat(response.petwayAssessment().requirements())
+                .extracting(PlaceCompatibilityResponse.RequirementItem::scope)
+                .containsExactly(com.petway.petrule.PetRule.SpaceScope.UNSPECIFIED,
+                        com.petway.petrule.PetRule.SpaceScope.INDOOR, com.petway.petrule.PetRule.SpaceScope.OUTDOOR);
     }
 
     private Pet stubPrimaryPet(BigDecimal weight) {

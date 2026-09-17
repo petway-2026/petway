@@ -44,7 +44,7 @@ class CompatibilitySourceRegressionTest {
         org.springframework.test.util.ReflectionTestUtils.setField(pet, "breed", DogBreed.MALTESE);
         var ordinary = evaluator.evaluate(pet, rule);
         assertThat(ordinary.status()).isEqualTo("264311".equals(contentId)
-                ? CompatibilityStatus.NEED_CONFIRMATION : CompatibilityStatus.CONDITIONAL);
+                ? CompatibilityStatus.NEED_CONFIRMATION : CompatibilityStatus.AVAILABLE);
         assertThat(ordinary.requirements()).extracting(r -> r.type().name())
                 .contains("LEASH", "WASTE_BAG", "WASTE_DISPOSAL").doesNotContain("MUZZLE");
         org.springframework.test.util.ReflectionTestUtils.setField(pet, "breed", DogBreed.ROTTWEILER);
@@ -111,7 +111,6 @@ class CompatibilitySourceRegressionTest {
 
         assertThat(result.status()).isEqualTo(CompatibilityStatus.AVAILABLE);
         assertThat(result.reasons()).contains(
-                "모든 견종의 동반이 허용됩니다.",
                 "실내 동반이 허용됩니다."
         );
     }
@@ -163,6 +162,30 @@ class CompatibilitySourceRegressionTest {
     }
 
     @Test
+    void fullBodyCarrierConditionAllowsEntryAndPreservesOtherRestrictions() {
+        String carrier = "이동장(켄넬) 안에 반려동물 몸 전체가 모두 들어가야 동반 가능";
+        PlacePetDetail detail = new PlacePetDetail(
+                "일부구역 동반가능",
+                "모든 견종 동반 가능, " + carrier,
+                "이동장 필수", carrier,
+                null, null, null, null, null
+        );
+        CompatibilityResult result = evaluate(pet("8", PetSizeType.MEDIUM), detail);
+
+        assertThat(result.status()).isEqualTo(CompatibilityStatus.AVAILABLE);
+        assertThat(result.reasons()).contains("일부 구역에서만 동반할 수 있습니다.")
+                .doesNotContain("동반 가능한 반려동물 조건에 확인되지 않은 내용이 있습니다.");
+        assertThat(result.requirements()).extracting(r -> r.type().name()).contains("CARRIER");
+
+        assertThat(evaluate(pet("12", PetSizeType.MEDIUM),
+                detail("반려견 10kg 이하, " + carrier, null, null)).status())
+                .isEqualTo(CompatibilityStatus.UNAVAILABLE);
+        assertThat(evaluate(pet("8", PetSizeType.MEDIUM),
+                detail(carrier + ", 현장 상황에 따라 허용 여부 변경", null, null)).status())
+                .isEqualTo(CompatibilityStatus.NEED_CONFIRMATION);
+    }
+
+    @Test
     void indoorAllowedDoesNotHideUnclearAnimalCondition() {
         CompatibilityResult result = evaluate(
                 pet("8", PetSizeType.MEDIUM),
@@ -175,7 +198,7 @@ class CompatibilitySourceRegressionTest {
 
         assertThat(result.status()).isEqualTo(CompatibilityStatus.NEED_CONFIRMATION);
         assertThat(result.reasons())
-                .contains("동반 가능한 반려동물 조건에 확인되지 않은 내용이 있습니다.");
+                .anyMatch(reason -> reason.startsWith("동반 가능한 반려동물 조건에 확인되지 않은 내용이 있습니다. 원문:"));
     }
 
     @Test
@@ -200,6 +223,33 @@ class CompatibilitySourceRegressionTest {
         );
 
         assertThat(result.status()).isEqualTo(CompatibilityStatus.UNAVAILABLE);
+    }
+
+    @Test
+    void abbreviatedSizeAndBulletFormattingDoNotCauseUnknownConditions() {
+        PlacePetDetail detail = detail("- 5kg 미만 소형", "- 이동장 사용 시 동반 가능", null);
+        assertThat(evaluate(pet("4", PetSizeType.SMALL), detail).status())
+                .isEqualTo(CompatibilityStatus.AVAILABLE);
+        assertThat(evaluate(pet("5", PetSizeType.SMALL), detail).status())
+                .isEqualTo(CompatibilityStatus.UNAVAILABLE);
+        assertThat(evaluate(pet("4", PetSizeType.LARGE), detail).status())
+                .isEqualTo(CompatibilityStatus.UNAVAILABLE);
+    }
+
+    @Test
+    void carrierEntryConditionIsPreparationButInquiryStillNeedsConfirmation() {
+        assertThat(evaluate(pet("8", PetSizeType.MEDIUM),
+                detail("이동장 사용 시 동반 가능", null, null)).status())
+                .isEqualTo(CompatibilityStatus.AVAILABLE);
+        assertThat(evaluate(pet("8", PetSizeType.MEDIUM),
+                detail("이동장 사용 시 동반 가능, 개별 문의 필요", null, null)).status())
+                .isEqualTo(CompatibilityStatus.NEED_CONFIRMATION);
+        assertThat(evaluate(pet("8", PetSizeType.MEDIUM),
+                detail("소형(안을 수 있는 크기)", null, null)).status())
+                .isEqualTo(CompatibilityStatus.UNAVAILABLE);
+        assertThat(evaluate(pet("4", PetSizeType.SMALL),
+                detail("소형(안을 수 있는 크기)", null, null)).status())
+                .isEqualTo(CompatibilityStatus.NEED_CONFIRMATION);
     }
 
     private CompatibilityResult evaluate(Pet pet, PlacePetDetail detail) {

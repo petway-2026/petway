@@ -37,7 +37,8 @@ public record PlaceCompatibilityResponse(
             CompatibilityStatus status,
             List<String> reasons,
             List<RequirementItem> requirements,
-            boolean needsConfirmation
+            boolean needsConfirmation,
+            CompatibilityResult.ReasonGroups reasonGroups
     ) {
         private static PetwayAssessment from(CompatibilityResult result) {
             return new PetwayAssessment(
@@ -45,8 +46,10 @@ public record PlaceCompatibilityResponse(
                     result.reasons(),
                     result.requirements().stream()
                             .map(RequirementItem::from)
+                            .distinct()
                             .toList(),
-                    result.status() == CompatibilityStatus.NEED_CONFIRMATION
+                    result.status() == CompatibilityStatus.NEED_CONFIRMATION,
+                    result.reasonGroups()
             );
         }
 
@@ -55,6 +58,11 @@ public record PlaceCompatibilityResponse(
             requirements = requirements == null
                     ? List.of()
                     : List.copyOf(requirements);
+        }
+
+        public PetwayAssessment(CompatibilityStatus status, List<String> reasons,
+                                List<RequirementItem> requirements, boolean needsConfirmation) {
+            this(status, reasons, requirements, needsConfirmation, null);
         }
     }
 

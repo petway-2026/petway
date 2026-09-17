@@ -18,22 +18,22 @@ public record PetFacility(
     public String normalizedAccompanimentType() {
         String value = normalized(petOnly);
         if (value == null) return null;
-        if (value.contains("모두") || value.contains("개")) return "모든 견종 동반 가능";
+        if (value.matches("모두\\s*가능|개")) return "모든 견종 동반 가능";
         return value;
     }
 
     public String normalizedAllowedCapacity() {
         String value = normalized(allowedPetSize);
         if (value == null) return null;
-        if (value.contains("모두") || (value.contains("개") && !value.contains("불가"))) {
+        if (value.matches("모두\\s*가능|개(?:\\s*,\\s*고양이)?")) {
             return "모든 견종 동반 가능";
         }
         if (value.contains("고양이 전용")
-                || (value.matches(".*(고양이|조류|파충류|특수동물|물고기).*" ) && !value.contains("개"))) {
+                || value.matches("고양이|조류|파충류|특수동물|물고기")) {
             return "소형견 입장 불가, 중형견 입장 불가, 대형견 입장 불가";
         }
         java.util.regex.Matcher range = java.util.regex.Pattern.compile("(\\d+(?:\\.\\d+)?)\\s*~\\s*(\\d+(?:\\.\\d+)?)\\s*kg", java.util.regex.Pattern.CASE_INSENSITIVE).matcher(value);
-        if (range.find()) return range.group(1) + "kg~" + range.group(2) + "kg";
+        if (range.matches()) return range.group(1) + "kg~" + range.group(2) + "kg";
         if (value.matches("소형/중형")) return "소형견 동반 가능, 중형견 동반 가능";
         if (value.matches("소형|중형|대형|소형견|중형견|대형견")) return value.replace("견", "") + "견 동반 가능";
         return value;

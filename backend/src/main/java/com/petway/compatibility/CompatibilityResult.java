@@ -9,7 +9,8 @@ import java.util.Objects;
 public record CompatibilityResult(
         CompatibilityStatus status,
         List<String> reasons,
-        List<Requirement> requirements
+        List<Requirement> requirements,
+        ReasonGroups reasonGroups
 ) {
 
     public CompatibilityResult {
@@ -20,5 +21,19 @@ public record CompatibilityResult(
         requirements = requirements == null || requirements.isEmpty()
                 ? List.of()
                 : List.copyOf(requirements);
+    }
+
+    public record ReasonGroups(
+            List<String> unavailable,
+            List<String> confirmation,
+            List<String> conditions,
+            List<String> allowed
+    ) {
+        public ReasonGroups {
+            unavailable = List.copyOf(unavailable);
+            confirmation = List.copyOf(confirmation);
+            conditions = List.copyOf(conditions);
+            allowed = List.copyOf(allowed);
+        }
     }
 }

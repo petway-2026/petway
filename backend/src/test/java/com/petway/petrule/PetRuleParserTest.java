@@ -205,9 +205,7 @@ class PetRuleParserTest {
         assertThat(rule.confirmationConditions())
                 .extracting(PetRule.ConfirmationCondition::type)
                 .containsExactly(ConfirmationType.INQUIRY_REQUIRED);
-        assertThat(rule.unparsedFragments())
-                .extracting(PetRule.UnparsedFragment::rawText)
-                .containsExactly("실내 시설 이용은");
+        assertThat(rule.unparsedFragments()).isEmpty();
     }
 
     @ParameterizedTest
@@ -423,6 +421,26 @@ class PetRuleParserTest {
                 .extracting(PetRule.Requirement::type)
                 .containsExactly(RequirementType.MANNER_BELT);
         assertThat(rule.unparsedFragments()).isEmpty();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "이동장(켄넬) 안에 반려동물 몸 전체가 모두 들어가야 동반 가능",
+            "케이지 내부에 반려견의 전신이 들어가야만 입장 가능"
+    })
+    void parsesFullBodyCarrierConditionAcrossSourceFields(String text) {
+        for (PetRuleSourceField field : List.of(
+                PetRuleSourceField.ACMPY_PSBL_CPAM,
+                PetRuleSourceField.ACMPY_NEED_MTR,
+                PetRuleSourceField.ETC_ACMPY_INFO,
+                PetRuleSourceField.UNSPECIFIED)) {
+            PetRule rule = parser.parse(source(field, text));
+
+            assertThat(rule.requirements()).extracting(PetRule.Requirement::type)
+                    .containsExactly(RequirementType.CARRIER);
+            assertThat(rule.requirements().get(0).source().rawText()).isEqualTo(text);
+            assertThat(rule.unparsedFragments()).isEmpty();
+        }
     }
 
     @Test
@@ -829,6 +847,23 @@ class PetRuleParserTest {
                 .isInstanceOf(UnsupportedOperationException.class);
         assertThatThrownBy(() -> rule.weightLimits().clear())
                 .isInstanceOf(UnsupportedOperationException.class);
+    }
+
+    @Test
+    void failedSourceDoesNotLeavePartialRulesAndOtherSourcesStillParse() {
+        PetRule rule = parser.parse(List.of(
+                source(PetRuleSourceField.ACMPY_PSBL_CPAM, "5~10kg, 20~10kg"),
+                source(PetRuleSourceField.ETC_ACMPY_INFO, "실내 동반 가능, 실외 동반 가능")
+        ));
+
+        assertThat(rule.weightLimits()).isEmpty();
+        assertThat(rule.spaceRules()).extracting(PetRule.SpaceRule::condition)
+                .containsExactlyInAnyOrder(SpaceCondition.INDOOR_ALLOWED, SpaceCondition.OUTDOOR_ALLOWED);
+        assertThat(rule.sources()).hasSize(2);
+        assertThat(rule.unparsedFragments()).singleElement().satisfies(fragment -> {
+            assertThat(fragment.rawText()).isEqualTo("5~10kg, 20~10kg");
+            assertThat(fragment.reason()).isEqualTo(PetRule.UnparsedReason.PARSER_ERROR);
+        });
     }
 
     private static PetRuleSource source(

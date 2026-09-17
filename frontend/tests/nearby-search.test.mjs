@@ -9,7 +9,71 @@ afterEach(() => { globalThis.fetch = nativeFetch; });
 const source = (await readFile(new URL('../src/features/place/api/placeApi.ts', import.meta.url), 'utf8'))
     .replace('import { API_URL } from "../../../shared/api/config";', 'const API_URL = "https://api.petway.test";')
     .replace('import { apiFetch } from "../../../shared/api/client";', 'const apiFetch = (...args) => globalThis.fetch(...args);');
-const { searchAllNearbyPlaces } = await import(`data:text/javascript;base64,${Buffer.from(stripTypeScriptTypes(source)).toString('base64')}`);
+const { searchAllPlaces, searchAllNearbyPlaces, loadPlaceCompatibilities } = await import(`data:text/javascript;base64,${Buffer.from(stripTypeScriptTypes(source)).toString('base64')}`);
+
+test('changing travel region cancels area pagination even when the old response arrives late', async () => {
+    const controller = new AbortController();
+    let requests = 0;
+    globalThis.fetch = async (_url, options) => {
+        requests++;
+        assert.equal(options.signal, controller.signal);
+        controller.abort();
+        return Response.json({ totalCount: 300, items: [{ contentId: 'old-region' }] });
+    };
+    await assert.rejects(searchAllPlaces('1', controller.signal), { name: 'AbortError' });
+    assert.equal(requests, 1);
+});
+
+test('automatic compatibility checks bound concurrency, deduplicate places and retain per-place errors', async () => {
+    let active = 0;
+    let peak = 0;
+    let requests = 0;
+    globalThis.fetch = async (url) => {
+        active++;
+        peak = Math.max(peak, active);
+        requests++;
+        await new Promise((resolve) => setImmediate(resolve));
+        active--;
+        return url.includes('/bad/')
+            ? Response.json({ message: 'Provider unavailable' }, { status: 502 })
+            : Response.json({ contentId: url.split('/').at(-2), petwayAssessment: { status: 'AVAILABLE' } });
+    };
+    const results = new Map();
+    await loadPlaceCompatibilities(['a', 'b', 'bad', 'c', 'd', 'e', 'a'], new AbortController().signal,
+        (id, entry) => results.set(id, entry));
+    assert.equal(requests, 6);
+    assert.equal(peak, 4);
+    assert.equal(results.get('bad').error, 'Provider unavailable');
+    assert.equal(results.get('e').result.petwayAssessment.status, 'AVAILABLE');
+});
+
+test('canceled compatibility checks cannot publish stale results or start queued requests', async () => {
+    const controller = new AbortController();
+    let requests = 0;
+    let results = 0;
+    globalThis.fetch = async () => {
+        requests++;
+        controller.abort();
+        return Response.json({ contentId: 'old-user' });
+    };
+    await loadPlaceCompatibilities(['a', 'b', 'c', 'd', 'e'], controller.signal, () => results++);
+    assert.equal(requests, 1);
+    assert.equal(results, 0);
+});
+
+test('missing primary pet stops further provider requests without calling it a place restriction', async () => {
+    let requests = 0;
+    globalThis.fetch = async () => {
+        requests++;
+        return Response.json({ message: '대표 반려견이 없습니다.' }, { status: 409 });
+    };
+    const results = [];
+    await loadPlaceCompatibilities(Array.from({ length: 20 }, (_, i) => String(i)), new AbortController().signal,
+        (_id, entry) => results.push(entry));
+    assert.ok(requests <= 4);
+    assert.equal(results.length, 20);
+    assert.ok(results.every((entry) => entry.error === '대표 반려견이 없습니다.' && !entry.result));
+});
 
 test('canceled search never publishes a late response or starts the next page', async () => {
     const controller = new AbortController();
