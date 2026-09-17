@@ -926,7 +926,7 @@
     font-weight: 700;
 
     color: var(
-            --pw-green,
+            --color-primary,
             #526f5d
     );
 }
