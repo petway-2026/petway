@@ -220,6 +220,13 @@
   color: #33463c;
 }
 
+.walk-fit-distance {
+  display: block;
+  color: #6a746f;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 .walk-fit-score {
   margin: 10px 0;
   padding: 8px 11px;

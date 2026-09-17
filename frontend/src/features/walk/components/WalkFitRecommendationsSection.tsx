@@ -33,6 +33,26 @@ function formatLocalDate(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
+type Coordinates = { latitude: number; longitude: number };
+
+function formatDistance(origin: Coordinates | null, latitude: number | null, longitude: number | null): string {
+  if (!origin || latitude == null || longitude == null
+    || !Number.isFinite(latitude) || !Number.isFinite(longitude)
+    || Math.abs(latitude) > 90 || Math.abs(longitude) > 180) {
+    return "거리 정보 없음";
+  }
+  const radians = Math.PI / 180;
+  const latitudeDelta = (latitude - origin.latitude) * radians;
+  const longitudeDelta = (longitude - origin.longitude) * radians;
+  const a = Math.sin(latitudeDelta / 2) ** 2
+    + Math.cos(origin.latitude * radians) * Math.cos(latitude * radians)
+    * Math.sin(longitudeDelta / 2) ** 2;
+  const distanceKm = 6371 * 2 * Math.asin(Math.sqrt(Math.min(1, Math.max(0, a))));
+  return distanceKm < 0.1
+    ? "현재 위치에서 0.1 km 미만 · 직선거리"
+    : `현재 위치에서 약 ${distanceKm.toFixed(1)} km · 직선거리`;
+}
+
 function requestErrorMessage(cause: unknown): string {
   if (cause instanceof WalkFitApiError) {
     if (cause.status === 401 || cause.status === 403) {
@@ -60,6 +80,7 @@ export default function WalkFitRecommendationsSection() {
   const [result, setResult] =
     useState<WalkFitRecommendationResponse | null>(null);
   const [loading, setLoading] = useState(false);
+  const [searchOrigin, setSearchOrigin] = useState<Coordinates | null>(null);
   const [error, setError] = useState("");
   const [expandedRecommendationId, setExpandedRecommendationId] = useState<string | null>(null);
   const requestRef = useRef<AbortController | null>(null);
@@ -90,7 +111,10 @@ export default function WalkFitRecommendationsSection() {
           controller.signal,
         )
           .then((response) => {
-            if (!controller.signal.aborted) setResult(response);
+            if (!controller.signal.aborted) {
+              setSearchOrigin({ latitude: position.coords.latitude, longitude: position.coords.longitude });
+              setResult(response);
+            }
           })
           .catch((cause: unknown) => {
             if (!controller.signal.aborted) setError(requestErrorMessage(cause));
@@ -200,6 +224,9 @@ export default function WalkFitRecommendationsSection() {
                   </div>
                   <h3>{recommendation.title}</h3>
                   {recommendation.address && <p>{recommendation.address}</p>}
+                  <small className="walk-fit-distance">
+                    {formatDistance(searchOrigin, recommendation.latitude, recommendation.longitude)}
+                  </small>
                   <strong className="walk-fit-pet-copy">
                     {result.pet.petName}와 산책 후보로 추천해요
                   </strong>
